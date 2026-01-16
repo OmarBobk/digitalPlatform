@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oyunpin Typography & Color Guide - Light Theme</title>
+    <style>
+        /* Updated Supporting Color Tokens */
+        :root {
+            /* Instead of standard #212529, use a "Blue-Ink" Dark */
+            --dark-text: #1a1d23;
+
+            /* Instead of #6c757d, use a "Cool Slate" */
+            --gray-text: #64748b;
+
+            /* Instead of #28a745, use an "Emerald Mint" (Better for Dark & Light modes) */
+            --success-green: #10b981;
+
+            /* Instead of #ffc107, use a "Golden Amber" (More premium, less 'caution sign') */
+            --warning-orange: #f59e0b;
+
+            /* New Semantic Colors for Modern UI */
+            --surface-brand: #fdfdf2; /* Soft wash for card backgrounds */
+            --border-subtle: #f1f5f9;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 40px 20px;
+            line-height: 1.6;
+            color: var(--dark-text);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #e94560 0%, #c62e4a 100%);
+            border-radius: 20px;
+            padding: 60px;
+            text-align: center;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 40px rgba(233, 69, 96, 0.2);
+        }
+
+        .hero h1 {
+            font-size: 56px;
+            font-weight: 800;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        .hero p {
+            font-size: 20px;
+            color: #fff;
+            opacity: 0.95;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e9ecef;
+        }
+
+        .card h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #e94560;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #e94560;
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .color-box {
+            border-radius: 12px;
+            padding: 30px 20px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .color-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .color-name {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .color-code {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 5px 10px;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        .color-usage {
+            font-size: 12px;
+            margin-top: 10px;
+            opacity: 0.7;
+        }
+
+        /* Color Swatches */
+        .primary-red { background: #e94560; color: #fff; }
+        .light-bg { background: #ffffff; color: var(--dark-text); border: 2px solid #dee2e6; }
+        .soft-gray { background: #f8f9fa; color: var(--dark-text); }
+        .border-gray { background: #e9ecef; color: var(--dark-text); }
+        .dark-text { background: var(--dark-text); color: #fff; }
+        .gray-text { background: var(--gray-text); color: #fff; }
+        .success-green { background: var(--success-green); color: #fff; }
+        .warning-orange { background: var(--warning-orange); color: #fff; }
+
+        .typography-section {
+            background: #fff;
+            border-radius: 16px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e9ecef;
+        }
+
+        .typography-section h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #e94560;
+            margin-bottom: 30px;
+        }
+
+        .type-sample {
+            background: #f8f9fa;
+            border-left: 4px solid #e94560;
+            padding: 30px;
+            margin-bottom: 25px;
+            border-radius: 8px;
+        }
+
+        .type-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .type-meta-item {
+            font-size: 13px;
+        }
+
+        .type-meta-item strong {
+            display: block;
+            color: #e94560;
+            margin-bottom: 5px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .type-meta-item code {
+            background: #ffe8ec;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #c62e4a;
+        }
+
+        /* Typography Styles */
+        .hero-title {
+            font-size: 64px;
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            color: #e94560;
+        }
+
+        .section-title {
+            font-size: 48px;
+            font-weight: 700;
+            line-height: 1.2;
+            color: var(--dark-text);
+        }
+
+        .page-heading {
+            font-size: 36px;
+            font-weight: 700;
+            line-height: 1.3;
+            color: var(--dark-text);
+        }
+
+        .card-title {
+            font-size: 24px;
+            font-weight: 600;
+            line-height: 1.4;
+            color: var(--dark-text);
+        }
+
+        .game-name {
+            font-size: 18px;
+            font-weight: 600;
+            line-height: 1.5;
+            color: var(--dark-text);
+        }
+
+        .body-text {
+            font-size: 16px;
+            font-weight: 400;
+            line-height: 1.6;
+            color: #495057;
+        }
+
+        .small-text {
+            font-size: 14px;
+            font-weight: 400;
+            line-height: 1.5;
+            color: var(--gray-text);
+        }
+
+        .caption-text {
+            font-size: 12px;
+            font-weight: 400;
+            line-height: 1.4;
+            color: #868e96;
+        }
+
+        .button-text {
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 1.5;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #fff;
+        }
+
+        .price-large {
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1.2;
+            color: #e94560;
+        }
+
+        .price-medium {
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 1.2;
+            color: #e94560;
+        }
+
+        .badge-text {
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.2;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #fff;
+        }
+
+        .nav-link {
+            font-size: 15px;
+            font-weight: 500;
+            line-height: 1.5;
+            color: #495057;
+        }
+
+        .usage-guide {
+            background: #fff;
+            border-radius: 16px;
+            padding: 40px;
+            margin-top: 40px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 2px solid #e94560;
+        }
+
+        .usage-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
+            margin-top: 25px;
+        }
+
+        .usage-card {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid #e9ecef;
+        }
+
+        .usage-card h4 {
+            color: #e94560;
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .usage-card ul {
+            list-style: none;
+        }
+
+        .usage-card li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+            font-size: 14px;
+            color: #495057;
+        }
+
+        .usage-card li:before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+            color: #e94560;
+            font-weight: bold;
+        }
+
+        .context-examples {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border: 1px solid #e9ecef;
+        }
+
+        .context-example {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #495057;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero {
+                padding: 40px 30px;
+            }
+
+            .hero h1 {
+                font-size: 36px;
+            }
+
+            .card {
+                padding: 25px;
+            }
+
+            .color-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-title {
+                font-size: 42px;
+            }
+
+            .section-title {
+                font-size: 32px;
+            }
+        }
+
+        .interactive-demo {
+            background: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            margin-top: 20px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .demo-button {
+            display: inline-block;
+            padding: 15px 35px;
+            background: linear-gradient(135deg, #e94560 0%, #c62e4a 100%);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px 10px 10px 0;
+            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3);
+        }
+
+        .demo-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(233, 69, 96, 0.4);
+        }
+
+        .demo-button.secondary {
+            background: #fff;
+            border: 2px solid #e94560;
+            color: #e94560;
+        }
+
+        .demo-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: #e94560;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 5px;
+            color: #fff;
+        }
+
+        .demo-badge.popular {
+            background: var(--success-green);
+        }
+
+        .demo-badge.discount {
+            background: var(--warning-orange);
+            color: var(--dark-text);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hero">
+            <h1>🎮 Oyunpin Typography</h1>
+            <p>Türkiye'nin En Güvenilir E-pin Sitesi - Tipografi ve Renk Rehberi</p>
+        </div>
+
+        <div class="main-grid">
+            <!-- Color Palette -->
+            <div class="card">
+                <h2>🎨 Ana Renk Paleti</h2>
+                <div class="color-grid">
+                    <div class="color-box primary-red">
+                        <div class="color-name">Primary Red</div>
+                        <div class="color-code">#e94560</div>
+                        <div class="color-usage">Butonlar, linkler, vurgular</div>
+                    </div>
+                    <div class="color-box light-bg">
+                        <div class="color-name">White Background</div>
+                        <div class="color-code">#ffffff</div>
+                        <div class="color-usage">Ana arka plan, kartlar</div>
+                    </div>
+                    <div class="color-box soft-gray">
+                        <div class="color-name">Soft Gray</div>
+                        <div class="color-code">#f8f9fa</div>
+                        <div class="color-usage">İkincil arka plan</div>
+                    </div>
+                    <div class="color-box border-gray">
+                        <div class="color-name">Border Gray</div>
+                        <div class="color-code">#e9ecef</div>
+                        <div class="color-usage">Kenarlıklar, ayırıcılar</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Supporting Colors -->
+            <div class="card">
+                <h2>🌈 Destekleyici Renkler</h2>
+                <div class="color-grid">
+                    <div class="color-box dark-text">
+                        <div class="color-name">Dark Text</div>
+                        <div class="color-code">#1a1d23</div>
+                        <div class="color-usage">Ana başlıklar, önemli metin</div>
+                    </div>
+                    <div class="color-box gray-text">
+                        <div class="color-name">Gray Text</div>
+                        <div class="color-code">#64748b</div>
+                        <div class="color-usage">İkincil metin, açıklamalar</div>
+                    </div>
+                    <div class="color-box success-green">
+                        <div class="color-name">Success Green</div>
+                        <div class="color-code">#10b981</div>
+                        <div class="color-usage">"Popüler" etiketleri</div>
+                    </div>
+                    <div class="color-box warning-orange">
+                        <div class="color-name">Warning Orange</div>
+                        <div class="color-code">#f59e0b</div>
+                        <div class="color-usage">"İndirim" etiketleri</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Typography Samples -->
+        <div class="typography-section">
+            <h2>📝 Hero & Display Başlıklar</h2>
+
+            <div class="type-sample">
+                <div class="type-meta">
+                    <div class="type-meta-item">
+                        <strong>Kullanım</strong>
+                        <code>Hero Başlık</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Boyut</strong>
+                        <code>64px</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Kalınlık</strong>
+                        <code>800 (Extra Bold)</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Renk</strong>
+                        <code>#e94560</code>
+                    </div>
+                </div>
+                <div class="hero-title">VALORANT VP SATIN AL</div>
+                <div class="context-examples">
+                    <div class="context-example"><strong>Nerede:</strong> Ana sayfa hero bölümü, kampanya bannerları</div>
+                    <div class="context-example"><strong>Ne zaman:</strong> Büyük duyurular, özel indirimler, öne çıkarılmış içerik</div>
+                </div>
+            </div>
+
+            <div class="type-sample">
+                <div class="type-meta">
+                    <div class="type-meta-item">
+                        <strong>Kullanım</strong>
+                        <code>Section Title</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Boyut</strong>
+                        <code>48px</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Kalınlık</strong>
+                        <code>700 (Bold)</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Renk</strong>
+                        <code>#1a1d23</code>
+                    </div>
+                </div>
+                <div class="section-title">Popüler Oyunlar</div>
+                <div class="context-examples">
+                    <div class="context-example"><strong>Nerede:</strong> Bölüm başlıkları, kategori başlıkları</div>
+                    <div class="context-example"><strong>Ne zaman:</strong> Sayfa içi ana bölümleri ayırmak için</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="typography-section">
+            <h2>📋 Standart Başlıklar & İçerik</h2>
+
+            <div class="type-sample">
+                <div class="type-meta">
+                    <div class="type-meta-item">
+                        <strong>Kullanım</strong>
+                        <code>Page Heading</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Boyut</strong>
+                        <code>36px</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Kalınlık</strong>
+                        <code>700</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Renk</strong>
+                        <code>#1a1d23</code>
+                    </div>
+                </div>
+                <div class="page-heading">League of Legends RP Satın Al</div>
+                <div class="context-examples">
+                    <div class="context-example"><strong>Nerede:</strong> Sayfa başlıkları, kategori sayfaları</div>
+                    <div class="context-example"><strong>Ne zaman:</strong> Her sayfanın ana başlığı olarak</div>
+                </div>
+            </div>
+
+            <div class="type-sample">
+                <div class="type-meta">
+                    <div class="type-meta-item">
+                        <strong>Kullanım</strong>
+                        <code>Card Title</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Boyut</strong>
+                        <code>24px</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Kalınlık</strong>
+                        <code>600 (Semi-Bold)</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Renk</strong>
+                        <code>#1a1d23</code>
+                    </div>
+                </div>
+                <div class="card-title">PUBG Mobile UC Transfer</div>
+                <div class="context-examples">
+                    <div class="context-example"><strong>Nerede:</strong> Ürün kartları, özellik kutuları</div>
+                    <div class="context-example"><strong>Ne zaman:</strong> Ürün ve servis adları için</div>
+                </div>
+            </div>
+
+            <div class="type-sample">
+                <div class="type-meta">
+                    <div class="type-meta-item">
+                        <strong>Kullanım</strong>
+                        <code>Body Text</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Boyut</strong>
+                        <code>16px</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Kalınlık</strong>
+                        <code>400 (Regular)</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Renk</strong>
+                        <code>#495057</code>
+                    </div>
+                </div>
+                <div class="body-text">Türkiye'nin en güvenilir e-pin satış platformu. 7/24 destek ve anında teslimat hizmeti ile oyun ihtiyaçlarınız için yanınızdayız.</div>
+                <div class="context-examples">
+                    <div class="context-example"><strong>Nerede:</strong> Ana içerik metinleri, açıklamalar</div>
+                    <div class="context-example"><strong>Ne zaman:</strong> Paragraflar, uzun açıklamalar için</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="typography-section">
+            <h2>💰 Fiyat & CTA Elementleri</h2>
+
+            <div class="type-sample">
+                <div class="type-meta">
+                    <div class="type-meta-item">
+                        <strong>Kullanım</strong>
+                        <code>Price Large</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Boyut</strong>
+                        <code>32px</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Kalınlık</strong>
+                        <code>700</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Renk</strong>
+                        <code>#e94560</code>
+                    </div>
+                </div>
+                <div class="price-large">249.99 ₺</div>
+                <div class="context-examples">
+                    <div class="context-example"><strong>Nerede:</strong> Ürün detay sayfaları, sepet toplamı</div>
+                    <div class="context-example"><strong>Ne zaman:</strong> Ana fiyat gösterimlerinde</div>
+                </div>
+            </div>
+
+            <div class="type-sample">
+                <div class="type-meta">
+                    <div class="type-meta-item">
+                        <strong>Kullanım</strong>
+                        <code>Button Text</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Boyut</strong>
+                        <code>16px</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Stil</strong>
+                        <code>UPPERCASE</code>
+                    </div>
+                    <div class="type-meta-item">
+                        <strong>Letter Spacing</strong>
+                        <code>0.8px</code>
+                    </div>
+                </div>
+                <div class="button-text" style="background: #e94560; padding: 12px 24px; border-radius: 6px; display: inline-block;">SATIN AL</div>
+                <div class="context-examples">
+                    <div class="context-example"><strong>Nerede:</strong> Tüm butonlar (CTA, form, navigasyon)</div>
+                    <div class="context-example"><strong>Ne zaman:</strong> Aksiyon gerektiren elementler</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interactive Demo -->
+        <div class="typography-section">
+            <h2>🎯 Interaktif Örnekler</h2>
+
+            <div class="interactive-demo">
+                <h3 style="color: #e94560; margin-bottom: 20px; font-size: 20px;">Buton Stilleri</h3>
+                <button class="demo-button">SEPETE EKLE</button>
+                <button class="demo-button">SATIN AL</button>
+                <button class="demo-button secondary">DETAYLARI GÖR</button>
+
+                <h3 style="color: #e94560; margin: 30px 0 20px; font-size: 20px;">Etiket Örnekleri</h3>
+                <span class="demo-badge">YENİ</span>
+                <span class="demo-badge popular">POPÜLER</span>
+                <span class="demo-badge discount">İNDİRİM</span>
+            </div>
+        </div>
+
+        <!-- Real World Examples -->
+        <div class="typography-section">
+            <h2>🎮 Gerçek Dünya Örnekleri</h2>
+
+            <div style="display: grid; grid-template-columns: 1fr; gap: 25px; margin-top: 25px;">
+
+                <!-- Product Card Example -->
+                <div style="background: #fff; padding: 30px; border-radius: 12px; border: 2px solid #e9ecef; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);">
+                    <h3 style="color: #e94560; margin-bottom: 20px; font-size: 20px;">Ürün Kartı Örneği</h3>
+                    <div style="background: #f8f9fa; padding: 25px; border-radius: 12px; border: 2px solid #e9ecef;">
+                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                            <div style="width: 80px; height: 80px; background: #ffe8ec; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 32px;">🎮</div>
+                            <div style="flex: 1;">
+                                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                    <span class="demo-badge popular">POPÜLER</span>
+                                    <span class="demo-badge discount">%20 İNDİRİM</span>
+                                </div>
+                                <h4 class="card-title" style="margin-bottom: 5px;">VALORANT 1000 VP</h4>
+                                <p class="small-text">Anında teslimat • Türkiye</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 15px; border-top: 2px solid #e9ecef;">
+                            <div>
+                                <div class="price-medium">189.99 ₺</div>
+                                <div class="caption-text" style="text-decoration: line-through;">237.99 ₺</div>
+                            </div>
+                            <button class="demo-button">SATIN AL</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hero Banner Example -->
+                <div style="background: linear-gradient(135deg, #e94560 0%, #c62e4a 100%); padding: 50px 30px; border-radius: 12px; text-align: center; box-shadow: 0 10px 40px rgba(233, 69, 96, 0.2);">
+                    <div class="badge-text" style="background: rgba(255, 255, 255, 0.3); padding: 8px 16px; border-radius: 20px; display: inline-block; margin-bottom: 20px;">YENİ KAMPANYA</div>
+                    <h2 class="hero-title" style="color: #fff; margin-bottom: 15px;">PUBG UC'DE BÜYÜK İNDİRİM!</h2>
+                    <p class="body-text" style="font-size: 20px; margin-bottom: 25px; color: #fff;">Tüm UC paketlerinde %25'e varan indirim fırsatı</p>
+                    <button class="demo-button" style="background: #fff; color: #e94560; font-size: 18px; padding: 18px 40px;">HEMEN İNDİRİMİ YAKALA</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Usage Guide -->
+        <div class="usage-guide">
+            <h2 style="color: #e94560; font-size: 32px; margin-bottom: 10px;">📚 Kullanım Senaryoları</h2>
+            <p style="font-size: 16px; margin-bottom: 25px; color: #495057;">Hangi tipografiyi nerede kullanacağınıza dair detaylı rehber</p>
+        </div>
+
+    </div>
+</body>
+</html>

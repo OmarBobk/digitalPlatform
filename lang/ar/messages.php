@@ -1,0 +1,142 @@
+<?php
+
+return [
+
+    'laravel' => 'لارافيل',
+
+    // Authentication
+    'log_in_to_your_account' => 'تسجيل الدخول إلى حسابك',
+    'enter_your_username_and_password_below_to_log_in' => 'أدخل اسم المستخدم وكلمة المرور أدناه لتسجيل الدخول',
+    'username' => 'اسم المستخدم',
+    'password' => 'كلمة المرور',
+    'forgot_your_password' => 'نسيت كلمة المرور؟',
+    'remember_me' => 'تذكرني',
+    'log_in' => 'تسجيل الدخول',
+    'dont_have_an_account' => 'ليس لديك حساب؟',
+    'sign_up' => 'إنشاء حساب',
+    'log_out' => 'تسجيل الخروج',
+
+    // Registration
+    'create_an_account' => 'إنشاء حساب',
+    'enter_your_details_below_to_create_your_account' => 'أدخل بياناتك أدناه لإنشاء حسابك',
+    'name' => 'الاسم',
+    'full_name' => 'الاسم الكامل',
+    'email_address' => 'عنوان البريد الإلكتروني',
+    'email_placeholder' => 'email@example.com',
+    'phone' => 'الهاتف',
+    'phone_number' => 'رقم الهاتف',
+    'country_code' => 'رمز الدولة',
+    'country_code_placeholder' => '+1',
+    'select_country_code' => 'اختر رمز الدولة',
+    'syria' => 'سوريا',
+    'turkey' => 'تركيا',
+    'confirm_password' => 'تأكيد كلمة المرور',
+    'create_account' => 'إنشاء حساب',
+    'already_have_an_account' => 'لديك حساب بالفعل؟',
+
+    // Dashboard
+    'dashboard' => 'لوحة التحكم',
+    'platform' => 'المنصة',
+    'options' => 'خيارات',
+    'new_post' => 'منشور جديد',
+    'sort_by' => 'ترتيب حسب',
+    'date' => 'التاريخ',
+    'popularity' => 'الشعبية',
+    'filter' => 'تصفية',
+    'draft' => 'مسودة',
+    'published' => 'منشور',
+    'archived' => 'مؤرشف',
+    'delete' => 'حذف',
+
+    // Profile Settings
+    'profile_settings' => 'إعدادات الملف الشخصي',
+    'profile' => 'الملف الشخصي',
+    'update_your_profile_information' => 'تحديث معلومات ملفك الشخصي',
+    'email' => 'البريد الإلكتروني',
+    'your_email_address_is_unverified' => 'عنوان بريدك الإلكتروني غير مُتحقق منه.',
+    'click_here_to_re_send_the_verification_email' => 'انقر هنا لإعادة إرسال بريد التحقق.',
+    'a_new_verification_link_has_been_sent_to_your_email_address' => 'تم إرسال رابط تحقق جديد إلى عنوان بريدك الإلكتروني.',
+    'save' => 'حفظ',
+    'saved' => 'تم الحفظ.',
+
+    // Navigation
+    'settings' => 'الإعدادات',
+    'repository' => 'المستودع',
+    'documentation' => 'التوثيق',
+    'search' => 'بحث',
+    'manage_your_profile_and_account_settings' => 'إدارة ملفك الشخصي وإعدادات حسابك',
+
+    // Pagination
+    'pagination_navigation' => 'تنقل الصفحات',
+    'showing' => 'عرض',
+    'to' => 'إلى',
+    'of' => 'من',
+    'results' => 'نتائج',
+    'go_to_page' => 'انتقل إلى الصفحة :page',
+
+    // Authentication Errors
+    'inactive' => 'حسابك غير نشط. يرجى الاتصال بالدعم.',
+    'blocked' => 'تم حظر حسابك. يرجى الاتصال بالدعم.',
+
+    // Errors
+    'not_found' => 'غير موجود',
+    'unauthorized' => 'غير مصرح',
+    'forbidden' => 'محظور',
+    'payment_required' => 'مطلوب الدفع',
+    'page_expired' => 'انتهت صلاحية الصفحة',
+    'too_many_requests' => 'طلبات كثيرة جداً',
+    'server_error' => 'خطأ في الخادم',
+    'service_unavailable' => 'الخدمة غير متاحة',
+
+    // Common
+    'app_name' => 'مجموعة Laravel للمبتدئين',
+    'all_rights_reserved' => 'جميع الحقوق محفوظة.',
+    'toggle_sidebar' => 'تبديل الشريط الجانبي',
+    'search_placeholder' => 'بحث...',
+    'toggle_password_visibility' => 'تبديل إظهار كلمة المرور',
+    'copy_to_clipboard' => 'نسخ إلى الحافظة',
+    'character_of' => 'الحرف {current} من {total}',
+    'choose_files' => 'اختر الملفات',
+    'choose_file' => 'اختر ملف',
+    'no_file_chosen' => 'لم يتم اختيار ملف',
+    'files' => 'ملفات',
+
+    // Language
+    'language' => 'اللغة',
+    'english' => 'الإنجليزية',
+    'arabic' => 'العربية',
+
+    // Settings
+    'two_factor_auth' => 'المصادقة الثنائية',
+    'appearance' => 'المظهر',
+    'delete_account' => 'حذف الحساب',
+    'delete_your_account_and_all_of_its_resources' => 'حذف حسابك وجميع موارده',
+    'are_you_sure_you_want_to_delete_your_account' => 'هل أنت متأكد أنك تريد حذف حسابك؟',
+    'once_your_account_is_deleted_all_of_its_resources_and_data_will_be_permanently_deleted_please_enter_your_password_to_confirm_you_would_like_to_permanently_delete_your_account' => 'بمجرد حذف حسابك، سيتم حذف جميع موارده وبياناته بشكل دائم. يرجى إدخال كلمة المرور الخاصة بك لتأكيد أنك تريد حذف حسابك بشكل دائم.',
+    'cancel' => 'إلغاء',
+    'password_settings' => 'إعدادات كلمة المرور',
+    'update_password' => 'تحديث كلمة المرور',
+    'ensure_your_account_is_using_a_long_random_password_to_stay_secure' => 'تأكد من أن حسابك يستخدم كلمة مرور طويلة وعشوائية للبقاء آمناً',
+    'current_password' => 'كلمة المرور الحالية',
+    'new_password' => 'كلمة المرور الجديدة',
+    'appearance_settings' => 'إعدادات المظهر',
+    'update_the_appearance_settings_for_your_account' => 'تحديث إعدادات المظهر لحسابك',
+    'light' => 'فاتح',
+    'dark' => 'داكن',
+    'system' => 'النظام',
+    'two_factor_authentication_settings' => 'إعدادات المصادقة الثنائية',
+    'two_factor_authentication' => 'المصادقة الثنائية',
+    'manage_your_two_factor_authentication_settings' => 'إدارة إعدادات المصادقة الثنائية الخاصة بك',
+    'enabled' => 'مفعل',
+    'disabled' => 'معطل',
+    'with_two_factor_authentication_enabled_you_will_be_prompted_for_a_secure_random_pin_during_login_which_you_can_retrieve_from_the_totp_supported_application_on_your_phone' => 'مع تفعيل المصادقة الثنائية، سيُطلب منك إدخال رمز PIN آمن وعشوائي أثناء تسجيل الدخول، والذي يمكنك استرجاعه من تطبيق يدعم TOTP على هاتفك.',
+    'disable_2fa' => 'تعطيل المصادقة الثنائية',
+    'enable_2fa' => 'تفعيل المصادقة الثنائية',
+    'when_you_enable_two_factor_authentication_you_will_be_prompted_for_a_secure_pin_during_login_this_pin_can_be_retrieved_from_a_totp_supported_application_on_your_phone' => 'عند تفعيل المصادقة الثنائية، سيُطلب منك إدخال رمز PIN آمن أثناء تسجيل الدخول. يمكن استرجاع هذا الرمز من تطبيق يدعم TOTP على هاتفك.',
+    'back' => 'رجوع',
+    'confirm' => 'تأكيد',
+    'or_enter_the_code_manually' => 'أو، أدخل الرمز يدوياً',
+
+    // Profile
+    'profile_photo' => 'صورة الملف الشخصي',
+];

@@ -1,0 +1,17 @@
+---
+globs: ["app/Livewire/**/*.php", "resources/views/**/*.blade.php"]
+description: "Livewire 4 performance-first rules"
+---
+
+## Livewire 4 (performance-first)
+- Default to: `wire:model.defer` or `wire:model.lazy` (NOT live).
+- Prefer explicit actions: `wire:click="..."`, `wire:submit.prevent="..."`, `wire:change="..."`.
+- Use debouncing only when needed: `wire:model.debounce.500ms`.
+- Use `wire:loading` + `wire:target` for UX without extra requests.
+- Use `wire:key` for stable DOM.
+- Use `wire:ignore` for heavy JS-managed elements (editors, complex widgets).
+- Avoid frequent re-renders; keep render() pure.
+
+## Alpine integration
+- Alpine controls UI state; Livewire controls server state.
+- Sync only at checkpoints (submit, confirm, apply, save).

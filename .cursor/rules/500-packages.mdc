@@ -1,0 +1,18 @@
+---
+alwaysApply: true
+description: "Project packages and how to use them"
+---
+
+This project uses these packages; prefer them over reinventing:
+
+- spatie/laravel-permission: roles/permissions via middleware, policies, gates.
+- spatie/laravel-activitylog: audit logs for key models (orders, users, products).
+- laravel reverb: realtime broadcasting (prefer over ad-hoc polling).
+- pusher/pusher-php-server: broadcasting driver/compat (as configured).
+- spatie/browsershot: server-side rendering/PDF/screenshots (queue heavy tasks).
+- spatie/laravel-analytics: GA4 queries (cache results; don’t query on every request).
+- laravel boost: use MCP/tools where available; prefer repo-aware answers.
+
+Performance notes:
+- Analytics calls must be cached and never run on frequent UI interactions.
+- Browsershot jobs should be queued, not synchronous in web requests.

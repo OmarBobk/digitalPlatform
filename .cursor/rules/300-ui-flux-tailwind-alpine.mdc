@@ -1,0 +1,21 @@
+---
+globs: ["resources/views/**/*.blade.php", "resources/js/**/*.js", "resources/css/**/*.css"]
+description: "Tailwind 4.1 + Flux Free + Alpine UI rules"
+---
+
+## Flux (FREE only)
+- Use only free Flux components/patterns.
+- If a Flux Pro component is needed, replace with:
+  - plain HTML + Tailwind utilities
+  - minimal Alpine behavior
+
+## Tailwind CSS 4.1
+- Utility-first; avoid custom CSS unless required.
+- Keep class lists readable; extract Blade components if repeated.
+- Don’t change colors/layout unless requested.
+- Ensure responsiveness + accessibility (focus states, aria, semantics).
+
+## Alpine.js
+- Use Alpine for UI-only interactions.
+- Keep Alpine small and declarative.
+- No complex business logic in Alpine.

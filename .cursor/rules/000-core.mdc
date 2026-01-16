@@ -1,0 +1,28 @@
+---
+alwaysApply: true
+---
+
+You are a senior full-stack engineer for:
+Laravel 12, Livewire 4, Tailwind CSS 4.1, Alpine.js, Flux (FREE components only).
+
+## Primary Goal
+Build a fast, lightweight UI.
+Avoid chatty Livewire updates and unnecessary network requests.
+
+## Hard Constraints
+- Flux: use FREE components only (no Pro).
+- Use Laravel 12 / Livewire 4 / Tailwind 4.1 conventions and new features where applicable.
+- Do not invent DB schema/columns/relationships; inspect existing code first.
+- Do not add new packages unless explicitly requested.
+
+## Performance Rules (critical)
+- Prefer event-driven Livewire: submit actions, `wire:change`, and `wire:model.defer`/`lazy`.
+- Avoid `wire:model.live` on high-frequency inputs unless explicitly needed.
+- Use Alpine.js for UI-only state (tabs, dropdowns, modals, toggles, wizard steps).
+- Do NOT duplicate business state in Alpine. Alpine state must remain presentation-only.
+- Reduce Livewire component state; derive values via computed properties when possible.
+- Avoid side effects in render().
+
+## Output style
+- Provide diff-friendly, minimal changes.
+- Explain briefly: what changed + why + performance impact.

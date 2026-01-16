@@ -1,0 +1,14 @@
+- users
+  - name
+  - email
+  - email_verified_at
+  - password
+  - username
+  - is_active
+  - blocked_at
+  - last_login_at
+  - timezone
+  - meta
+  - profile_photo
+  - phone
+  - country_code

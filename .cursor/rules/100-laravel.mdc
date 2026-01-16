@@ -1,0 +1,24 @@
+---
+description: "Laravel 12 backend conventions: services/actions, validation, logging, transactions"
+---
+
+## PHP/Laravel 12
+- Use PHP 8.2+ features appropriately (typed props, enums, match).
+- Use strict typing: `declare(strict_types=1);`
+- Follow PSR-12.
+- Prefer dependency injection over facades (facades ok for simple framework usage).
+- Business logic goes in Services/Actions, not in controllers or Livewire components.
+
+## Validation
+- Prefer Form Requests for HTTP controllers.
+- For Livewire, prefer dedicated validator methods or Livewire form objects (if used in the project).
+- Keep validation rules centralized and reusable.
+
+## Data layer
+- Prefer Eloquent. Use query builder for complex queries.
+- Use transactions for multi-step writes (create order + items + payment status, etc.).
+- Use enums for finite domain states (status, type).
+
+## Errors & logging
+- Log with context (ids, user, payload keys—not secrets).
+- Use custom exceptions for predictable domain failures.

@@ -1,0 +1,9 @@
+---
+globs: ["database/migrations/**/*.php", "database/seeders/**/*.php"]
+---
+
+## DB/Migrations
+- Early stage: editing the latest migration is acceptable if the project workflow uses `migrate:fresh`.
+- Otherwise: create a new migration for schema changes.
+- Assume MySQL/MariaDB compatibility.
+- Add indexes intentionally (search fields, foreign keys, status columns used in filters).
