@@ -1,7 +1,27 @@
+<?php
+
+use Livewire\Component;
+
+new class extends Component
+{
+    public string $currentLocale;
+
+    public function mount(): void
+    {
+        $this->currentLocale = app()->getLocale();
+    }
+
+    public function updatedCurrentLocale(): void
+    {
+        $this->currentLocale = app()->getLocale();
+    }
+};
+?>
+
 <div>
-    <flux:dropdown >
-        <flux:button variant="ghost" size="sm" icon="language" class="w-full justify-start" icon:trailing="chevron-down">
-            {{ __('messages.language') }}
+    <flux:dropdown>
+        <flux:button variant="ghost" size="sm" icon="language" class="w-auto justify-center sm:w-full sm:justify-start" icon:trailing="chevron-down">
+            <span class="hidden sm:inline">{{ __('messages.language') }}</span>
         </flux:button>
 
         <flux:menu>

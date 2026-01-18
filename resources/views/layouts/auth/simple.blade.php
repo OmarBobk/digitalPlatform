@@ -7,7 +7,7 @@
         <div class="bg-background flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10 relative">
             <!-- Language Switcher - Top Right Corner -->
             <div class="absolute top-4 end-4">
-                <livewire:language-switcher />
+                <livewire:settings.language-switcher />
             </div>
 
             <div class="flex w-full max-w-sm flex-col gap-2">

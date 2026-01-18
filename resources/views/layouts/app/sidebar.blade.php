@@ -33,7 +33,7 @@
 
 
             <flux:sidebar.nav>
-                <livewire:language-switcher />
+                <livewire:settings.language-switcher />
             </flux:sidebar.nav>
 
             <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
