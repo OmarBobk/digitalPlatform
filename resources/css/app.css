@@ -7,15 +7,33 @@
 @source '../../vendor/livewire/flux/stubs/**/*.blade.php';
 
 @custom-variant dark (&:where(.dark, .dark *));
+/* Re-assign Flux's gray of choice... */
 @theme {
-    --color-accent: var(--color-yellow-400);
+    --color-zinc-50: var(--color-neutral-50);
+    --color-zinc-100: var(--color-neutral-100);
+    --color-zinc-200: var(--color-neutral-200);
+    --color-zinc-300: var(--color-neutral-300);
+    --color-zinc-400: var(--color-neutral-400);
+    --color-zinc-500: var(--color-neutral-500);
+    --color-zinc-600: var(--color-neutral-600);
+    --color-zinc-700: var(--color-neutral-700);
+    --color-zinc-800: var(--color-neutral-800);
+    --color-zinc-900: var(--color-neutral-900);
+    --color-zinc-950: var(--color-neutral-950);
+}
+@theme {
+    --color-accent: var(--color-yellow-300);
+    --color-accent-hover: var(--color-yellow-400);
+    --color-accent-soft: var(--color-yellow-100);
     --color-accent-content: var(--color-yellow-600);
-    --color-accent-foreground: var(--color-yellow-950);
+    --color-accent-foreground: var(--color-yellow-900);
 }
 @layer theme {
     .dark {
         --color-accent: var(--color-yellow-400);
-        --color-accent-content: var(--color-yellow-400);
+        --color-accent-hover: var(--color-yellow-300);
+        --color-accent-soft: var(--color-yellow-800);
+        --color-accent-content: var(--color-yellow-300);
         --color-accent-foreground: var(--color-yellow-950);
     }
 }
@@ -57,4 +75,51 @@ select:focus[data-flux-control] {
 [dir="ltr"] .phone-input-rtl input::placeholder {
     direction: ltr;
     text-align: left;
+}
+
+/* Scrollbar utilities */
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+html:has([popover]:popover-open) {
+    overflow: auto !important;
+}
+
+[x-cloak] {
+    display: none !important;
+}
+
+@keyframes marquee {
+    from {
+        transform: translateX(0);
+    }
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+@layer utilities {
+    .marquee-track {
+        display: flex;
+        width: max-content;
+        align-items: center;
+        animation: marquee var(--marquee-duration, 32s) linear infinite;
+        will-change: transform;
+    }
+
+    .marquee-group:hover .marquee-track {
+        animation-play-state: paused;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .marquee-track {
+        animation-play-state: paused;
+    }
 }

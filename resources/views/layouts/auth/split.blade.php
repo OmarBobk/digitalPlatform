@@ -9,7 +9,7 @@
                 <div class="absolute inset-0 bg-neutral-900"></div>
                 <!-- Language Switcher - Top Right Corner of Dark Panel -->
                 <div class="relative z-20 ms-auto [&_button]:text-white [&_button]:hover:text-white/80 [&_button_.flux-icon]:text-white [&_button_.flux-icon]:hover:text-white/80">
-                    <livewire:settings.language-switcher />
+                    <livewire:language-switcher />
                 </div>
                 <a href="{{ route('home') }}" class="relative z-20 flex items-center text-lg font-medium" wire:navigate>
                     <span class="flex h-10 w-10 items-center justify-center rounded-md">
@@ -40,7 +40,7 @@
                             <span class="sr-only">{{ config('app.name', 'Laravel') }}</span>
                         </a>
                         <div class="mt-1">
-                            <livewire:settings.language-switcher />
+                            <livewire:language-switcher />
                         </div>
                     </div>
                     {{ $slot }}
