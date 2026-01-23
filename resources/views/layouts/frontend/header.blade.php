@@ -3,9 +3,9 @@
     <head>
         @include('partials.frontend.head')
     </head>
-    <body class="min-h-screen bg-white dark:bg-zinc-800 {{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
+    <body class="min-h-screen bg-white dark:bg-zinc-900 {{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
         <flux:header
-            sticky class="!block !px-3 !py-3 border-b border-zinc-200  dark:border-zinc-700 dark:!bg-zinc-800 "
+            sticky class="!block !px-3 !py-3 border-b border-zinc-200  dark:border-zinc-700 dark:!bg-zinc-900 "
             x-data="{ isScrolled: false }"
             x-init="window.addEventListener('scroll', () => { isScrolled = window.scrollY > 10;})"
             x-bind:class="isScrolled
@@ -35,47 +35,86 @@
                     <!-- Action Icons -->
                     <div class="flex items-center sm:gap-2 shrink-0 sm:order-3 order-2">
                         <!-- Wishlist Icon -->
-                        <flux:button
-                            variant="ghost"
-                            icon="heart"
-                            class="!h-10 !w-10 !p-0 [&>div>svg]:size-5 !text-zinc-700 dark:!text-zinc-300 hover:!bg-zinc-200 dark:hover:!bg-zinc-800 rounded-full"
-                            aria-label="Favoriler"
-                        />
+{{--                        <flux:button--}}
+{{--                            variant="ghost"--}}
+{{--                            icon="heart"--}}
+{{--                            class="!h-10 !w-10 !p-0 [&>div>svg]:size-5 !text-zinc-700 dark:!text-zinc-300--}}
+{{--                            hover:!bg-zinc-200 hover:cursor-pointer dark:hover:!bg-zinc-800 rounded-full"--}}
+{{--                            aria-label="Favoriler"--}}
+{{--                        />--}}
 
                         <!-- Shopping Cart Icon with Badge -->
-                        <div class="relative">
-                            <flux:button
-                                variant="ghost"
-                                icon="shopping-cart"
-                                class="!h-10 !w-10 !p-0 [&>div>svg]:size-5 !text-zinc-700 dark:!text-zinc-300 hover:!bg-zinc-200 dark:hover:!bg-zinc-800 rounded-full"
-                                aria-label="Sepet"
-                            />
-                            <span class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-(--color-accent) text-xs font-medium text-(--color-accent-foreground) shadow-sm">
-                                3
-                            </span>
-                        </div>
+                        <livewire:cart.dropdown />
 
                         <!-- User Profile Icon -->
-                        <flux:button
-                            variant="ghost"
-                            icon="user"
-                            class="!h-10 !w-10 !p-0 [&>div>svg]:size-5 !text-zinc-700 dark:!text-zinc-300 hover:!bg-zinc-200 dark:hover:!bg-zinc-800 rounded-full"
-                            aria-label="Kullanıcı"
-                        />
+                        <flux:dropdown position="bottom" align="end">
+                            <flux:button
+                                variant="ghost"
+                                icon="user"
+                                class="!h-10 !w-10 !p-0 [&>div>svg]:size-5 !text-zinc-700 dark:!text-zinc-300
+                                hover:cursor-pointer hover:!bg-zinc-200 dark:hover:!bg-zinc-800 rounded-full transition-colors
+                                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-accent)/40 focus-visible:ring-offset-2
+                                focus-visible:ring-offset-white dark:focus-visible:ring-offset-zinc-900"
+                                aria-label="Kullanıcı"
+                            />
+                            <flux:navmenu class="min-w-48 rounded-xl border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                                @auth
+                                    @role('admin|supervisor')
+                                        <flux:navmenu.item
+                                            icon="home"
+                                            href="{{ route('dashboard') }}"
+                                            class="rounded-lg !text-zinc-700 hover:!bg-zinc-100 focus-visible:!bg-zinc-100 dark:!text-zinc-200 dark:hover:!bg-zinc-800 dark:focus-visible:!bg-zinc-800"
+                                        >
+                                            {{ __('main.dashboard') }}
+                                        </flux:navmenu.item>
+                                    @endrole
+                                    <form method="POST" action="{{ route('logout') }}" class="w-full">
+                                        @csrf
+                                        <flux:menu.item
+                                            as="button"
+                                            type="submit"
+                                            icon="arrow-right-start-on-rectangle"
+                                            class="rounded-lg !text-zinc-700 hover:!bg-zinc-100 focus-visible:!bg-zinc-100 dark:!text-zinc-200 dark:hover:!bg-zinc-800 dark:focus-visible:!bg-zinc-800"
+                                            data-test="logout-button"
+                                        >
+                                            {{ __('main.logout') }}
+                                        </flux:menu.item>
+                                    </form>
+                                @else
+                                    <flux:navmenu.item
+                                        icon="user"
+                                        href="{{ route('login') }}"
+                                        class="rounded-lg !text-zinc-700 hover:!bg-zinc-100 focus-visible:!bg-zinc-100 dark:!text-zinc-200 dark:hover:!bg-zinc-800 dark:focus-visible:!bg-zinc-800"
+                                    >
+                                        {{ __('main.login') }}
+                                    </flux:navmenu.item>
+
+                                    @if (Route::has('register'))
+                                        <flux:navmenu.item
+                                            icon="plus"
+                                            href="{{ route('register') }}"
+                                            class="rounded-lg !text-zinc-700 hover:!bg-zinc-100 focus-visible:!bg-zinc-100 dark:!text-zinc-200 dark:hover:!bg-zinc-800 dark:focus-visible:!bg-zinc-800"
+                                        >
+                                            {{ __('main.register') }}
+                                        </flux:navmenu.item>
+                                    @endif
+                                @endauth
+                            </flux:navmenu>
+                        </flux:dropdown>
                     </div>
                 </div>
                 <flux:separator class="my-3 sm:block hidden" />
                 <nav
                     x-data="categoryNav()"
                     x-init="init()"
-                    class=" border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800"
+                    class=" border-zinc-200 dark:border-zinc-800 dark:bg-zinc-900"
                 >
                     <div class="mx-auto max-w-7xl ">
                         <div class="relative">
                             <!-- Left button (desktop only) -->
                             <button
                                 type="button"
-                                class="cursor-pointer hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-20 h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-white dark:bg-zinc-800 dark:border-zinc-700 shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                                class="cursor-pointer hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-20 h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-white dark:bg-zinc-900 dark:border-zinc-700 shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed"
                                 x-on:click="scrollBy(-320)"
                                 x-bind:disabled="atStart"
                                 aria-label="Scroll left"
@@ -86,7 +125,7 @@
                             <!-- Right button (desktop only) -->
                             <button
                                 type="button"
-                                class="cursor-pointer hidden lg:flex absolute right-[-0rem] top-1/2 -translate-y-1/2 z-20 h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-white dark:bg-zinc-800 dark:border-zinc-700 shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                                class="cursor-pointer hidden lg:flex absolute right-[-0rem] top-1/2 -translate-y-1/2 z-20 h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-white dark:bg-zinc-900 dark:border-zinc-700 shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed"
                                 x-on:click="scrollBy(320)"
                                 x-bind:disabled="atEnd"
                                 aria-label="Scroll right"
@@ -130,8 +169,8 @@
                             </div>
 
                             <!-- Optional fade edges (desktop only) -->
-                            <div class="pointer-events-none hidden lg:block absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-white dark:from-zinc-800 to-transparent"></div>
-                            <div class="pointer-events-none hidden lg:block absolute inset-y-0 right-[-2rem] w-10 bg-gradient-to-l from-white dark:from-zinc-800 to-transparent"></div>
+                            <div class="pointer-events-none hidden lg:block absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-white dark:from-zinc-900 to-transparent"></div>
+                            <div class="pointer-events-none hidden lg:block absolute inset-y-0 right-[-2rem] w-10 bg-gradient-to-l from-white dark:from-zinc-900 to-transparent"></div>
                         </div>
                     </div>
 
@@ -170,7 +209,6 @@
         </flux:header>
 
         {{ $slot }}
-
 
         @fluxScripts
     </body>

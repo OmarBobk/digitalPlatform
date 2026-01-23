@@ -15,10 +15,12 @@ Route::get('language/{locale}', function (string $locale) {
     return redirect()->back();
 })->name('language.switch');
 
-//Route::view('/', 'main')
+// Route::view('/', 'main')
 //    ->name('home');
 
 Route::livewire('/', 'pages::main')->name('home');
+Route::livewire('/cart', 'pages::cart')->name('cart');
+Route::livewire('/cart', 'pages::cart')->name('cart');
 
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])

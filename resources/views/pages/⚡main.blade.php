@@ -23,15 +23,19 @@ new #[Layout('layouts::frontend')] class extends Component {
 ?>
 
 <div>
-    <section class="mx-auto w-full max-w-7xl" data-section="homepage-marquee">
-        <livewire:landing.circular-slider />
-    </section>
 
-    <section class="mx-auto w-full max-w-7xl  pb-10 pt-2 sm:pt-4" data-section="homepage-promos">
+    <!-- Start Circular Slider -->
+    <section class="mx-auto w-full max-w-7xl" data-section="homepage-marquee">
+        <livewire:main.circular-slider />
+    </section>
+    <!-- End Circular Slider -->
+
+    <!-- Start Promotional Sliders -->
+    <section class="mx-auto w-full max-w-7xl  pb-4 pt-2 sm:pt-4" data-section="homepage-promos">
         <div class="grid sm:gap-6 gap-4 sm:grid-cols-4">
             <div class="flex sm:flex-col sm:gap-4 gap-2 justify-between">
                 <a href="{{ $heroBanner['href'] }}"
-                   class="group block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
+                   class="group block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
                    aria-label="Öne çıkan kampanya">
                     <div
                         class="sm:aspect-[16/9] aspect-[15/9] w-full overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900">
@@ -41,7 +45,7 @@ new #[Layout('layouts::frontend')] class extends Component {
                     </div>
                 </a>
                 <a href="{{ $heroBanner['href'] }}"
-                   class="group block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
+                   class="group block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
                    aria-label="Öne çıkan kampanya">
                     <div
                         class="sm:aspect-[16/9] aspect-[15/9] w-full overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900">
@@ -51,9 +55,23 @@ new #[Layout('layouts::frontend')] class extends Component {
                     </div>
                 </a>
             </div>
-            <livewire:landing.promotional-sliders />
+
+            <livewire:main.promotional-sliders />
         </div>
     </section>
+    <!-- End Promotional Sliders -->
+
+    <!-- Start Section of Categories -->
+    <section class="mx-auto w-full max-w-7xl" data-section="homepage-section-of-categories">
+        <livewire:main.section-of-categories />
+    </section>
+    <!-- End Section of Categories -->
+
+    <!-- Start Section of Products -->
+    <section class="mx-auto w-full max-w-7xl" data-section="homepage-section-of-categories">
+        <livewire:main.section-of-products />
+    </section>
+    <!-- End Section of Products -->
 
     <flux:radio.group x-data variant="segmented" x-model="$flux.appearance">
         <flux:radio value="light" icon="sun">{{ __('messages.light') }}</flux:radio>

@@ -12,3 +12,38 @@
   - profile_photo
   - phone
   - country_code
+- categories (subscriptions, games)
+  - id
+  - parent_id (nullable)
+  - name
+  - slug
+  - order
+  - icon
+  - is_active
+  - image
+- packages (Pubg, tiktok)
+  - id
+  - category_id
+  - name
+  - slug
+  - description
+  - is_active
+  - order
+  - icon
+- products
+  - id
+  - package_id
+  - name
+  - retail_price
+  - wholesale_price
+  - is_active
+  - order
+- package_requirements
+  - id
+  - package_id
+  - key (player_id, username, phone)
+  - label ("Player ID")
+  - type (enum: string, number, select)
+  - is_required
+  - validation_rules (string nullable) (Laravel-style: required|numeric)
+  - order

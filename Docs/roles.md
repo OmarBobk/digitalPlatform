@@ -1,0 +1,6 @@
+- admin
+  - all permissions
+- supervisor
+  - 
+- salesperson
+- customer
