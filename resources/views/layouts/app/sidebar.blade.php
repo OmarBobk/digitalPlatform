@@ -18,6 +18,12 @@
                     <flux:sidebar.item icon="tag" :href="route('categories')" :current="request()->routeIs('categories')" wire:navigate>
                         {{ __('messages.categories') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="cube" :href="route('packages')" :current="request()->routeIs('packages')" wire:navigate>
+                        {{ __('messages.packages') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="shopping-cart" :href="route('products')" :current="request()->routeIs('products')" wire:navigate>
+                        {{ __('messages.products') }}
+                    </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 
@@ -28,8 +34,8 @@
                     {{ __('messages.repository') }}
                 </flux:sidebar.item>
 
-                <flux:sidebar.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
-                    {{ __('messages.documentation') }}
+                <flux:sidebar.item icon="book-open-text" href="{{route('home')}}" target="_blank">
+                    {{ __('messages.homepage') }}
                 </flux:sidebar.item>
             </flux:sidebar.nav>
 
@@ -47,6 +53,7 @@
             <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
 
             <flux:spacer />
+
 
             <flux:dropdown position="top" align="end">
                 <flux:profile
@@ -95,6 +102,8 @@
                     </form>
                 </flux:menu>
             </flux:dropdown>
+
+
         </flux:header>
 
         {{ $slot }}

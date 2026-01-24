@@ -48,15 +48,20 @@
   - validation_rules (string nullable) (Laravel-style: required|numeric)
   - order
 
-Create The Packages Model with these data:
+Create The Product Model with these data:
+- package_id
 - name
 - slug
-- description
+- retail_price
+- wholesale_price
 - is_active
-- order
-- icon
+- order (nullable, unique)
 
-every package belong to category so create the needed methods in the model like "slug should be updated and created by default"
+Products belongs to package so create the related methods in the model
 
-act like a senior designer and design the Categories manager page using Laravel, Livewire, alpinjs, Tailwind and flux best practices. the style and colors should match and follow the design pattern and the general colors that has been used before and don't forget to use the same colors
-pay attention for the ui / ux princeples and high performance and quality the page speed should be the light speed 
+act like a senior designer and design the Products manager page to manage the products using Laravel, Livewire, alpinjs, Tailwind and flux best practices.
+the style and colors should match and follow the design pattern and the general colors that has been used before and don't forget to use the same colors
+pay attention for the ui / ux princeples and high performance and quality the page speed should be the light speed
+
+
+the placeholder of the order field should be the higher and the smallest product order that is exist in db

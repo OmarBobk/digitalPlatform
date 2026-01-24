@@ -27,5 +27,11 @@ Route::livewire('/dashboard', 'pages::backend.dashboard')
 Route::livewire('/categories', 'pages::backend.categories.index')
     ->middleware(['auth', 'verified'])
     ->name('categories');
+Route::livewire('/packages', 'pages::backend.packages.index')
+    ->middleware(['auth', 'verified'])
+    ->name('packages');
+Route::livewire('/products', 'pages::backend.products.index')
+    ->middleware(['auth', 'verified'])
+    ->name('products');
 
 require __DIR__.'/settings.php';

@@ -8,9 +8,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-class Category extends Model
+class Package extends Model
 {
-    /** @use HasFactory<\Database\Factories\CategoryFactory> */
+    /** @use HasFactory<\Database\Factories\PackageFactory> */
     use HasFactory;
 
     /**
@@ -19,12 +19,13 @@ class Category extends Model
      * @var list<string>
      */
     protected $fillable = [
-        'parent_id',
+        'category_id',
         'name',
         'slug',
+        'description',
+        'is_active',
         'order',
         'icon',
-        'is_active',
         'image',
     ];
 
@@ -36,7 +37,7 @@ class Category extends Model
     protected function casts(): array
     {
         return [
-            'parent_id' => 'integer',
+            'category_id' => 'integer',
             'order' => 'integer',
             'is_active' => 'boolean',
         ];
@@ -46,29 +47,29 @@ class Category extends Model
     {
         parent::boot();
 
-        static::creating(function ($category) {
-            $category->slug = $category->slug ?? Str::slug($category->name);
+        static::creating(function (self $package): void {
+            $package->slug = $package->slug ?? Str::slug($package->name);
         });
 
-        static::updating(function ($category) {
-            if ($category->isDirty('name')) {
-                $category->slug = Str::slug($category->name);
+        static::updating(function (self $package): void {
+            if ($package->isDirty('name')) {
+                $package->slug = Str::slug($package->name);
             }
         });
     }
 
-    public function parent(): BelongsTo
+    public function category(): BelongsTo
     {
-        return $this->belongsTo(Category::class, 'parent_id');
+        return $this->belongsTo(Category::class);
     }
 
-    public function children(): HasMany
+    public function requirements(): HasMany
     {
-        return $this->hasMany(Category::class, 'parent_id');
+        return $this->hasMany(PackageRequirement::class);
     }
 
-    public function packages(): HasMany
+    public function products(): HasMany
     {
-        return $this->hasMany(Package::class);
+        return $this->hasMany(Product::class);
     }
 }
