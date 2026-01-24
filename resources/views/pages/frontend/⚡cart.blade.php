@@ -4,7 +4,12 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 new #[Layout('layouts::frontend')] class extends Component {
-    //
+
+    public function render()
+    {
+        return $this->view()->title(__('main.shopping_cart'));
+    }
+
 };
 ?>
 

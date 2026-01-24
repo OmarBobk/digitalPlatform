@@ -18,12 +18,14 @@ Route::get('language/{locale}', function (string $locale) {
 // Route::view('/', 'main')
 //    ->name('home');
 
-Route::livewire('/', 'pages::main')->name('home');
-Route::livewire('/cart', 'pages::cart')->name('cart');
-Route::livewire('/cart', 'pages::cart')->name('cart');
+Route::livewire('/', 'pages::frontend.main')->name('home');
+Route::livewire('/cart', 'pages::frontend.cart')->name('cart');
 
-Route::view('dashboard', 'dashboard')
+Route::livewire('/dashboard', 'pages::backend.dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
+Route::livewire('/categories', 'pages::backend.categories.index')
+    ->middleware(['auth', 'verified'])
+    ->name('categories');
 
 require __DIR__.'/settings.php';

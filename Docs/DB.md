@@ -47,3 +47,16 @@
   - is_required
   - validation_rules (string nullable) (Laravel-style: required|numeric)
   - order
+
+Create The Packages Model with these data:
+- name
+- slug
+- description
+- is_active
+- order
+- icon
+
+every package belong to category so create the needed methods in the model like "slug should be updated and created by default"
+
+act like a senior designer and design the Categories manager page using Laravel, Livewire, alpinjs, Tailwind and flux best practices. the style and colors should match and follow the design pattern and the general colors that has been used before and don't forget to use the same colors
+pay attention for the ui / ux princeples and high performance and quality the page speed should be the light speed 

@@ -11,5 +11,6 @@ return [
     'dashboard' => 'Dashboard',
     'logout' => 'Logout',
     'profile' => 'Profile',
+    'shopping_cart' => 'Shopping Cart',
 
 ];

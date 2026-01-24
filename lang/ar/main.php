@@ -10,4 +10,5 @@ return [
     'register' => 'تسجيل',
     'dashboard' => 'لوحة التحكم',
     'logout' => 'تسجيل الخروج',
+    'shopping_cart' => 'سلة التسوق',
 ];
