@@ -99,7 +99,7 @@
                         />
                     </div>
 
-                    <div class="flex items-center space-x-3">
+                    <div class="flex items-center gap-3">
                         <flux:button
                             variant="outline"
                             class="flex-1"
@@ -162,7 +162,7 @@
                     </div>
 
                     <div
-                        class="flex items-center space-x-2"
+                        class="flex items-center gap-2"
                         x-data="{
                             copied: false,
                             async copy() {
@@ -191,7 +191,7 @@
 
                                 <button
                                     @click="copy()"
-                                    class="px-3 transition-colors border-l cursor-pointer border-stone-200 dark:border-stone-600"
+                                    class="px-3 transition-colors border-s cursor-pointer border-stone-200 dark:border-stone-600"
                                 >
                                     <flux:icon.document-duplicate x-show="!copied" variant="outline"></flux:icon>
                                     <flux:icon.check

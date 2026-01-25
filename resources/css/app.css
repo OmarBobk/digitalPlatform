@@ -113,6 +113,10 @@ html:has([popover]:popover-open) {
         will-change: transform;
     }
 
+    [dir="rtl"] .marquee-track {
+        animation-direction: reverse;
+    }
+
     .marquee-group:hover .marquee-track {
         animation-play-state: paused;
     }

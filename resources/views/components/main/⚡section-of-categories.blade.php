@@ -67,8 +67,8 @@ new class extends Component
 <div class="px-2 py-3 sm:px-0 sm:py-4">
     <div class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 sm:p-6">
         <div class="flex flex-col gap-4 sm:gap-5">
-            <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
-                Hediye Kartları
+            <flux:heading size="lg" class="text-start text-zinc-900 dark:text-zinc-100">
+                {{ __('main.gift_cards') }}
             </flux:heading>
 
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4 lg:grid-cols-8">
@@ -78,7 +78,7 @@ new class extends Component
                         @class([
                             'group flex aspect-[4/3] flex-col items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-4 text-zinc-900 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-accent hover:bg-zinc-50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-accent dark:hover:bg-zinc-800/80',
                         ])
-                        aria-label="{{ $item['name'] }} hediye kartı"
+                        aria-label="{{ __('main.gift_card_label', ['name' => $item['name']]) }}"
                     >
                         <span class="flex size-11 items-center justify-center rounded-full border border-zinc-200 bg-zinc-800 shadow-sm transition group-hover:border-accent dark:border-zinc-700 dark:bg-zinc-800">
                         <img
@@ -91,7 +91,7 @@ new class extends Component
                             decoding="async"
                         />
                         </span>
-                        <span class="text-[0.65rem] font-semibold tracking-[0.22em] text-zinc-600 group-hover:text-zinc-900 dark:text-zinc-300 dark:group-hover:text-white">
+                        <span class="text-[0.65rem] font-semibold tracking-[0.22em] text-zinc-600 group-hover:text-zinc-900 dark:text-zinc-300 dark:group-hover:text-white" dir="ltr">
                             {{ $item['label'] }}
                         </span>
                     </a>

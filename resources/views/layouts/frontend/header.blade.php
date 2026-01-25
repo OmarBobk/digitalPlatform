@@ -1,16 +1,20 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}" class="dark">
+@php
+    $isRtl = app()->isLocale('ar');
+    $direction = $isRtl ? 'rtl' : 'ltr';
+@endphp
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ $direction }}" class="dark">
     <head>
         @include('partials.frontend.head')
     </head>
-    <body class="min-h-screen bg-white dark:bg-zinc-900 {{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
+    <body class="min-h-screen bg-white dark:bg-zinc-900">
         <flux:header
             sticky class="!block !px-3 !py-3 border-b border-zinc-200  dark:border-zinc-700 dark:!bg-zinc-900 "
             x-data="{ isScrolled: false }"
             x-init="window.addEventListener('scroll', () => { isScrolled = window.scrollY > 10;})"
             x-bind:class="isScrolled
-            ? 'fixed top-0 left-0 right-0 z-50 transition-all bg-white duration-300  shadow-lg border-b border-gray-200'
-            : 'fixed top-0 left-0 right-0 z-50 transition-all bg-white duration-300 '"
+            ? 'fixed top-0 start-0 end-0 z-50 transition-all bg-white duration-300 shadow-lg border-b border-gray-200'
+            : 'fixed top-0 start-0 end-0 z-50 transition-all bg-white duration-300'"
         >
             <div class="mx-auto w-full h-full [:where(&)]:max-w-7xl  items-center">
 
@@ -73,7 +77,7 @@
                                         <flux:menu.item
                                             as="button"
                                             type="submit"
-                                            icon="arrow-right-start-on-rectangle"
+                                            icon="{{ $isRtl ? 'arrow-left-start-on-rectangle' : 'arrow-right-start-on-rectangle' }}"
                                             class="rounded-lg !text-zinc-700 hover:!bg-zinc-100 focus-visible:!bg-zinc-100 dark:!text-zinc-200 dark:hover:!bg-zinc-800 dark:focus-visible:!bg-zinc-800"
                                             data-test="logout-button"
                                         >
@@ -114,23 +118,23 @@
                             <!-- Left button (desktop only) -->
                             <button
                                 type="button"
-                                class="cursor-pointer hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-20 h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-white dark:bg-zinc-900 dark:border-zinc-700 shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed"
-                                x-on:click="scrollBy(-320)"
+                                class="cursor-pointer hidden lg:flex absolute start-0 top-1/2 -translate-y-1/2 z-20 h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-white dark:bg-zinc-900 dark:border-zinc-700 shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed"
+                                x-on:click="scrollByLogical(-320)"
                                 x-bind:disabled="atStart"
-                                aria-label="Scroll left"
+                                aria-label="Scroll previous"
                             >
-                                <flux:icon icon="chevron-left" class="size-5 text-zinc-700 dark:text-zinc-300" />
+                                <flux:icon icon="chevron-left" class="size-5 text-zinc-700 dark:text-zinc-300 rtl:rotate-180" />
                             </button>
 
                             <!-- Right button (desktop only) -->
                             <button
                                 type="button"
-                                class="cursor-pointer hidden lg:flex absolute right-[-0rem] top-1/2 -translate-y-1/2 z-20 h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-white dark:bg-zinc-900 dark:border-zinc-700 shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed"
-                                x-on:click="scrollBy(320)"
+                                class="cursor-pointer hidden lg:flex absolute end-0 top-1/2 -translate-y-1/2 z-20 h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-white dark:bg-zinc-900 dark:border-zinc-700 shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed"
+                                x-on:click="scrollByLogical(320)"
                                 x-bind:disabled="atEnd"
-                                aria-label="Scroll right"
+                                aria-label="Scroll next"
                             >
-                                <flux:icon icon="chevron-right" class="size-5 text-zinc-700 dark:text-zinc-300" />
+                                <flux:icon icon="chevron-right" class="size-5 text-zinc-700 dark:text-zinc-300 rtl:rotate-180" />
                             </button>
 
                             <!-- Scroll container -->
@@ -140,7 +144,7 @@
                                 class="overflow-x-auto scrollbar-hide sm:mx-12"
                             >
                                 <!-- Add side padding on desktop so arrows don't overlap items -->
-                                <flux:navbar class="gap-4 !py-0 lg:pr-12">
+                                <flux:navbar class="gap-4 !py-0 ltr:lg:pr-12 rtl:lg:pl-12">
                                     <flux:navbar.item class="border !border-accent !bg-accent hover:!bg-accent-hover !text-accent-foreground" href="#">Home</flux:navbar.item>
                                     <flux:navbar.item class="border !border-accent" href="#" badge="12">Inbox</flux:navbar.item>
                                     <flux:navbar.item class="border !border-accent" href="#">Contacts</flux:navbar.item>
@@ -169,8 +173,8 @@
                             </div>
 
                             <!-- Optional fade edges (desktop only) -->
-                            <div class="pointer-events-none hidden lg:block absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-white dark:from-zinc-900 to-transparent"></div>
-                            <div class="pointer-events-none hidden lg:block absolute inset-y-0 right-[-2rem] w-10 bg-gradient-to-l from-white dark:from-zinc-900 to-transparent"></div>
+                            <div class="pointer-events-none hidden lg:block absolute inset-y-0 start-0 w-10 ltr:bg-gradient-to-r rtl:bg-gradient-to-l from-white dark:from-zinc-900 to-transparent"></div>
+                            <div class="pointer-events-none hidden lg:block absolute inset-y-0 end-[-2rem] w-10 ltr:bg-gradient-to-l rtl:bg-gradient-to-r from-white dark:from-zinc-900 to-transparent"></div>
                         </div>
                     </div>
 
@@ -179,25 +183,87 @@
                             return {
                                 atStart: true,
                                 atEnd: false,
+                                isRtl: false,
+                                rtlScrollType: 'reverse',
 
                                 init() {
+                                    this.isRtl = this.getDirection() === 'rtl';
+                                    this.rtlScrollType = this.isRtl ? this.getRtlScrollType() : 'ltr';
                                     this.update();
                                     // keep buttons correct on resize
                                     window.addEventListener('resize', () => this.update());
                                 },
 
-                                scrollBy(px) {
-                                    this.$refs.scroller.scrollBy({ left: px, behavior: 'smooth' });
+                                getDirection() {
+                                    const root = this.$root.closest('[dir]');
+                                    return root?.getAttribute('dir') ?? document.documentElement.getAttribute('dir') ?? 'ltr';
+                                },
+
+                                getRtlScrollType() {
+                                    const el = this.$refs.scroller;
+                                    if (!el) {
+                                        return 'reverse';
+                                    }
+
+                                    const initial = el.scrollLeft;
+                                    el.scrollLeft = 1;
+                                    const after = el.scrollLeft;
+                                    el.scrollLeft = initial;
+
+                                    if (after === 0) {
+                                        return 'negative';
+                                    }
+
+                                    return initial === 0 ? 'reverse' : 'default';
+                                },
+
+                                getLogicalScroll() {
+                                    const el = this.$refs.scroller;
+                                    if (!el) {
+                                        return 0;
+                                    }
+
+                                    const max = Math.max(el.scrollWidth - el.clientWidth, 0);
+
+                                    if (!this.isRtl) {
+                                        return Math.max(0, Math.min(el.scrollLeft, max));
+                                    }
+
+                                    const raw = el.scrollLeft;
+
+                                    if (this.rtlScrollType === 'negative') {
+                                        return Math.abs(raw);
+                                    }
+
+                                    if (this.rtlScrollType === 'default') {
+                                        return max - raw;
+                                    }
+
+                                    return raw;
+                                },
+
+                                scrollByLogical(px) {
+                                    if (!this.$refs.scroller) {
+                                        return;
+                                    }
+
+                                    const direction = this.isRtl && this.rtlScrollType !== 'reverse' ? -1 : 1;
+                                    this.$refs.scroller.scrollBy({ left: px * direction, behavior: 'smooth' });
                                     // update after scroll animation starts
                                     setTimeout(() => this.update(), 80);
                                 },
 
                                 update() {
                                     const el = this.$refs.scroller;
-                                    const max = el.scrollWidth - el.clientWidth;
+                                    if (!el) {
+                                        return;
+                                    }
+
+                                    const max = Math.max(el.scrollWidth - el.clientWidth, 0);
+                                    const position = this.getLogicalScroll();
                                     // small tolerance for float rounding
-                                    this.atStart = el.scrollLeft <= 2;
-                                    this.atEnd = el.scrollLeft >= (max - 2);
+                                    this.atStart = position <= 2;
+                                    this.atEnd = position >= (max - 2);
                                 }
                             }
                         }

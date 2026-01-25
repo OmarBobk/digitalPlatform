@@ -1,33 +1,29 @@
 <?php
 
+use App\Models\Package;
 use Livewire\Component;
 
 new class extends Component
 {
-    public array $categoryItems;
+    public array $categoryItems = [];
 
-    public function mount() {
-        $this->categoryItems = [
-            ['name' => 'Kablolar', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-            ['name' => 'Powerbank', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-            ['name' => 'Kulaklık', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-            ['name' => 'Telefon Kılıfı', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-            ['name' => 'Şarj Aleti', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-            ['name' => 'Aksesuar', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-            ['name' => 'Akse1suar', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-            ['name' => 'Akse2suar', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-            ['name' => 'Akses3uar', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-            ['name' => 'Akse4suar', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-            ['name' => 'Akse5suar', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-            ['name' => 'Oyun', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-            ['name' => 'Hediye Kartı', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-            ['name' => 'Premium', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-            ['name' => 'Yeni Ürün', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-            ['name' => 'Y1eni Ürün', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-            ['name' => 'Yeni2 Ürün', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-            ['name' => 'Yen3i Ürün', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-            ['name' => 'Yeni4 Ürün', 'image' => asset('images/icons/category-placeholder.svg'), 'href' => '#'],
-        ];
+    public function mount(): void
+    {
+        $placeholderImage = asset('images/icons/category-placeholder.svg');
+
+        $this->categoryItems = Package::query()
+            ->select(['id', 'name', 'image', 'order'])
+            ->where('is_active', true)
+            ->orderBy('order')
+            ->orderBy('name')
+            ->limit(19)
+            ->get()
+            ->map(fn (Package $package): array => [
+                'name' => $package->name,
+                'image' => filled($package->image) ? asset($package->image) : $placeholderImage,
+                'href' => '#',
+            ])
+            ->all();
     }
 };
 ?>
@@ -42,6 +38,7 @@ new class extends Component
         intervalMs: 4200,
         timer: null,
         paused: false,
+        isRtl: false,
         reducedMotion: false,
         mediaQuery: null,
         motionHandler: null,
@@ -59,6 +56,7 @@ new class extends Component
         init() {
             this.mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
             this.reducedMotion = this.mediaQuery.matches;
+            this.isRtl = this.getDirection() === 'rtl';
             this.motionHandler = (event) => {
                 this.reducedMotion = event.matches;
                 if (this.reducedMotion) {
@@ -92,6 +90,10 @@ new class extends Component
                 }
             }
         },
+        getDirection() {
+            const root = this.$root.closest('[dir]');
+            return root?.getAttribute('dir') ?? document.documentElement.getAttribute('dir') ?? 'ltr';
+        },
         updateMeasurements() {
             if (!this.$refs.viewport || !this.$refs.track) {
                 return;
@@ -124,7 +126,9 @@ new class extends Component
         },
         translateX() {
             const baseOffset = (this.itemWidth + this.gap) * this.index;
-            return `translateX(-${baseOffset + this.dragOffset}px)`;
+            const distance = baseOffset + this.dragOffset;
+            const direction = this.isRtl ? 1 : -1;
+            return `translateX(${distance * direction}px)`;
         },
         next() {
             if (!this.canSlide() || this.isTransitioning) {
@@ -163,7 +167,7 @@ new class extends Component
             if (Math.abs(diff) > this.dragThreshold) {
                 event.preventDefault();
                 this.hasMoved = true;
-                this.dragOffset = diff;
+                this.dragOffset = diff * (this.isRtl ? -1 : 1);
             }
         },
         handleDragEnd(event) {
@@ -185,12 +189,13 @@ new class extends Component
             if (shouldNavigate) {
                 // Calculate the target index based on swipe direction
                 let targetIndex = this.index;
+                const movedForward = this.isRtl ? diff < 0 : diff > 0;
 
-                if (diff > 0) {
-                    // Swiped left - go to next
+                if (movedForward) {
+                    // Swiped forward - go to next
                     targetIndex = this.index >= this.maxIndex() ? 0 : this.index + 1;
                 } else {
-                    // Swiped right - go to prev
+                    // Swiped backward - go to prev
                     targetIndex = this.index <= 0 ? this.maxIndex() : this.index - 1;
                 }
 
@@ -243,7 +248,7 @@ new class extends Component
     class="relative"
     role="region"
     aria-roledescription="carousel"
-    aria-label="Kategori slider"
+    aria-label="{{ __('main.category_slider') }}"
 >
     <div class="relative">
 {{--        <button--}}

@@ -39,7 +39,7 @@
     <?php endif; ?>
 
     <?php if ($trailing): ?>
-        <div class="ml-auto" data-flux-label-trailing>
+        <div class="ms-auto" data-flux-label-trailing>
             {{ $trailing }}
         </div>
     <?php endif; ?>

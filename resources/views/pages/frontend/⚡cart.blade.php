@@ -68,7 +68,7 @@ new #[Layout('layouts::frontend')] class extends Component {
                                         class="block truncate text-sm font-semibold text-zinc-900 hover:underline dark:text-zinc-100"
                                         x-text="item.name"
                                     ></a>
-                                    <div class="mt-1 text-sm font-semibold text-(--color-accent)" x-text="$store.cart.format(item.price)"></div>
+                                    <div class="mt-1 text-sm font-semibold text-(--color-accent)" dir="ltr" x-text="$store.cart.format(item.price)"></div>
                                 </div>
                             </div>
 
@@ -93,7 +93,7 @@ new #[Layout('layouts::frontend')] class extends Component {
                                     </button>
                                 </div>
 
-                                <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100" x-text="$store.cart.format(item.price * item.quantity)"></div>
+                                <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr" x-text="$store.cart.format(item.price * item.quantity)"></div>
 
                                 <button
                                     type="button"
@@ -119,7 +119,7 @@ new #[Layout('layouts::frontend')] class extends Component {
                 <div class="mt-4 space-y-3 text-sm">
                     <div class="flex items-center justify-between text-zinc-600 dark:text-zinc-300">
                         <span>Ara toplam</span>
-                        <span class="font-semibold text-zinc-900 dark:text-zinc-100" x-text="$store.cart.format($store.cart.subtotal)"></span>
+                        <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr" x-text="$store.cart.format($store.cart.subtotal)"></span>
                     </div>
                     <div class="flex items-center justify-between text-zinc-600 dark:text-zinc-300">
                         <span>Kargo</span>
@@ -129,7 +129,7 @@ new #[Layout('layouts::frontend')] class extends Component {
 
                 <div class="mt-4 flex items-center justify-between border-t border-zinc-100 pt-4 text-base font-semibold dark:border-zinc-700">
                     <span class="text-zinc-900 dark:text-zinc-100">Toplam</span>
-                    <span class="text-(--color-accent)" x-text="$store.cart.format($store.cart.subtotal)"></span>
+                    <span class="text-(--color-accent)" dir="ltr" x-text="$store.cart.format($store.cart.subtotal)"></span>
                 </div>
 
                 <div class="mt-4 space-y-3">

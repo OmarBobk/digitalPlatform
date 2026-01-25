@@ -75,8 +75,8 @@ new class extends Component
 <div class="px-2 py-3 sm:px-0 sm:py-4" x-data>
     <div class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 sm:p-6">
         <div class="flex flex-col gap-4 sm:gap-5">
-            <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
-                Öne Çıkan Ürünler
+            <flux:heading size="lg" class="text-start text-zinc-900 dark:text-zinc-100">
+                {{ __('main.featured_products') }}
             </flux:heading>
 
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4 lg:grid-cols-4">
@@ -105,12 +105,12 @@ new class extends Component
                         <div class="flex flex-1 flex-col gap-2 px-3 pb-3 pt-2">
                             <a
                                 href="{{ $product['href'] }}"
-                                class="text-sm font-semibold text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) dark:text-zinc-100"
+                                class="text-start text-sm font-semibold text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) dark:text-zinc-100"
                             >
                                 {{ $product['name'] }}
                             </a>
                             <div class="flex items-center justify-between gap-2">
-                                <span class="text-sm font-semibold text-(--color-accent)">
+                                <span class="text-sm font-semibold text-(--color-accent)" dir="ltr">
                                     ₺{{ number_format($product['price'], 0, ',', '.') }}
                                 </span>
                                 <flux:button
@@ -121,7 +121,7 @@ new class extends Component
                                     hover:!bg-zinc-100 dark:hover:!bg-zinc-700/60 rounded-md"
                                     x-on:click="$store.cart.add(product)"
                                     data-test="cart-add"
-                                    aria-label="Sepete ekle"
+                                    aria-label="{{ __('main.add_to_cart_for', ['name' => $product['name']]) }}"
                                 />
                             </div>
                         </div>

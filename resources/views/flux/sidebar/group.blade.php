@@ -24,7 +24,7 @@
                     <?php endif; ?>
                 </div>
 
-                <span class="flex-1 text-left rtl:text-right text-sm font-medium leading-none">{{ $heading }}</span>
+                <span class="flex-1 text-start text-sm font-medium leading-none">{{ $heading }}</span>
 
                 <div class="ps-3 pe-2.5">
                     <flux:icon.chevron-down class="size-3! hidden group-data-open/disclosure-button:block" />

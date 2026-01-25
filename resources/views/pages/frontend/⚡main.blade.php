@@ -5,12 +5,17 @@ use Livewire\Component;
 
 new #[Layout('layouts::frontend')] class extends Component {
 
-    public array $heroBanner;
+    public array $heroBanner, $heroBanner2;
 
     public function mount()
     {
         $this->heroBanner = [
-            'image' => asset('images/promotions/hero-placeholder.svg'),
+            'image' => asset('images/sliders/min-promotional-1.jpg'),
+            'href' => '#',
+        ];
+
+        $this->heroBanner2 = [
+            'image' => asset('images/sliders/min-promotional-2.jpg'),
             'href' => '#',
         ];
     }
@@ -22,34 +27,36 @@ new #[Layout('layouts::frontend')] class extends Component {
 };
 ?>
 
-<div>
+<div class="flex flex-col gap-6 sm:gap-8">
 
     <!-- Start Circular Slider -->
-    <section class="mx-auto w-full max-w-7xl" data-section="homepage-marquee">
+    <section class="mx-auto w-full max-w-7xl" data-section="homepage-marquee" aria-labelledby="homepage-marquee-heading">
+        <h2 id="homepage-marquee-heading" class="sr-only">{{ __('main.homepage_marquee') }}</h2>
         <livewire:main.circular-slider />
     </section>
     <!-- End Circular Slider -->
 
     <!-- Start Promotional Sliders -->
-    <section class="mx-auto w-full max-w-7xl  pb-4 pt-2 sm:pt-4" data-section="homepage-promos">
+    <section class="mx-auto w-full max-w-7xl pb-4 pt-2 sm:pt-4" data-section="homepage-promos" aria-labelledby="homepage-promos-heading">
+        <h2 id="homepage-promos-heading" class="sr-only">{{ __('main.homepage_promos') }}</h2>
         <div class="grid sm:gap-6 gap-4 sm:grid-cols-4">
             <div class="flex sm:flex-col sm:gap-4 gap-2 justify-between">
                 <a href="{{ $heroBanner['href'] }}"
                    class="group block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
-                   aria-label="Öne çıkan kampanya">
+                   aria-label="{{ __('main.featured_promo') }}">
                     <div
                         class="sm:aspect-[16/9] aspect-[15/9] w-full overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900">
-                        <img src="{{ $heroBanner['image'] }}" alt="Öne çıkan kampanya banneri"
+                        <img src="{{ $heroBanner['image'] }}" alt="{{ __('main.featured_promo_banner') }}"
                              class="h-full w-full object-cover" width="960" height="600" loading="eager" fetchpriority="high"
                              decoding="async" />
                     </div>
                 </a>
-                <a href="{{ $heroBanner['href'] }}"
+                <a href="{{ $heroBanner2['href'] }}"
                    class="group block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
-                   aria-label="Öne çıkan kampanya">
+                   aria-label="{{ __('main.featured_promo') }}">
                     <div
                         class="sm:aspect-[16/9] aspect-[15/9] w-full overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900">
-                        <img src="{{ $heroBanner['image'] }}" alt="Öne çıkan kampanya banneri"
+                        <img src="{{ $heroBanner2['image'] }}" alt="{{ __('main.featured_promo_banner') }}"
                              class="h-full w-full object-cover" width="960" height="600" loading="eager" fetchpriority="high"
                              decoding="async" />
                     </div>
@@ -62,22 +69,37 @@ new #[Layout('layouts::frontend')] class extends Component {
     <!-- End Promotional Sliders -->
 
     <!-- Start Section of Categories -->
-    <section class="mx-auto w-full max-w-7xl" data-section="homepage-section-of-categories">
+    <section class="mx-auto w-full max-w-7xl" data-section="homepage-section-of-categories" aria-labelledby="homepage-categories-heading">
+        <h2 id="homepage-categories-heading" class="sr-only">{{ __('main.homepage_categories') }}</h2>
         <livewire:main.section-of-categories />
     </section>
     <!-- End Section of Categories -->
 
     <!-- Start Section of Products -->
-    <section class="mx-auto w-full max-w-7xl" data-section="homepage-section-of-categories">
+    <section class="mx-auto w-full max-w-7xl" data-section="homepage-section-of-products" aria-labelledby="homepage-products-heading">
+        <h2 id="homepage-products-heading" class="sr-only">{{ __('main.homepage_products') }}</h2>
         <livewire:main.section-of-products />
     </section>
     <!-- End Section of Products -->
 
-    <flux:radio.group x-data variant="segmented" x-model="$flux.appearance">
-        <flux:radio value="light" icon="sun">{{ __('messages.light') }}</flux:radio>
-        <flux:radio value="dark" icon="moon">{{ __('messages.dark') }}</flux:radio>
-        <flux:radio value="system" icon="computer-desktop">{{ __('messages.system') }}</flux:radio>
-    </flux:radio.group>
+    <section class="mx-auto w-full max-w-7xl pb-6" data-section="homepage-preferences" aria-labelledby="homepage-preferences-heading">
+        <h2 id="homepage-preferences-heading" class="sr-only">{{ __('main.homepage_preferences') }}</h2>
+        <div class="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white/80 p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/70 sm:flex-row sm:items-center sm:justify-between rtl:sm:flex-row-reverse">
+            <flux:radio.group
+                x-data
+                variant="segmented"
+                x-model="$flux.appearance"
+                aria-label="{{ __('messages.appearance') }}"
+                class="w-full sm:w-auto"
+            >
+                <flux:radio value="light" icon="sun">{{ __('messages.light') }}</flux:radio>
+                <flux:radio value="dark" icon="moon">{{ __('messages.dark') }}</flux:radio>
+                <flux:radio value="system" icon="computer-desktop">{{ __('messages.system') }}</flux:radio>
+            </flux:radio.group>
 
-    <livewire:language-switcher />
+            <div class="sm:shrink-0">
+                <livewire:language-switcher />
+            </div>
+        </div>
+    </section>
 </div>

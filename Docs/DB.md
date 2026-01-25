@@ -65,3 +65,8 @@ pay attention for the ui / ux princeples and high performance and quality the pa
 
 
 the placeholder of the order field should be the higher and the smallest product order that is exist in db
+
+
+until now I have created these tables: users, categories, packages, packages_requirements, products.
+now I want your help to complete my database schema so I am going to tell you the senario first:
+an user enter into the platform - browse it - now he would like to buy google play card the one of 100 $ -> he add it into the shopping 

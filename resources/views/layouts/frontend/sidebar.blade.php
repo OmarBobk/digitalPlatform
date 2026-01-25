@@ -1,9 +1,13 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}" class="dark">
+@php
+    $isRtl = app()->isLocale('ar');
+    $direction = $isRtl ? 'rtl' : 'ltr';
+@endphp
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ $direction }}" class="dark">
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-white dark:bg-zinc-800 {{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
+    <body class="min-h-screen bg-white dark:bg-zinc-800">
         <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
@@ -41,7 +45,7 @@
 
         <!-- Mobile User Menu -->
         <flux:header class="lg:hidden">
-            <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
+            <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="{{ $isRtl ? 'right' : 'left' }}" />
 
             <flux:spacer />
 
@@ -83,7 +87,7 @@
                         <flux:menu.item
                             as="button"
                             type="submit"
-                            icon="arrow-right-start-on-rectangle"
+                            icon="{{ $isRtl ? 'arrow-left-start-on-rectangle' : 'arrow-right-start-on-rectangle' }}"
                             class="w-full cursor-pointer"
                             data-test="logout-button"
                         >

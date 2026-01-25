@@ -9,21 +9,21 @@ new class extends Component
             'badge' => 'Yeni Ürünler',
             'title' => 'Premium Kablolar',
             'subtitle' => 'Hızlı şarj ve dayanıklı yapı',
-            'image' => 'https://placehold.co/600x400',
+            'image' => 'images/sliders/promotional-1.png',
             'href' => '#',
         ],
         [
             'badge' => 'İndirim',
             'title' => 'Powerbank Koleksiyonu',
             'subtitle' => 'Yüksek kapasiteli şarj çözümleri',
-            'image' => 'https://placehold.co/600x400',
+            'image' => 'images/sliders/promotional-2.jpg',
             'href' => '#',
         ],
         [
             'badge' => 'Popüler',
             'title' => 'Kulaklık Modelleri',
             'subtitle' => 'Kablosuz ve kablolu seçenekler',
-            'image' => 'https://placehold.co/600x400',
+            'image' => 'images/sliders/promotional-3.png',
             'href' => '#',
         ],
     ];
@@ -37,18 +37,34 @@ new class extends Component
         currentIndex: 0,
         intervalId: null,
         isPaused: false,
-        sliderSpeed: 1500,
+        sliderSpeed: 2500,
         total: {{ count($slides) }},
+        isRtl: false,
 
-        init() { this.start(); },
+        init() {
+            this.isRtl = this.getDirection() === 'rtl';
+            this.start();
+        },
         start() {
             this.stop();
             this.intervalId = setInterval(() => {
-                if (!this.isPaused) this.next();
+                if (!this.isPaused) this.advance();
             }, this.sliderSpeed);
         },
         stop() {
             if (this.intervalId) { clearInterval(this.intervalId); this.intervalId = null; }
+        },
+        getDirection() {
+            const root = this.$root.closest('[dir]');
+            return root?.getAttribute('dir') ?? document.documentElement.getAttribute('dir') ?? 'ltr';
+        },
+        advance() {
+            if (this.isRtl) {
+                this.previous();
+                return;
+            }
+
+            this.next();
         },
         next() { this.currentIndex = (this.currentIndex + 1) % this.total; },
         previous() { this.currentIndex = (this.currentIndex - 1 + this.total) % this.total; },
@@ -78,7 +94,7 @@ new class extends Component
                 <a href="{{ $slide['href'] }}" class="block h-full">
                     <div class="relative h-full">
                         <img
-                            src="{{ $slide['image'] }}"
+                            src="{{ asset($slide['image']) }}"
                             alt="{{ $slide['title'] }}"
                             class="h-full w-full object-cover"
                             loading="{{ $index === 0 ? 'eager' : 'lazy' }}"
@@ -135,7 +151,7 @@ new class extends Component
                 x-bind:class="currentIndex === {{ $index }}
                     ? 'bg-accent w-6'
                     : 'bg-white/50 hover:bg-white/75'"
-                aria-label="Slide {{ $index + 1 }}"
+                aria-label="{{ __('main.slide_number', ['number' => $index + 1]) }}"
             ></button>
         @endforeach
     </div>
