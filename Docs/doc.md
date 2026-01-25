@@ -23,3 +23,10 @@ scenario mapped to tables
 - User sees balance 105$
 - User clicks “complete checkout” → create wallet_transaction debit referencing order_id + mark order paid
 - Fulfillment runs → fulfillments + logs
+
+
+
+
+Money        → Wallet
+Buying       → Orders
+Delivery     → Fulfillment

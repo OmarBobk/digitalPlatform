@@ -48,14 +48,20 @@
   - validation_rules (string nullable) (Laravel-style: required|numeric)
   - order
 
-Create The Product Model with these data:
-- package_id
-- name
-- slug
-- retail_price
-- wholesale_price
-- is_active
-- order (nullable, unique)
+Create The Wallets Model and wallet transactions model with these data:
+- wallets:
+  - user_id
+  - balance (default 0)
+  - timestamps
+- wallet_transactions
+  - wallet_id
+  - type enum: purchase, topup, refund, adjustment.
+  - direction enum: cash, debit
+  - amount
+  - status enum: pending, approved, rejected
+  - reference_type nullable (polymorphic string: Order, TopupRequest, etc.)
+  - reference_id nullable (bigint)
+  - meta json nullable (notes, admin_id, etc.)
 
 Products belongs to package so create the related methods in the model
 
