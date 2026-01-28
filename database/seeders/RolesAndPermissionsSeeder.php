@@ -20,6 +20,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage_users',
             'manage_sections',
             'manage_products',
+            'manage_topups',
             'view_sales',
             'create_orders',
             'customer_profile',

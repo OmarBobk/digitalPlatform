@@ -330,7 +330,7 @@ new class extends Component
                     </flux:select>
                 </div>
             </div>
-            <div class="flex flex-wrap gap-3">
+            <div class="flex flex-wrap justify-between sm:justify-start gap-0 sm:gap-3">
                 <flux:select
                     class="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
                     name="statusFilter"

@@ -39,6 +39,17 @@ class Wallet extends Model
         ];
     }
 
+    public static function forUser(User $user): self
+    {
+        return self::query()->firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'balance' => 0,
+                'currency' => config('billing.currency', 'USD'),
+            ]
+        );
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

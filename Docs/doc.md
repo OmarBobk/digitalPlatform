@@ -2,31 +2,20 @@
 - lang is ar user logout -> automatically lang is en 
 
 
-
-udpate the category to be: 
-#DONE: if user delete some category automatically  the child categories will be deleted
-#DONE: categories table: user should be able to toggle the category status.
-#DONE: create category form: the placeholder of the order field should be the highest and the smallest category order that exists in db
-#DONE: order should be unique.
-
-
-
-
-scenario mapped to tables
-
-- User adds Google Play 100$ to cart → carts, cart_items
-- User logs in → cart attaches to user_id (shopping cart will not be stored in the db it is handled by alpinejs)
-- Checkout sees total = 105$
-- User goes to profile → selects payment method → creates topup_requests (105$)
-- User sends dekont on WhatsApp → you attach proof → topup_proofs
-- You approve → create wallet_transaction credit (posted) + update wallets.balance
-- User sees balance 105$
-- User clicks “complete checkout” → create wallet_transaction debit referencing order_id + mark order paid
-- Fulfillment runs → fulfillments + logs
+#BUG
+- ###DONE if a non-admin user hit /admin he will see forbidden but he should be redirected to 404 error page
+- ###DONE If user click on the logo on the main page it should redirect him to home page
+- ###DONE after login / register user should be redirected to home page not dashboard
+- ###DONE packages/index -> create form : when there is an error and the language is arabic the field name is displaying in English instead in arabic
+- ###DONE Design the 404 error page.
+- Don't let user to submit a new top-up request if he has apending one
+- wallet balance should be displayed next to the shopping cart icon.
+- wallet transaction in /wallets should be more described
+- /wallet index is not responsive for the mobile screen
+- /wallet wallet transactions table should only containe the informations about topups
+- dashboard sidebar has a lot of links so group them and search online to get a better naming for the groups
+- when displaying products on the frontend, there should be next to "add to cart" button another "Buy now" button which is going to open a model to record the order info like the package requirements and the quantity and checkout
+- /checkout add the package requirements and fill it to the order
+- turn the user menu into links and display them in the navbar
 
 
-
-
-Money        → Wallet
-Buying       → Orders
-Delivery     → Fulfillment

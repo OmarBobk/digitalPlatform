@@ -22,6 +22,6 @@ class LoginResponse implements LoginResponseContract
 
         return $request->wantsJson()
             ? response()->json(['two_factor' => false])
-            : redirect()->route('dashboard');
+            : redirect()->route('home');
     }
 }

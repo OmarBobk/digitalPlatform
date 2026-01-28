@@ -23,5 +23,7 @@ return [
     'register' => 'تسجيل',
     'dashboard' => 'لوحة التحكم',
     'logout' => 'تسجيل الخروج',
+    'wallet' => 'المحفظة',
+    'my_orders' => 'طلباتي',
     'shopping_cart' => 'سلة التسوق',
 ];

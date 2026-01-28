@@ -1,11 +1,112 @@
 <?php
 
+use App\Actions\Orders\CreateOrderFromCartPayload;
+use App\Actions\Orders\PayOrderWithWallet;
+use App\Enums\OrderStatus;
+use App\Models\Order;
+use App\Models\Wallet;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 new #[Layout('layouts::frontend')] class extends Component {
 
-    public function render()
+    public ?string $checkoutError = null;
+    public ?string $checkoutSuccess = null;
+    public ?string $lastOrderNumber = null;
+
+    public function checkout(mixed $items): void
+    {
+        $this->reset('checkoutError', 'checkoutSuccess', 'lastOrderNumber');
+
+        if (! auth()->check()) {
+            $this->checkoutError = 'Please sign in to complete checkout.';
+            return;
+        }
+
+        if (! is_array($items) || $items === []) {
+            $this->checkoutError = 'Cart payload is empty.';
+            return;
+        }
+
+        $user = auth()->user();
+        $wallet = Wallet::forUser($user);
+
+        $cartHash = $this->cartHash($items);
+
+        try {
+            $order = DB::transaction(function () use ($user, $wallet, $items, $cartHash): Order {
+                $lockedWallet = Wallet::query()
+                    ->whereKey($wallet->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $existingOrder = Order::query()
+                    ->where('user_id', $user->id)
+                    ->whereIn('status', [OrderStatus::PendingPayment, OrderStatus::Paid])
+                    ->latest('id')
+                    ->limit(5)
+                    ->get()
+                    ->first(fn (Order $order) => data_get($order->meta, 'cart_hash') === $cartHash);
+
+                if ($existingOrder !== null) {
+                    if ($existingOrder->status === OrderStatus::Paid) {
+                        return $existingOrder;
+                    }
+
+                    return app(PayOrderWithWallet::class)->handle($existingOrder, $lockedWallet, false);
+                }
+
+                $order = app(CreateOrderFromCartPayload::class)->handle(
+                    $user,
+                    $items,
+                    [
+                        'cart_hash' => $cartHash,
+                        'ip' => request()->ip(),
+                        'user_agent' => request()->userAgent(),
+                    ],
+                    false
+                );
+
+                return app(PayOrderWithWallet::class)->handle($order, $lockedWallet, false);
+            });
+
+            $this->checkoutSuccess = 'Payment successful. Order '.$order->order_number.' is processing.';
+            $this->lastOrderNumber = $order->order_number;
+            $this->dispatch('checkout-success', orderNumber: $order->order_number);
+        } catch (ValidationException $exception) {
+            $this->checkoutError = collect($exception->errors())->flatten()->first()
+                ?? 'Checkout validation failed.';
+        } catch (\Throwable) {
+            $this->checkoutError = 'Something went wrong while processing your checkout.';
+        }
+    }
+
+    /**
+     * @param  array<int, mixed>  $items
+     */
+    protected function cartHash(array $items): string
+    {
+        $normalized = collect($items)
+            ->filter(fn (mixed $item) => is_array($item))
+            ->map(function (array $item): array {
+                return [
+                    'product_id' => $item['product_id'] ?? $item['id'] ?? null,
+                    'package_id' => $item['package_id'] ?? null,
+                    'quantity' => $item['quantity'] ?? null,
+                    'requirements' => $item['requirements'] ?? $item['requirements_payload'] ?? null,
+                ];
+            })
+            ->sortBy(fn (array $item) => [$item['product_id'], $item['package_id']])
+            ->values()
+            ->all();
+
+        return hash('sha256', json_encode($normalized));
+    }
+
+    public function render(): View
     {
         return $this->view()->title(__('main.shopping_cart'));
     }
@@ -17,8 +118,12 @@ new #[Layout('layouts::frontend')] class extends Component {
     class="mx-auto w-full max-w-7xl px-3 py-6 sm:px-0 sm:py-10"
     x-data
     x-init="$store.cart.init()"
+    x-on:checkout-success.window="$store.cart.clear()"
     data-test="cart-page"
 >
+    <div class="mb-4 flex items-center">
+        <x-back-button />
+    </div>
     <div class="flex flex-col gap-6 lg:flex-row lg:items-start">
         <section class="flex-1">
             <div class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 sm:p-6">
@@ -116,6 +221,33 @@ new #[Layout('layouts::frontend')] class extends Component {
                     Sipariş Özeti
                 </flux:heading>
 
+                @if ($checkoutError)
+                    <flux:callout variant="subtle" icon="exclamation-triangle" class="mt-4">
+                        {{ $checkoutError }}
+                    </flux:callout>
+                @endif
+
+                @if ($checkoutSuccess)
+                    <flux:callout variant="subtle" icon="check-circle" class="mt-4">
+                        <div class="space-y-3">
+                            <div>{{ $checkoutSuccess }}</div>
+                            @if ($lastOrderNumber)
+                                <div class="flex flex-wrap gap-2">
+                                    <flux:button
+                                        as="a"
+                                        href="{{ route('orders.show', $lastOrderNumber) }}"
+                                        wire:navigate
+                                        variant="outline"
+                                        size="sm"
+                                    >
+                                        {{ __('messages.view_order') }}
+                                    </flux:button>
+                                </div>
+                            @endif
+                        </div>
+                    </flux:callout>
+                @endif
+
                 <div class="mt-4 space-y-3 text-sm">
                     <div class="flex items-center justify-between text-zinc-600 dark:text-zinc-300">
                         <span>Ara toplam</span>
@@ -137,6 +269,9 @@ new #[Layout('layouts::frontend')] class extends Component {
                         variant="primary"
                         class="w-full justify-center !bg-accent !text-accent-foreground hover:!bg-accent-hover"
                         x-bind:disabled="$store.cart.count === 0"
+                        x-on:click="$wire.checkout($store.cart.items)"
+                        wire:loading.attr="disabled"
+                        wire:target="checkout"
                         data-test="cart-checkout"
                     >
                         Ödemeye geç

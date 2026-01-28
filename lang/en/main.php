@@ -23,6 +23,8 @@ return [
     'register' => 'Register',
     'dashboard' => 'Dashboard',
     'logout' => 'Logout',
+    'wallet' => 'Wallet',
+    'my_orders' => 'My orders',
     'profile' => 'Profile',
     'shopping_cart' => 'Shopping Cart',
 

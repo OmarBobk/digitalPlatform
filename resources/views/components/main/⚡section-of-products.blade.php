@@ -2,72 +2,36 @@
 
 declare(strict_types=1);
 
+use App\Models\Product;
 use Livewire\Component;
 
 new class extends Component
 {
-    public array $products;
+    public array $products = [];
 
     public function mount(): void
     {
-        $this->products = [
-            [
-                'id' => 1,
-                'name' => 'Kablosuz Kulaklık',
-                'price' => 1299,
+        $placeholderImage = asset('images/promotions/promo-placeholder.svg');
+
+        $this->products = Product::query()
+            ->select(['id', 'package_id', 'name', 'slug', 'retail_price', 'order'])
+            ->with('package:id,image,is_active')
+            ->where('is_active', true)
+            ->whereHas('package', fn ($query) => $query->where('is_active', true))
+            ->orderBy('order')
+            ->orderBy('name')
+            ->limit(8)
+            ->get()
+            ->map(fn (Product $product): array => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'price' => $product->retail_price,
                 'href' => '#',
-                'image' => asset('images/promotions/promo-placeholder.svg'),
-            ],
-            [
-                'id' => 2,
-                'name' => 'Gaming Mouse',
-                'price' => 899,
-                'href' => '#',
-                'image' => asset('images/promotions/promo-placeholder.svg'),
-            ],
-            [
-                'id' => 3,
-                'name' => 'Mekanik Klavye',
-                'price' => 1749,
-                'href' => '#',
-                'image' => asset('images/promotions/promo-placeholder.svg'),
-            ],
-            [
-                'id' => 4,
-                'name' => 'USB-C Kablo',
-                'price' => 199,
-                'href' => '#',
-                'image' => asset('images/promotions/promo-placeholder.svg'),
-            ],
-            [
-                'id' => 5,
-                'name' => 'Powerbank 20.000mAh',
-                'price' => 1099,
-                'href' => '#',
-                'image' => asset('images/promotions/promo-placeholder.svg'),
-            ],
-            [
-                'id' => 6,
-                'name' => 'Bluetooth Hoparlör',
-                'price' => 1499,
-                'href' => '#',
-                'image' => asset('images/promotions/promo-placeholder.svg'),
-            ],
-            [
-                'id' => 7,
-                'name' => 'Telefon Kılıfı',
-                'price' => 249,
-                'href' => '#',
-                'image' => asset('images/promotions/promo-placeholder.svg'),
-            ],
-            [
-                'id' => 8,
-                'name' => 'Hızlı Şarj Adaptörü',
-                'price' => 349,
-                'href' => '#',
-                'image' => asset('images/promotions/promo-placeholder.svg'),
-            ],
-        ];
+                'image' => filled($product->package?->image)
+                    ? asset($product->package->image)
+                    : $placeholderImage,
+            ])
+            ->all();
     }
 };
 ?>

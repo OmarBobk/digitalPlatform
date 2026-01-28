@@ -14,12 +14,12 @@ test('users can authenticate using the login screen', function () {
 
     $response = $this->post(route('login.store'), [
         'username' => $user->username,
-        'password' => 'password',
+        'password' => '123',
     ]);
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('dashboard', absolute: false));
+        ->assertRedirect(route('home', absolute: false));
 
     $this->assertAuthenticated();
 });
@@ -50,7 +50,7 @@ test('users with two factor enabled are redirected to two factor challenge', fun
 
     $response = $this->post(route('login.store'), [
         'username' => $user->username,
-        'password' => 'password',
+        'password' => '123',
     ]);
 
     $response->assertRedirect(route('two-factor.login'));

@@ -538,9 +538,6 @@ new class extends Component
                         placeholder="{{ __('messages.package_name_placeholder') }}"
                         wire:model.defer="packageName"
                     />
-                    @error('packageName')
-                        <flux:text color="red">{{ $message }}</flux:text>
-                    @enderror
                 </div>
                 <div class="grid gap-2">
                     <flux:select

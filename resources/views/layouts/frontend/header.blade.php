@@ -21,7 +21,7 @@
 
                 <div class="flex flex-wrap sm:flex-nowrap justify-between gap-2 sm:gap-4 items-center w-full mb-3 sm:mb-0">
                     <!-- Logo -->
-                    <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center shrink-0 order-1">
+                    <a href="{{ route('home') }}" wire:navigate class="flex items-center shrink-0 order-1">
                         <span class="text-3xl font-bold leading-none">
                             <span class="text-(--color-accent)">indirim</span><span class="text-(--color-zinc-900) dark:text-(--color-zinc-100)">Go</span>
                         </span>
@@ -50,6 +50,8 @@
                         <!-- Shopping Cart Icon with Badge -->
                         <livewire:cart.dropdown />
 
+                        
+
                         <!-- User Profile Icon -->
                         <flux:dropdown position="bottom" align="end">
                             <flux:button
@@ -63,6 +65,20 @@
                             />
                             <flux:navmenu class="min-w-48 rounded-xl border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
                                 @auth
+                                    <flux:navmenu.item
+                                        icon="wallet"
+                                        href="{{ route('wallet') }}"
+                                        class="rounded-lg !text-zinc-700 hover:!bg-zinc-100 focus-visible:!bg-zinc-100 dark:!text-zinc-200 dark:hover:!bg-zinc-800 dark:focus-visible:!bg-zinc-800"
+                                    >
+                                        {{ __('main.wallet') }}
+                                    </flux:navmenu.item>
+                                    <flux:navmenu.item
+                                        icon="shopping-bag"
+                                        href="{{ route('orders.index') }}"
+                                        class="rounded-lg !text-zinc-700 hover:!bg-zinc-100 focus-visible:!bg-zinc-100 dark:!text-zinc-200 dark:hover:!bg-zinc-800 dark:focus-visible:!bg-zinc-800"
+                                    >
+                                        {{ __('main.my_orders') }}
+                                    </flux:navmenu.item>
                                     @role('admin|supervisor')
                                         <flux:navmenu.item
                                             icon="home"
@@ -105,6 +121,28 @@
                                 @endauth
                             </flux:navmenu>
                         </flux:dropdown>
+
+
+                        @auth
+                            @php
+                                $wallet = auth()->user()->wallet;
+                                $walletBalance = $wallet?->balance ?? 0;
+                                $walletCurrency = $wallet?->currency ?? config('billing.currency', 'USD');
+                            @endphp
+                            <a
+                                href="{{ route('wallet') }}"
+                                wire:navigate
+                                class="inline-flex items-center gap-2 border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                                aria-label="{{ __('main.wallet') }}"
+                                data-test="wallet-balance"
+                            >
+                                <flux:icon icon="wallet" class="size-4 text-zinc-500 dark:text-zinc-300" />
+                                <span class="text-zinc-900 dark:text-zinc-100" dir="ltr">
+                                    {{ number_format((float) $walletBalance, 2) }} {{ $walletCurrency }}
+                                </span>
+                            </a>
+                        @endauth
+
                     </div>
                 </div>
                 <flux:separator class="my-3 sm:block hidden" />

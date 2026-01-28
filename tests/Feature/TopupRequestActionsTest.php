@@ -1,0 +1,82 @@
+<?php
+
+use App\Actions\Topups\ApproveTopupRequest;
+use App\Actions\Topups\RejectTopupRequest;
+use App\Enums\TopupMethod;
+use App\Enums\TopupRequestStatus;
+use App\Models\TopupRequest;
+use App\Models\User;
+use App\Models\Wallet;
+use App\Models\WalletTransaction;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
+
+test('approving a topup posts ledger and increments balance once', function () {
+    $user = User::factory()->create();
+    $approver = User::factory()->create();
+    $wallet = Wallet::create([
+        'user_id' => $user->id,
+        'balance' => 0,
+        'currency' => 'USD',
+    ]);
+
+    $request = TopupRequest::create([
+        'user_id' => $user->id,
+        'wallet_id' => $wallet->id,
+        'method' => TopupMethod::ShamCash,
+        'amount' => 100,
+        'currency' => 'USD',
+        'status' => TopupRequestStatus::Pending,
+        'note' => 'via WhatsApp',
+    ]);
+
+    $action = new ApproveTopupRequest;
+    $action->handle($request, $approver->id);
+    $action->handle($request, $approver->id);
+
+    $wallet->refresh();
+    $request->refresh();
+    $transaction = WalletTransaction::query()
+        ->where('reference_type', TopupRequest::class)
+        ->where('reference_id', $request->id)
+        ->firstOrFail();
+
+    expect((float) $wallet->balance)->toBe(100.0);
+    expect($transaction->status)->toBe(WalletTransaction::STATUS_POSTED);
+    expect($request->status)->toBe(TopupRequestStatus::Approved);
+    expect($request->approved_by)->toBe($approver->id);
+    expect($request->approved_at)->not->toBeNull();
+});
+
+test('rejecting a topup does not change balance', function () {
+    $user = User::factory()->create();
+    $wallet = Wallet::create([
+        'user_id' => $user->id,
+        'balance' => 0,
+        'currency' => 'USD',
+    ]);
+
+    $request = TopupRequest::create([
+        'user_id' => $user->id,
+        'wallet_id' => $wallet->id,
+        'method' => TopupMethod::EftTransfer,
+        'amount' => 55,
+        'currency' => 'USD',
+        'status' => TopupRequestStatus::Pending,
+    ]);
+
+    $action = new RejectTopupRequest;
+    $action->handle($request);
+
+    $wallet->refresh();
+    $request->refresh();
+    $transaction = WalletTransaction::query()
+        ->where('reference_type', TopupRequest::class)
+        ->where('reference_id', $request->id)
+        ->firstOrFail();
+
+    expect((float) $wallet->balance)->toBe(0.0);
+    expect($transaction->status)->toBe(WalletTransaction::STATUS_REJECTED);
+    expect($request->status)->toBe(TopupRequestStatus::Rejected);
+});

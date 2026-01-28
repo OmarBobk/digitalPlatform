@@ -2,11 +2,25 @@
 
 use App\Models\Category;
 use App\Models\Package;
+use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 test('homepage renders main sections and gift cards', function () {
+    $package = Package::factory()->create([
+        'is_active' => true,
+        'order' => 1,
+        'image' => null,
+    ]);
+
+    Product::factory()->for($package)->create([
+        'name' => 'Kablosuz Kulaklık',
+        'retail_price' => 1299,
+        'is_active' => true,
+        'order' => 1,
+    ]);
+
     $response = $this->get('/');
 
     $response->assertOk();

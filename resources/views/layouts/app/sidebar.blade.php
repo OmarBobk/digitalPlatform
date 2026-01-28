@@ -24,6 +24,20 @@
                     <flux:sidebar.item icon="shopping-cart" :href="route('products')" :current="request()->routeIs('products')" wire:navigate>
                         {{ __('messages.products') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="list-bullet" :href="route('fulfillments')" :current="request()->routeIs('fulfillments')" wire:navigate>
+                        {{ __('messages.fulfillments') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="shopping-bag" :href="route('admin.orders.index')" :current="request()->routeIs('admin.orders.*')" wire:navigate>
+                        {{ __('messages.orders') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="receipt-refund" :href="route('refunds')" :current="request()->routeIs('refunds')" wire:navigate>
+                        {{ __('messages.refund_requests') }}
+                    </flux:sidebar.item>
+                    @if (auth()->user()?->can('manage_topups'))
+                        <flux:sidebar.item icon="wallet" :href="route('topups')" :current="request()->routeIs('topups')" wire:navigate>
+                            {{ __('messages.topups') }}
+                        </flux:sidebar.item>
+                    @endif
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 
