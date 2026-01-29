@@ -31,7 +31,7 @@ class CreateNewUser implements CreatesNewUsers
             $input['country_code'] ?? null
         );
 
-        return User::create([
+        $user = User::create([
             'name' => $input['name'],
             'username' => $input['username'],
             'email' => $input['email'],
@@ -42,5 +42,21 @@ class CreateNewUser implements CreatesNewUsers
             'profile_photo' => $input['profile_photo'] ?? null,
             'is_active' => true,
         ]);
+
+        activity()
+            ->inLog('admin')
+            ->event('user.registered')
+            ->performedOn($user)
+            ->causedBy($user)
+            ->withProperties([
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'username' => $user->username,
+                'country_code' => $user->country_code,
+                'timezone' => $user->timezone,
+            ])
+            ->log('User registered');
+
+        return $user;
     }
 }

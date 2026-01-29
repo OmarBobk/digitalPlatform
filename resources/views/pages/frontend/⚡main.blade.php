@@ -75,12 +75,21 @@ new #[Layout('layouts::frontend')] class extends Component {
     </section>
     <!-- End Section of Categories -->
 
+    <!-- Start Section of Packages -->
+    <section class="mx-auto w-full max-w-7xl" data-section="homepage-section-of-packages" aria-labelledby="homepage-packages-heading">
+        <h2 id="homepage-packages-heading" class="sr-only">{{ __('messages.packages') }}</h2>
+        <livewire:main.section-of-packages />
+    </section>
+    <!-- End Section of Packages -->
+
     <!-- Start Section of Products -->
     <section class="mx-auto w-full max-w-7xl" data-section="homepage-section-of-products" aria-labelledby="homepage-products-heading">
         <h2 id="homepage-products-heading" class="sr-only">{{ __('main.homepage_products') }}</h2>
         <livewire:main.section-of-products />
     </section>
     <!-- End Section of Products -->
+
+    <livewire:main.buy-now-modal />
 
     <section class="mx-auto w-full max-w-7xl pb-6" data-section="homepage-preferences" aria-labelledby="homepage-preferences-heading">
         <h2 id="homepage-preferences-heading" class="sr-only">{{ __('main.homepage_preferences') }}</h2>

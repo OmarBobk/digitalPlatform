@@ -36,6 +36,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::livewire('/products', 'pages::backend.products.index')->name('products');
     Route::livewire('/admin/orders', 'pages::backend.orders.index')->name('admin.orders.index');
     Route::livewire('/admin/orders/{order}', 'pages::backend.orders.show')->name('admin.orders.show');
+    Route::livewire('/admin/activities', 'pages::backend.activities.index')->name('admin.activities.index');
     Route::livewire('/fulfillments', 'pages::backend.fulfillments.index')->name('fulfillments');
     Route::livewire('/refunds', 'pages::backend.refunds.index')->name('refunds');
     Route::livewire('/topups', 'pages::backend.topups.index')->name('topups');

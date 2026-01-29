@@ -9,6 +9,7 @@ use App\Enums\FulfillmentStatus;
 use App\Enums\OrderItemStatus;
 use App\Models\Fulfillment;
 use App\Models\OrderItem;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class CompleteFulfillment
@@ -33,6 +34,8 @@ class CompleteFulfillment
                 return $lockedFulfillment;
             }
 
+            $statusFrom = $lockedFulfillment->status;
+
             $meta = $lockedFulfillment->meta ?? [];
             $meta['delivered_payload'] = $deliveredPayload;
 
@@ -54,6 +57,23 @@ class CompleteFulfillment
                 'Fulfillment completed',
                 $this->buildContext('completed', $actor, $actorId)
             );
+
+            activity()
+                ->inLog('fulfillment')
+                ->event('fulfillment.completed')
+                ->performedOn($lockedFulfillment)
+                ->causedBy($actorId ? User::query()->find($actorId) : null)
+                ->withProperties(array_filter([
+                    'fulfillment_id' => $lockedFulfillment->id,
+                    'order_id' => $lockedFulfillment->order_id,
+                    'order_item_id' => $lockedFulfillment->order_item_id,
+                    'provider' => $lockedFulfillment->provider,
+                    'status_from' => $statusFrom->value,
+                    'status_to' => FulfillmentStatus::Completed->value,
+                    'actor' => $actor,
+                    'actor_id' => $actorId,
+                ], fn ($value) => $value !== null && $value !== ''))
+                ->log('Fulfillment completed');
 
             return $lockedFulfillment->refresh();
         });

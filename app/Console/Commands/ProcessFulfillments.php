@@ -100,6 +100,19 @@ class ProcessFulfillments extends Command
                     'provider' => $fulfillment->provider,
                     'exception' => $exception->getMessage(),
                 ]);
+
+                activity()
+                    ->inLog('system')
+                    ->event('fulfillment.process_failed')
+                    ->performedOn($fulfillment)
+                    ->withProperties([
+                        'fulfillment_id' => $fulfillment->id,
+                        'order_id' => $fulfillment->order_id,
+                        'order_item_id' => $fulfillment->order_item_id,
+                        'provider' => $fulfillment->provider,
+                        'error' => $exception->getMessage(),
+                    ])
+                    ->log('Fulfillment processing failed');
             }
         }
 

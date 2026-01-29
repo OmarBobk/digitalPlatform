@@ -9,6 +9,7 @@ use App\Enums\FulfillmentStatus;
 use App\Enums\OrderItemStatus;
 use App\Models\Fulfillment;
 use App\Models\OrderItem;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class StartFulfillment
@@ -29,6 +30,8 @@ class StartFulfillment
                 return $lockedFulfillment;
             }
 
+            $statusFrom = $lockedFulfillment->status;
+
             $lockedFulfillment->fill([
                 'status' => FulfillmentStatus::Processing,
                 'processed_at' => $lockedFulfillment->processed_at ?? now(),
@@ -46,6 +49,24 @@ class StartFulfillment
                 'Fulfillment started',
                 $this->buildContext('start', $actor, $actorId, $meta)
             );
+
+            activity()
+                ->inLog('fulfillment')
+                ->event('fulfillment.processing')
+                ->performedOn($lockedFulfillment)
+                ->causedBy($actorId ? User::query()->find($actorId) : null)
+                ->withProperties(array_filter([
+                    'fulfillment_id' => $lockedFulfillment->id,
+                    'order_id' => $lockedFulfillment->order_id,
+                    'order_item_id' => $lockedFulfillment->order_item_id,
+                    'provider' => $lockedFulfillment->provider,
+                    'status_from' => $statusFrom->value,
+                    'status_to' => FulfillmentStatus::Processing->value,
+                    'attempts' => $lockedFulfillment->attempts,
+                    'actor' => $actor,
+                    'actor_id' => $actorId,
+                ], fn ($value) => $value !== null && $value !== ''))
+                ->log('Fulfillment processing');
 
             return $lockedFulfillment->refresh();
         });

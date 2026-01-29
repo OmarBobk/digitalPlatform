@@ -117,6 +117,23 @@ class RefundOrderItem
                 ], fn ($value) => $value !== null && $value !== ''),
             ]);
 
+            activity()
+                ->inLog('payments')
+                ->event('refund.requested')
+                ->performedOn($transaction)
+                ->causedBy(User::query()->find($actorId))
+                ->withProperties(array_filter([
+                    'transaction_id' => $transaction->id,
+                    'order_id' => $order->id,
+                    'order_item_id' => $lockedItem->id,
+                    'fulfillment_id' => $fulfillment->id,
+                    'wallet_id' => $wallet->id,
+                    'amount' => $transaction->amount,
+                    'currency' => 'USD',
+                    'note' => $note,
+                ], fn ($value) => $value !== null && $value !== ''))
+                ->log('Refund requested');
+
             $fulfillmentMeta = $fulfillment->meta ?? [];
             $fulfillmentMeta['refund'] = array_filter([
                 'status' => WalletTransaction::STATUS_PENDING,

@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Actions\Orders;
 
+use App\Actions\Packages\ResolvePackageRequirements;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class CreateOrderFromCartPayload
@@ -88,24 +91,8 @@ class CreateOrderFromCartPayload
                     ]);
                 }
 
-                $requiredKeys = $product->package?->requirements
-                    ->where('is_required', true)
-                    ->pluck('key')
-                    ->all() ?? [];
-
-                if ($requiredKeys !== []) {
-                    $requirements = $item['requirements'] ?? [];
-                    $missing = collect($requiredKeys)
-                        ->filter(fn (string $key) => ! array_key_exists($key, $requirements) || $requirements[$key] === null || $requirements[$key] === '')
-                        ->values()
-                        ->all();
-
-                    if ($missing !== []) {
-                        throw ValidationException::withMessages([
-                            "items.$index.requirements" => 'Missing required fields: '.implode(', ', $missing),
-                        ]);
-                    }
-                }
+                $requirements = $item['requirements'] ?? [];
+                $this->validateRequirements($product->package?->requirements ?? collect(), $requirements, $index);
 
                 $unitPrice = (float) $product->retail_price;
                 $lineTotal = round($unitPrice * $item['quantity'], 2);
@@ -117,7 +104,7 @@ class CreateOrderFromCartPayload
                     'unit_price' => $unitPrice,
                     'quantity' => $item['quantity'],
                     'line_total' => $lineTotal,
-                    'requirements_payload' => $item['requirements'],
+                    'requirements_payload' => $requirements,
                     'status' => OrderItemStatus::Pending,
                 ];
 
@@ -145,11 +132,55 @@ class CreateOrderFromCartPayload
                 $order->items()->create($lineItem);
             }
 
+            activity()
+                ->inLog('orders')
+                ->event('order.created')
+                ->performedOn($order)
+                ->causedBy($user)
+                ->withProperties([
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'item_count' => count($lineItems),
+                    'subtotal' => $order->subtotal,
+                    'fee' => $order->fee,
+                    'total' => $order->total,
+                    'currency' => $order->currency,
+                    'status_to' => $order->status->value,
+                ])
+                ->log('Order created');
+
             return $order->load('items');
         };
 
         return $useTransaction
             ? DB::transaction($operation)
             : $operation();
+    }
+
+    /**
+     * @param  Collection<int, \App\Models\PackageRequirement>  $requirements
+     * @param  array<string, mixed>  $values
+     */
+    private function validateRequirements(Collection $requirements, array $values, int $index): void
+    {
+        if ($requirements->isEmpty()) {
+            return;
+        }
+
+        $resolved = app(ResolvePackageRequirements::class)->handle($requirements);
+        $rules = $resolved['rules'];
+        $attributes = $resolved['attributes'];
+
+        $validator = Validator::make($values, $rules, [], $attributes);
+
+        if (! $validator->fails()) {
+            return;
+        }
+
+        $message = $validator->errors()->first() ?? 'Missing or invalid requirements.';
+
+        throw ValidationException::withMessages([
+            "items.$index.requirements" => $message,
+        ]);
     }
 }

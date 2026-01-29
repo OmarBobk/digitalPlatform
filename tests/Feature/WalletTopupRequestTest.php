@@ -33,3 +33,26 @@ test('user can create a topup request from wallet page', function () {
     expect($transaction)->not->toBeNull();
     expect($transaction->status)->toBe(WalletTransaction::STATUS_PENDING);
 });
+
+test('user cannot create a second pending topup request', function () {
+    $user = User::factory()->create();
+    $wallet = \App\Models\Wallet::forUser($user);
+
+    TopupRequest::create([
+        'user_id' => $user->id,
+        'wallet_id' => $wallet->id,
+        'method' => TopupMethod::ShamCash,
+        'amount' => 20,
+        'currency' => $wallet->currency,
+        'status' => TopupRequestStatus::Pending,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test('pages::frontend.wallet')
+        ->set('topupAmount', '30')
+        ->set('topupMethod', TopupMethod::ShamCash->value)
+        ->call('submitTopup')
+        ->assertSet('noticeMessage', __('messages.topup_request_pending'));
+
+    expect(TopupRequest::query()->where('user_id', $user->id)->count())->toBe(1);
+});

@@ -9,6 +9,7 @@ use App\Enums\FulfillmentStatus;
 use App\Enums\OrderItemStatus;
 use App\Models\Fulfillment;
 use App\Models\OrderItem;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class FailFulfillment
@@ -37,6 +38,8 @@ class FailFulfillment
                 return $lockedFulfillment;
             }
 
+            $statusFrom = $lockedFulfillment->status;
+
             $lockedFulfillment->fill([
                 'status' => FulfillmentStatus::Failed,
                 'processed_at' => $lockedFulfillment->processed_at ?? now(),
@@ -53,6 +56,24 @@ class FailFulfillment
                 'Fulfillment failed',
                 $this->buildContext('failed', $actor, $actorId, $reason)
             );
+
+            activity()
+                ->inLog('fulfillment')
+                ->event('fulfillment.failed')
+                ->performedOn($lockedFulfillment)
+                ->causedBy($actorId ? User::query()->find($actorId) : null)
+                ->withProperties(array_filter([
+                    'fulfillment_id' => $lockedFulfillment->id,
+                    'order_id' => $lockedFulfillment->order_id,
+                    'order_item_id' => $lockedFulfillment->order_item_id,
+                    'provider' => $lockedFulfillment->provider,
+                    'status_from' => $statusFrom->value,
+                    'status_to' => FulfillmentStatus::Failed->value,
+                    'reason' => $reason,
+                    'actor' => $actor,
+                    'actor_id' => $actorId,
+                ], fn ($value) => $value !== null && $value !== ''))
+                ->log('Fulfillment failed');
 
             return $lockedFulfillment->refresh();
         });

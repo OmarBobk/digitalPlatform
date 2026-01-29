@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Packages\ResolvePackageRequirements;
 use App\Models\Product;
 use Livewire\Component;
 
@@ -12,31 +13,47 @@ new class extends Component
     public function mount(): void
     {
         $placeholderImage = asset('images/promotions/promo-placeholder.svg');
+        $resolver = app(ResolvePackageRequirements::class);
 
         $this->products = Product::query()
             ->select(['id', 'package_id', 'name', 'slug', 'retail_price', 'order'])
-            ->with('package:id,image,is_active')
+            ->with([
+                'package:id,name,image,is_active',
+                'package.requirements:id,package_id,key,label,type,is_required,validation_rules,order',
+            ])
             ->where('is_active', true)
             ->whereHas('package', fn ($query) => $query->where('is_active', true))
             ->orderBy('order')
             ->orderBy('name')
             ->limit(8)
             ->get()
-            ->map(fn (Product $product): array => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'price' => $product->retail_price,
-                'href' => '#',
-                'image' => filled($product->package?->image)
-                    ? asset($product->package->image)
-                    : $placeholderImage,
-            ])
+            ->map(fn (Product $product): array => $this->mapProduct($product, $resolver, $placeholderImage))
             ->all();
+    }
+
+    private function mapProduct(Product $product, ResolvePackageRequirements $resolver, string $placeholderImage): array
+    {
+        $resolved = $resolver->handle($product->package?->requirements ?? collect());
+
+        return [
+            'id' => $product->id,
+            'package_id' => $product->package_id,
+            'package_name' => $product->package?->name,
+            'name' => $product->name,
+            'price' => $product->retail_price,
+            'href' => '#',
+            'image' => filled($product->package?->image)
+                ? asset($product->package->image)
+                : $placeholderImage,
+            'requirements_schema' => $resolved['schema'],
+            'requirements_rules' => $resolved['rules'],
+            'requirements_attributes' => $resolved['attributes'],
+        ];
     }
 };
 ?>
 
-<div class="px-2 py-3 sm:px-0 sm:py-4" x-data>
+<div class="px-2 py-3 sm:px-0 sm:py-4">
     <div class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 sm:p-6">
         <div class="flex flex-col gap-4 sm:gap-5">
             <flux:heading size="lg" class="text-start text-zinc-900 dark:text-zinc-100">
@@ -77,16 +94,26 @@ new class extends Component
                                 <span class="text-sm font-semibold text-(--color-accent)" dir="ltr">
                                     ₺{{ number_format($product['price'], 0, ',', '.') }}
                                 </span>
-                                <flux:button
-                                    type="button"
-                                    variant="ghost"
-                                    icon="shopping-cart"
-                                    class="!h-8 !w-8 !p-0 [&>div>svg]:size-4 !text-zinc-700 dark:!text-zinc-300
-                                    hover:!bg-zinc-100 dark:hover:!bg-zinc-700/60 rounded-md"
-                                    x-on:click="$store.cart.add(product)"
-                                    data-test="cart-add"
-                                    aria-label="{{ __('main.add_to_cart_for', ['name' => $product['name']]) }}"
-                                />
+                                <div class="flex items-center gap-2">
+                                    <flux:button
+                                        type="button"
+                                        variant="outline"
+                                        size="xs"
+                                        x-on:click="$dispatch('open-buy-now', { productId: {{ $product['id'] }} })"
+                                    >
+                                        {{ __('main.buy_now') }}
+                                    </flux:button>
+                                    <flux:button
+                                        type="button"
+                                        variant="ghost"
+                                        icon="shopping-cart"
+                                        class="!h-8 !w-8 !p-0 [&>div>svg]:size-4 !text-zinc-700 dark:!text-zinc-300
+                                        hover:!bg-zinc-100 dark:hover:!bg-zinc-700/60 rounded-md"
+                                        x-on:click="$store.cart.add(product)"
+                                        data-test="cart-add"
+                                        aria-label="{{ __('main.add_to_cart_for', ['name' => $product['name']]) }}"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>

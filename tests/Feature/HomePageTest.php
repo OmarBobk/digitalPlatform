@@ -31,9 +31,11 @@ test('homepage renders main sections and gift cards', function () {
     $response->assertSee('data-section="homepage-marquee"', false);
     $response->assertSee('data-section="homepage-promos"', false);
     $response->assertSee('data-section="homepage-section-of-categories"', false);
+    $response->assertSee('data-section="homepage-section-of-packages"', false);
     $response->assertSee('data-section="homepage-section-of-products"', false);
     $response->assertSee('data-section="homepage-preferences"', false);
     $response->assertSee(__('main.gift_cards'));
+    $response->assertSee(__('messages.packages'));
     $response->assertSee(__('main.featured_products'));
     $response->assertSee('APP STORE');
     $response->assertSee('PLAYSTATION');

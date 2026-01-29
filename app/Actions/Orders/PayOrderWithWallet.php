@@ -9,6 +9,7 @@ use App\Enums\OrderStatus;
 use App\Enums\WalletTransactionDirection;
 use App\Enums\WalletTransactionType;
 use App\Models\Order;
+use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Support\Facades\DB;
@@ -60,6 +61,8 @@ class PayOrderWithWallet
 
                 (new CreateFulfillmentsForOrder)->handle($lockedOrder);
 
+                $this->logOrderPaid($lockedOrder, $lockedWallet, $existingTransaction);
+
                 return $lockedOrder;
             }
 
@@ -96,11 +99,50 @@ class PayOrderWithWallet
 
             (new CreateFulfillmentsForOrder)->handle($lockedOrder);
 
+            $this->logOrderPaid($lockedOrder, $lockedWallet, $existingTransaction);
+
             return $lockedOrder;
         };
 
         return $useTransaction
             ? DB::transaction($operation)
             : $operation();
+    }
+
+    private function logOrderPaid(Order $order, Wallet $wallet, WalletTransaction $transaction): void
+    {
+        $causer = User::query()->find($order->user_id);
+
+        activity()
+            ->inLog('orders')
+            ->event('order.paid')
+            ->performedOn($order)
+            ->causedBy($causer)
+            ->withProperties([
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'amount' => $order->total,
+                'currency' => $order->currency,
+                'status_from' => OrderStatus::PendingPayment->value,
+                'status_to' => OrderStatus::Paid->value,
+                'transaction_id' => $transaction->id,
+                'wallet_id' => $wallet->id,
+            ])
+            ->log('Order paid');
+
+        activity()
+            ->inLog('payments')
+            ->event('wallet.debited')
+            ->performedOn($transaction)
+            ->causedBy($causer)
+            ->withProperties([
+                'wallet_id' => $wallet->id,
+                'order_id' => $order->id,
+                'transaction_id' => $transaction->id,
+                'amount' => $transaction->amount,
+                'currency' => $order->currency,
+                'direction' => WalletTransactionDirection::Debit->value,
+            ])
+            ->log('Wallet debited');
     }
 }

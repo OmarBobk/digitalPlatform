@@ -47,7 +47,18 @@ new #[Layout('layouts::frontend')] class extends Component {
         $user = auth()->user();
         $wallet = Wallet::forUser($user);
 
-        TopupRequest::create([
+        $hasPending = TopupRequest::query()
+            ->where('user_id', $user->id)
+            ->where('status', TopupRequestStatus::Pending)
+            ->exists();
+
+        if ($hasPending) {
+            $this->noticeVariant = 'danger';
+            $this->noticeMessage = __('messages.topup_request_pending');
+            return;
+        }
+
+        $topupRequest = TopupRequest::create([
             'user_id' => $user->id,
             'wallet_id' => $wallet->id,
             'method' => TopupMethod::from($validated['topupMethod']),
@@ -55,6 +66,21 @@ new #[Layout('layouts::frontend')] class extends Component {
             'currency' => $wallet->currency,
             'status' => TopupRequestStatus::Pending,
         ]);
+
+        activity()
+            ->inLog('payments')
+            ->event('topup.requested')
+            ->performedOn($topupRequest)
+            ->causedBy($user)
+            ->withProperties([
+                'topup_request_id' => $topupRequest->id,
+                'wallet_id' => $wallet->id,
+                'user_id' => $user->id,
+                'amount' => $topupRequest->amount,
+                'currency' => $wallet->currency,
+                'method' => $topupRequest->method->value,
+            ])
+            ->log('Topup requested');
 
         $this->reset('topupAmount');
         $this->topupMethod = TopupMethod::ShamCash->value;

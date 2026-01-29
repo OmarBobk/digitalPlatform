@@ -2,6 +2,14 @@
 @php
     $isRtl = app()->isLocale('ar');
     $direction = $isRtl ? 'rtl' : 'ltr';
+    $walletBalance = 0;
+    $walletCurrency = config('billing.currency', 'USD');
+
+    if (auth()->check()) {
+        $wallet = auth()->user()->wallet;
+        $walletBalance = $wallet?->balance ?? 0;
+        $walletCurrency = $wallet?->currency ?? $walletCurrency;
+    }
 @endphp
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ $direction }}" class="dark">
     <head>
@@ -50,7 +58,7 @@
                         <!-- Shopping Cart Icon with Badge -->
                         <livewire:cart.dropdown />
 
-                        
+
 
                         <!-- User Profile Icon -->
                         <flux:dropdown position="bottom" align="end">
@@ -124,11 +132,6 @@
 
 
                         @auth
-                            @php
-                                $wallet = auth()->user()->wallet;
-                                $walletBalance = $wallet?->balance ?? 0;
-                                $walletCurrency = $wallet?->currency ?? config('billing.currency', 'USD');
-                            @endphp
                             <a
                                 href="{{ route('wallet') }}"
                                 wire:navigate
@@ -146,6 +149,7 @@
                     </div>
                 </div>
                 <flux:separator class="my-3 sm:block hidden" />
+
                 <nav
                     x-data="categoryNav()"
                     x-init="init()"
@@ -182,22 +186,11 @@
                                 class="overflow-x-auto scrollbar-hide sm:mx-12"
                             >
                                 <!-- Add side padding on desktop so arrows don't overlap items -->
-                                <flux:navbar class="gap-4 !py-0 ltr:lg:pr-12 rtl:lg:pl-12">
-                                    <flux:navbar.item class="border !border-accent !bg-accent hover:!bg-accent-hover !text-accent-foreground" href="#">Home</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="#" badge="12">Inbox</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="#">Contacts</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="#">Contacts</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="#">Contacts</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="#">Contacts</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="#">Contacts</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="#">Contacts</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="#">Contacts</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="#">Contacts</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="#">Contacts</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="#">Contacts</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="#">Contacts</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="#">Contacts</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="#" badge="Pro" badge:color="lime">Calendar</flux:navbar.item>
+                                <flux:navbar class="gap-4 !py-0 ltr:lg:pr-12 rtl:lg:pl-12 justify-start sm:justify-center">
+                                    <flux:navbar.item class="border !border-accent !bg-accent hover:!bg-accent-hover !text-accent-foreground" href="{{route('home')}}" icon="home">Home</flux:navbar.item>
+                                    <flux:navbar.item class="border !border-accent" href="{{route('orders.index')}}">My Orders</flux:navbar.item>
+                                    <flux:navbar.item class="border !border-accent" href="{{route('wallet')}}" badge="{{ number_format((float) $walletBalance, 2) }} {{ $walletCurrency }}" badge:color="lime" badge:class="ms-3 whitespace-nowrap px-2" icon="plus">Add Sufficient </flux:navbar.item>
+                                    <flux:navbar.item class="border !border-accent" href="#" >Contact Us</flux:navbar.item>
 
                                     <flux:dropdown class="border !border-accent rounded-lg">
                                         <flux:navbar.item icon:trailing="chevron-down" class="!border-accent">Account</flux:navbar.item>
@@ -312,7 +305,102 @@
             </div>
         </flux:header>
 
+        <!-- Cart Toast -->
+        <div
+            x-data="cartToast(@js(__('main.add_to_cart_for')))"
+            x-on:cart-item-added.window="notify($event.detail)"
+            x-on:cart-toast.window="notify($event.detail)"
+            class="pointer-events-none fixed top-4 z-[999] flex w-full flex-col gap-2 px-3 sm:max-w-sm ltr:right-4 rtl:left-4 sm:px-0"
+            aria-live="polite"
+        >
+            <template x-for="toast in toasts" :key="toast.id">
+                <div
+                    x-show="toast.visible"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 translate-y-2"
+                    class="pointer-events-auto flex items-center gap-3 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-700 shadow-lg dark:border-emerald-500/30 dark:bg-zinc-900 dark:text-emerald-300"
+                >
+                    <flux:icon icon="check-circle" class="size-4 text-emerald-600 dark:text-emerald-300" />
+                    <span class="font-semibold" x-text="toast.message"></span>
+                </div>
+            </template>
+        </div>
+
         {{ $slot }}
+
+        <script>
+            function cartToast(template) {
+                return {
+                    template: template ?? '',
+                    toasts: [],
+                    notify(detail) {
+                        if (document.querySelector('dialog[open][data-open]')) {
+                            console.log('Modal is open');
+                            return;
+                        }
+
+                        const rawMessage = detail?.message ?? '';
+                        const name = detail?.name ?? '';
+                        const message = rawMessage !== ''
+                            ? rawMessage
+                            : this.template.replace(':name', name).replace(/\s+/g, ' ').trim();
+                        if (!message) {
+                            return;
+                        }
+                        const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+                        this.toasts = [...this.toasts, { id, message, visible: true }];
+                        setTimeout(() => this.remove(id), 2400);
+                    },
+                    remove(id) {
+                        this.toasts = this.toasts.map((toast) => {
+                            if (toast.id !== id) {
+                                return toast;
+                            }
+                            return { ...toast, visible: false };
+                        });
+                        setTimeout(() => {
+                            this.toasts = this.toasts.filter((toast) => toast.id !== id);
+                        }, 180);
+                    },
+                };
+            }
+
+            function cartToastOnModal(template) {
+                return {
+                    template: template ?? '',
+                    toasts: [],
+                    notify(detail) {
+
+                        const rawMessage = detail?.message ?? '';
+                        const name = detail?.name ?? '';
+                        const message = rawMessage !== ''
+                            ? rawMessage
+                            : this.template.replace(':name', name).replace(/\s+/g, ' ').trim();
+                        if (!message) {
+                            return;
+                        }
+                        const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+                        this.toasts = [...this.toasts, { id, message, visible: true }];
+                        setTimeout(() => this.remove(id), 2400);
+                    },
+                    remove(id) {
+                        this.toasts = this.toasts.map((toast) => {
+                            if (toast.id !== id) {
+                                return toast;
+                            }
+                            return { ...toast, visible: false };
+                        });
+                        setTimeout(() => {
+                            this.toasts = this.toasts.filter((toast) => toast.id !== id);
+                        }, 180);
+                    },
+                };
+            }
+        </script>
 
         @fluxScripts
     </body>

@@ -94,6 +94,8 @@ class ApproveRefundRequest
                     ]);
                 }
 
+                $orderStatusFrom = $order->status;
+
                 if ($order->currency !== 'USD') {
                     throw ValidationException::withMessages([
                         'refund' => __('messages.refund_not_allowed'),
@@ -192,6 +194,55 @@ class ApproveRefundRequest
                         ]
                     );
                 }
+
+                $admin = User::query()->find($adminId);
+
+                activity()
+                    ->inLog('payments')
+                    ->event('refund.approved')
+                    ->performedOn($transaction)
+                    ->causedBy($admin)
+                    ->withProperties(array_filter([
+                        'transaction_id' => $transaction->id,
+                        'idempotency_key' => $transaction->idempotency_key,
+                        'order_id' => $order->id,
+                        'wallet_id' => $wallet->id,
+                        'amount' => $transaction->amount,
+                        'currency' => $order->currency,
+                        'reason' => $approvedReason,
+                    ], fn ($value) => $value !== null && $value !== ''))
+                    ->log('Refund approved');
+
+                activity()
+                    ->inLog('payments')
+                    ->event('wallet.credited')
+                    ->performedOn($wallet)
+                    ->causedBy($admin)
+                    ->withProperties([
+                        'wallet_id' => $wallet->id,
+                        'user_id' => $wallet->user_id,
+                        'amount' => $transaction->amount,
+                        'currency' => $wallet->currency,
+                        'transaction_id' => $transaction->id,
+                        'source' => 'refund',
+                    ])
+                    ->log('Wallet credited');
+
+                activity()
+                    ->inLog('orders')
+                    ->event('order.refunded')
+                    ->performedOn($order)
+                    ->causedBy($admin)
+                    ->withProperties(array_filter([
+                        'order_id' => $order->id,
+                        'order_number' => $order->order_number,
+                        'status_from' => $orderStatusFrom->value,
+                        'status_to' => OrderStatus::Refunded->value,
+                        'amount' => $transaction->amount,
+                        'currency' => $order->currency,
+                        'transaction_id' => $transaction->id,
+                    ], fn ($value) => $value !== null && $value !== ''))
+                    ->log('Order refunded');
 
                 return $transaction;
             });

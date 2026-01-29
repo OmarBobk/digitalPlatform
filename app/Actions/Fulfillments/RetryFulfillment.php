@@ -12,6 +12,7 @@ use App\Enums\WalletTransactionType;
 use App\Models\Fulfillment;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\User;
 use App\Models\WalletTransaction;
 use Illuminate\Support\Facades\DB;
 
@@ -68,6 +69,7 @@ class RetryFulfillment
             }
 
             $retryCount = (int) data_get($lockedFulfillment->meta, 'retry_count', 0) + 1;
+            $statusFrom = $lockedFulfillment->status;
 
             $lockedFulfillment->fill([
                 'status' => FulfillmentStatus::Queued,
@@ -90,6 +92,23 @@ class RetryFulfillment
                 'Fulfillment queued',
                 $this->buildContext('retry_requested', $actor, $actorId)
             );
+
+            activity()
+                ->inLog('fulfillment')
+                ->event('fulfillment.retry_requested')
+                ->performedOn($lockedFulfillment)
+                ->causedBy($actorId ? User::query()->find($actorId) : null)
+                ->withProperties(array_filter([
+                    'fulfillment_id' => $lockedFulfillment->id,
+                    'order_id' => $lockedFulfillment->order_id,
+                    'order_item_id' => $lockedFulfillment->order_item_id,
+                    'status_from' => $statusFrom->value,
+                    'status_to' => FulfillmentStatus::Queued->value,
+                    'retry_count' => $retryCount,
+                    'actor' => $actor,
+                    'actor_id' => $actorId,
+                ], fn ($value) => $value !== null && $value !== ''))
+                ->log('Fulfillment retry requested');
 
             return $lockedFulfillment->refresh();
         });

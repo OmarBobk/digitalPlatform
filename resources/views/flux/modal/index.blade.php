@@ -50,6 +50,8 @@ if ($flyout) {
         });
 }
 
+$classes = $classes->add('backdrop:bg-black/40 backdrop:backdrop-blur-sm');
+
 // Support adding the .self modifier to the wire:model directive...
 if (($wireModel = $attributes->wire('model')) && $wireModel->directive && ! $wireModel->hasModifier('self')) {
     unset($attributes[$wireModel->directive]);

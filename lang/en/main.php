@@ -13,7 +13,10 @@ return [
     'gift_cards' => 'Gift Cards',
     'gift_card_label' => 'Gift card: :name',
     'featured_products' => 'Featured Products',
+    'add_to_cart' => 'Add to cart',
     'add_to_cart_for' => 'Add :name to cart',
+    'buy_now' => 'Buy now',
+    'pay_now' => 'Pay now',
     'category_slider' => 'Category slider',
     'slide_number' => 'Slide :number',
 

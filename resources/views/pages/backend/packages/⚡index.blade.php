@@ -182,7 +182,7 @@ new class extends Component
             return;
         }
 
-        app(DeletePackage::class)->handle($packageId);
+        app(DeletePackage::class)->handle($packageId, auth()->id());
 
         if ($this->selectedPackageId === $packageId) {
             $this->selectedPackageId = null;

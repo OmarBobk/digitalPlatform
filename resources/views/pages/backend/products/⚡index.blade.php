@@ -147,7 +147,7 @@ new class extends Component
             return;
         }
 
-        app(DeleteProduct::class)->handle($productId);
+        app(DeleteProduct::class)->handle($productId, auth()->id());
 
         $this->cancelDeleteProduct();
         $this->resetPage();

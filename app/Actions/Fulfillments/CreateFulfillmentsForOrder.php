@@ -9,6 +9,7 @@ use App\Enums\FulfillmentStatus;
 use App\Enums\OrderStatus;
 use App\Models\Fulfillment;
 use App\Models\Order;
+use App\Models\User;
 
 class CreateFulfillmentsForOrder
 {
@@ -36,6 +37,20 @@ class CreateFulfillmentsForOrder
 
             if ($fulfillment->wasRecentlyCreated) {
                 $appendLog->handle($fulfillment, FulfillmentLogLevel::Info, 'Fulfillment queued');
+
+                activity()
+                    ->inLog('fulfillment')
+                    ->event('fulfillment.queued')
+                    ->performedOn($fulfillment)
+                    ->causedBy(User::query()->find($order->user_id))
+                    ->withProperties([
+                        'fulfillment_id' => $fulfillment->id,
+                        'order_id' => $order->id,
+                        'order_item_id' => $item->id,
+                        'provider' => $fulfillment->provider,
+                        'status_to' => FulfillmentStatus::Queued->value,
+                    ])
+                    ->log('Fulfillment queued');
             }
         });
     }

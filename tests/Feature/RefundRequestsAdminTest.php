@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
@@ -102,6 +103,20 @@ test('admin can approve refund request and credit wallet once', function () {
             ->where('idempotency_key', 'refund:order:'.$payload['order']->id)
             ->count()
     )->toBe(1);
+    expect(Activity::query()
+        ->where('event', 'refund.approved')
+        ->where('log_name', 'payments')
+        ->where('subject_type', WalletTransaction::class)
+        ->where('subject_id', $refundTx->id)
+        ->exists()
+    )->toBeTrue();
+    expect(Activity::query()
+        ->where('event', 'order.refunded')
+        ->where('log_name', 'orders')
+        ->where('subject_type', Order::class)
+        ->where('subject_id', $payload['order']->id)
+        ->exists()
+    )->toBeTrue();
 
     (new RetryFulfillment)->handle($payload['fulfillment'], 'customer', $user->id);
     $payload['fulfillment']->refresh();

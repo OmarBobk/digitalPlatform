@@ -63,7 +63,7 @@ new class extends Component
             return;
         }
 
-        app(RejectTopupRequest::class)->handle($topupRequest);
+        app(RejectTopupRequest::class)->handle($topupRequest, auth()->id());
 
         $this->noticeVariant = 'danger';
         $this->noticeMessage = __('messages.topup_rejected');

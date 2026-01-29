@@ -91,14 +91,37 @@ class ApproveTopupRequest
             ])->save();
 
             if (Schema::hasTable('activity_log')) {
+                $admin = User::query()->find($approvedById);
+
                 activity()
+                    ->inLog('payments')
+                    ->event('topup.approved')
                     ->performedOn($request)
-                    ->causedBy(User::query()->find($approvedById))
+                    ->causedBy($admin)
                     ->withProperties([
-                        'approved_by' => $approvedById,
                         'topup_request_id' => $request->id,
+                        'wallet_id' => $request->wallet_id,
+                        'user_id' => $request->user_id,
+                        'amount' => $request->amount,
+                        'currency' => $request->currency,
+                        'transaction_id' => $transaction->id,
                     ])
-                    ->log('topup_approved');
+                    ->log('Topup approved');
+
+                activity()
+                    ->inLog('payments')
+                    ->event('wallet.credited')
+                    ->performedOn($wallet)
+                    ->causedBy($admin)
+                    ->withProperties([
+                        'wallet_id' => $wallet->id,
+                        'user_id' => $wallet->user_id,
+                        'amount' => $transaction->amount,
+                        'currency' => $wallet->currency,
+                        'transaction_id' => $transaction->id,
+                        'source' => 'topup',
+                    ])
+                    ->log('Wallet credited');
             }
 
             return $request;

@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('label');
             $table->enum('type', ['string', 'number', 'select']);
             $table->boolean('is_required');
-            $table->string('validation_rules')->nullable();
+            $table->string('validation_rules')->nullable(); // Laravel validation rules string spearated by pipe.
             $table->integer('order');
             $table->timestamps();
         });

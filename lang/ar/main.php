@@ -13,7 +13,10 @@ return [
     'gift_cards' => 'بطاقات الهدايا',
     'gift_card_label' => 'بطاقة هدايا: :name',
     'featured_products' => 'منتجات مميزة',
+    'add_to_cart' => 'أضف إلى السلة',
     'add_to_cart_for' => 'أضف :name إلى السلة',
+    'buy_now' => 'اشترِ الآن',
+    'pay_now' => 'ادفع الآن',
     'category_slider' => 'منزلق الفئات',
     'slide_number' => 'الشريحة :number',
 

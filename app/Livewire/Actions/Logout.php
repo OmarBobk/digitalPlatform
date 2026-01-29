@@ -12,6 +12,8 @@ class Logout
      */
     public function __invoke()
     {
+        $user = Auth::user();
+
         Auth::guard('web')->logout();
 
         Session::invalidate();

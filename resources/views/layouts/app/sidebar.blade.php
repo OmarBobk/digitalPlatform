@@ -11,10 +11,13 @@
             </flux:sidebar.header>
 
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('messages.platform')" class="grid">
+                <flux:sidebar.group :heading="__('messages.nav_overview')" class="grid">
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('messages.dashboard') }}
                     </flux:sidebar.item>
+                </flux:sidebar.group>
+
+                <flux:sidebar.group :heading="__('messages.nav_content_management')" class="grid">
                     <flux:sidebar.item icon="tag" :href="route('categories')" :current="request()->routeIs('categories')" wire:navigate>
                         {{ __('messages.categories') }}
                     </flux:sidebar.item>
@@ -24,6 +27,9 @@
                     <flux:sidebar.item icon="shopping-cart" :href="route('products')" :current="request()->routeIs('products')" wire:navigate>
                         {{ __('messages.products') }}
                     </flux:sidebar.item>
+                </flux:sidebar.group>
+
+                <flux:sidebar.group :heading="__('messages.nav_operations')" class="grid">
                     <flux:sidebar.item icon="list-bullet" :href="route('fulfillments')" :current="request()->routeIs('fulfillments')" wire:navigate>
                         {{ __('messages.fulfillments') }}
                     </flux:sidebar.item>
@@ -33,11 +39,20 @@
                     <flux:sidebar.item icon="receipt-refund" :href="route('refunds')" :current="request()->routeIs('refunds')" wire:navigate>
                         {{ __('messages.refund_requests') }}
                     </flux:sidebar.item>
-                    @if (auth()->user()?->can('manage_topups'))
+                </flux:sidebar.group>
+
+                @if (auth()->user()?->can('manage_topups'))
+                    <flux:sidebar.group :heading="__('messages.nav_financials')" class="grid">
                         <flux:sidebar.item icon="wallet" :href="route('topups')" :current="request()->routeIs('topups')" wire:navigate>
                             {{ __('messages.topups') }}
                         </flux:sidebar.item>
-                    @endif
+                    </flux:sidebar.group>
+                @endif
+
+                <flux:sidebar.group :heading="__('messages.nav_audit_monitoring')" class="grid">
+                    <flux:sidebar.item icon="clock" :href="route('admin.activities.index')" :current="request()->routeIs('admin.activities.*')" wire:navigate>
+                        {{ __('messages.activities') }}
+                    </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 

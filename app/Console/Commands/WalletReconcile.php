@@ -86,6 +86,18 @@ class WalletReconcile extends Command
                 $wallet->update([
                     'balance' => number_format($expected, 2, '.', ''),
                 ]);
+                activity()
+                    ->inLog('payments')
+                    ->event('wallet.reconciled')
+                    ->performedOn($wallet)
+                    ->withProperties([
+                        'wallet_id' => $wallet->id,
+                        'user_id' => $wallet->user_id,
+                        'stored_balance' => $stored,
+                        'expected_balance' => $expected,
+                        'diff' => $diff,
+                    ])
+                    ->log('Wallet reconciled');
                 $updated++;
             }
         }

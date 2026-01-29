@@ -10,6 +10,7 @@ use App\Enums\FulfillmentStatus;
 use App\Enums\WalletTransactionType;
 use App\Models\Fulfillment;
 use App\Models\OrderItem;
+use App\Models\User;
 use App\Models\WalletTransaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -87,6 +88,21 @@ class RejectRefundRequest
                     'transaction_id' => $transaction->id,
                 ]
             );
+
+            activity()
+                ->inLog('payments')
+                ->event('refund.rejected')
+                ->performedOn($transaction)
+                ->causedBy(User::query()->find($adminId))
+                ->withProperties(array_filter([
+                    'transaction_id' => $transaction->id,
+                    'order_id' => data_get($transaction->meta, 'order_id'),
+                    'order_item_id' => $orderItem->id,
+                    'fulfillment_id' => $fulfillment->id,
+                    'amount' => $transaction->amount,
+                    'currency' => data_get($transaction->meta, 'currency', 'USD'),
+                ], fn ($value) => $value !== null && $value !== ''))
+                ->log('Refund rejected');
 
             return $transaction;
         });

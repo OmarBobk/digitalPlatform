@@ -155,7 +155,7 @@ new class extends Component
             return;
         }
 
-        app(DeleteCategoryTree::class)->handle($categoryId);
+        app(DeleteCategoryTree::class)->handle($categoryId, auth()->id());
 
         $this->resetDeleteModal();
         $this->resetPage();

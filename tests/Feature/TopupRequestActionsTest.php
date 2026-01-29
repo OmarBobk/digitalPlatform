@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Activitylog\Models\Activity;
 
 uses(RefreshDatabase::class);
 
@@ -47,10 +48,18 @@ test('approving a topup posts ledger and increments balance once', function () {
     expect($request->status)->toBe(TopupRequestStatus::Approved);
     expect($request->approved_by)->toBe($approver->id);
     expect($request->approved_at)->not->toBeNull();
+    expect(Activity::query()
+        ->where('event', 'topup.approved')
+        ->where('log_name', 'payments')
+        ->where('subject_type', TopupRequest::class)
+        ->where('subject_id', $request->id)
+        ->exists()
+    )->toBeTrue();
 });
 
 test('rejecting a topup does not change balance', function () {
     $user = User::factory()->create();
+    $approver = User::factory()->create();
     $wallet = Wallet::create([
         'user_id' => $user->id,
         'balance' => 0,
@@ -67,7 +76,7 @@ test('rejecting a topup does not change balance', function () {
     ]);
 
     $action = new RejectTopupRequest;
-    $action->handle($request);
+    $action->handle($request, $approver->id);
 
     $wallet->refresh();
     $request->refresh();
@@ -79,4 +88,11 @@ test('rejecting a topup does not change balance', function () {
     expect((float) $wallet->balance)->toBe(0.0);
     expect($transaction->status)->toBe(WalletTransaction::STATUS_REJECTED);
     expect($request->status)->toBe(TopupRequestStatus::Rejected);
+    expect(Activity::query()
+        ->where('event', 'topup.rejected')
+        ->where('log_name', 'payments')
+        ->where('subject_type', TopupRequest::class)
+        ->where('subject_id', $request->id)
+        ->exists()
+    )->toBeTrue();
 });
