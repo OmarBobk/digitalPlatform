@@ -262,7 +262,7 @@ new class extends Component
 {{--        </button>--}}
 
         <div
-            class="overflow-hidden px-2 sm:px-0 pb-2 sm:pb-4 pt-4 sm:pt-8 cursor-grab select-none touch-pan-y"
+            class="overflow-hidden !px-2 sm:px-0 pb-2 sm:pb-4 pt-4 sm:pt-8 cursor-grab select-none touch-pan-y"
             x-ref="viewport"
             x-on:mousedown="handleDragStart($event)"
             x-on:mousemove="handleDragMove($event)"
@@ -283,29 +283,27 @@ new class extends Component
                 @foreach ($categoryItems as $item)
                     <a
                         href="{{ $item['href'] }}"
-                        class="group flex w-20 shrink-0 flex-col items-center gap-2 text-center select-none
-                        focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) sm:w-24"
+                        class="group flex shrink-0 flex-col items-center gap-2 text-center select-none
+                        focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
                         x-on:click="if (hasMoved) { $event.preventDefault(); }"
                         draggable="false"
                     >
-                        <span
-                            class="flex size-16 items-center justify-center rounded-full border border-zinc-200
-                             bg-white text-zinc-700 shadow-sm transition duration-200 group-hover:-translate-y-0.5
+                        <div
+                            class="w-full h-full rounded-full flex items-center justify-center border border-zinc-200
+                             bg-white text-zinc-700 shadow-sm transition duration-200
                               group-hover:border-accent group-hover:bg-zinc-50 group-hover:shadow-md
                                dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200
-                               dark:group-hover:border-accent dark:group-hover:bg-zinc-700/40 sm:size-20"
+                               dark:group-hover:border-accent dark:group-hover:bg-zinc-700/40"
                         >
                             <img
                                 src="{{ $item['image'] }}"
                                 alt="{{ $item['name'] }}"
-                                class="h-8 w-8 object-contain sm:h-10 sm:w-10 pointer-events-none"
-                                width="40"
-                                height="40"
+                                class="h-16 w-16 rounded-full object-contain sm:h-auto sm:w-16 pointer-events-none transition duration-200 group-hover:transform group-hover:scale-[1.2]"
                                 loading="lazy"
                                 decoding="async"
                                 draggable="false"
                             />
-                        </span>
+                        </div>
                     </a>
                 @endforeach
             </div>
