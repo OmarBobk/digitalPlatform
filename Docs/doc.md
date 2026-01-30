@@ -14,12 +14,13 @@
 - ###DONE /wallet index is not responsive for the mobile screen
 - ###DONE dashboard sidebar has a lot of links so group them and search online to get a better naming for the groups
 - ###DONE when displaying products on the frontend, there should be next to "add to cart" button another "Buy now" button which is going to open a model to record the order info like the package requirements and the quantity and checkout
-- ###DOING /checkout add the package requirements and fill it to the order
-- Main Page Design: turn the user menu into links and display them in the navbar
+- ###DONE /checkout add the package requirements and fill it to the order
+- ###DONE Main Page Design: turn the user menu into links and display them in the navbar
 - ###DONE create log on register new user
-- "Buy now" after user click "pay now" button the modal should be closed and the successfull message will be appeared as a notification and
+- ###DONE "Buy now" after user click "pay now" button the modal should be closed and the successfull message will be appeared as a notification and
 - Topups when customer requesting topups he need to upload a proof which is an image.
 - Topups when admin approving topups he should scan the proof first
-
-    
+- Activities when admin is login there is two logs registering
+- Refund when admin is mark a fulfillment as failed the customer will see two buttons next to his order item failed status "refund" or "retry" and customer is allowed to ask for retry "two times only"
+- /categories, /packages, /products filters should be hidden as default    
 

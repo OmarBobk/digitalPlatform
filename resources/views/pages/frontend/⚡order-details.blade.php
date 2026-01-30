@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Fulfillments\RetryFulfillment;
 use App\Enums\FulfillmentStatus;
 use App\Enums\OrderStatus;
 use App\Models\Order;
@@ -11,6 +12,7 @@ use Livewire\Component;
 new #[Layout('layouts::frontend')] class extends Component
 {
     public Order $order;
+    public ?string $actionMessage = null;
 
     public function mount(Order $order): void
     {
@@ -28,6 +30,25 @@ new #[Layout('layouts::frontend')] class extends Component
     public function render(): View
     {
         return $this->view()->title(__('messages.order_details'));
+    }
+
+    public function retryFulfillment(int $orderItemId): void
+    {
+        $this->reset('actionMessage');
+
+        $orderItem = $this->order->items->firstWhere('id', $orderItemId);
+
+        if ($orderItem === null || $orderItem->fulfillment === null) {
+            $this->actionMessage = __('messages.retry_not_allowed');
+            return;
+        }
+
+        app(RetryFulfillment::class)->handle($orderItem->fulfillment, 'customer', auth()->id());
+
+        $orderItem->fulfillment->refresh();
+        $this->actionMessage = $orderItem->fulfillment->status === FulfillmentStatus::Queued
+            ? __('messages.fulfillment_marked_queued')
+            : __('messages.retry_not_allowed');
     }
 
     /**

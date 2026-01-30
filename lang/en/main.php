@@ -30,5 +30,8 @@ return [
     'my_orders' => 'My orders',
     'profile' => 'Profile',
     'shopping_cart' => 'Shopping Cart',
+    'home' => 'Home',
+    'add_sufficient' => 'Add sufficient',
+    'contact_us' => 'Contact us',
 
 ];

@@ -38,7 +38,7 @@ new class extends Component
     public ?int $editingPackageId = null;
     public ?int $packageCategoryId = null;
     public string $packageName = '';
-    public string $packageDescription = '';
+    public ?string $packageDescription = null;
     public ?int $packageOrder = null;
     public ?string $packageIcon = null;
     public $packageImageFile = null;

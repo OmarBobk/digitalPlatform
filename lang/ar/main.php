@@ -29,4 +29,7 @@ return [
     'wallet' => 'المحفظة',
     'my_orders' => 'طلباتي',
     'shopping_cart' => 'سلة التسوق',
+    'home' => 'الرئيسية',
+    'add_sufficient' => 'اضافة رصيد',
+    'contact_us' => 'اتصل بنا',
 ];

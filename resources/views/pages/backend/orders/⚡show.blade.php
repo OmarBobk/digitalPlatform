@@ -6,6 +6,7 @@ use App\Enums\WalletTransactionType;
 use App\Models\Order;
 use App\Models\WalletTransaction;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Lang;
 use Illuminate\View\View;
 use Livewire\Component;
 
@@ -81,6 +82,54 @@ new class extends Component
             FulfillmentStatus::Processing => 'amber',
             default => 'gray',
         };
+    }
+
+    protected function stringifyPayloadValue(mixed $value): string
+    {
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+
+        if (is_array($value)) {
+            return (string) json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        }
+
+        if (is_null($value)) {
+            return 'null';
+        }
+
+        return (string) $value;
+    }
+
+    protected function requirementLabel(string $key): string
+    {
+        $translationKey = 'messages.requirement_key_'.$key;
+
+        return Lang::has($translationKey) ? __($translationKey) : $key;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $payload
+     * @return array<int, array{label: string, value: string}>
+     */
+    protected function requirementsEntries(?array $payload): array
+    {
+        if ($payload === null || $payload === []) {
+            return [];
+        }
+
+        $entries = [];
+
+        foreach ($payload as $key => $value) {
+            $keyLabel = is_string($key) ? $key : (string) $key;
+
+            $entries[] = [
+                'label' => $this->requirementLabel($keyLabel),
+                'value' => $this->stringifyPayloadValue($value),
+            ];
+        }
+
+        return $entries;
     }
 
     public function render(): View
@@ -176,6 +225,7 @@ new class extends Component
                     </thead>
                     <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
                         @foreach ($this->items as $item)
+                            @php($requirementsEntries = $this->requirementsEntries($item->requirements_payload))
                             <tr class="transition hover:bg-zinc-50 dark:hover:bg-zinc-800/60" wire:key="admin-order-item-{{ $item->id }}">
                                 <td class="px-5 py-4">
                                     <div class="font-semibold text-zinc-900 dark:text-zinc-100">
@@ -213,6 +263,27 @@ new class extends Component
                                     @endif
                                 </td>
                             </tr>
+                            @if ($requirementsEntries !== [])
+                                <tr class="bg-zinc-50/70 dark:bg-zinc-900/70" wire:key="admin-order-item-{{ $item->id }}-requirements">
+                                    <td colspan="6" class="px-5 pb-5">
+                                        <div class="rounded-xl border border-zinc-100 bg-white p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+                                            <div class="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                                {{ __('messages.requirements') }}
+                                            </div>
+                                            <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                                                @foreach ($requirementsEntries as $entry)
+                                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                                        <span class="text-zinc-500 dark:text-zinc-400">{{ $entry['label'] }}</span>
+                                                        <span class="font-semibold text-zinc-900 dark:text-zinc-100">
+                                                            {{ $entry['value'] }}
+                                                        </span>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endif
                         @endforeach
                     </tbody>
                 </table>

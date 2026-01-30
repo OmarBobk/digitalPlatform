@@ -16,7 +16,11 @@ use App\Models\OrderItem;
 use App\Models\Package;
 use App\Models\Product;
 use App\Models\User;
+use App\Models\Wallet;
+use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
@@ -107,6 +111,79 @@ test('create fulfillments action is idempotent and logs queued', function () {
 
     $logCount = $fulfillments->sum(fn (Fulfillment $fulfillment) => $fulfillment->logs()->count());
     expect($logCount)->toBe(2);
+});
+
+test('create fulfillments stores requirements payload in meta', function () {
+    $user = User::factory()->create();
+    $package = Package::factory()->create();
+    $product = Product::factory()->create(['package_id' => $package->id, 'retail_price' => 20]);
+
+    $order = Order::create([
+        'user_id' => $user->id,
+        'order_number' => Order::temporaryOrderNumber(),
+        'currency' => 'USD',
+        'subtotal' => 20,
+        'fee' => 0,
+        'total' => 20,
+        'status' => OrderStatus::Paid,
+    ]);
+
+    $item = OrderItem::create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'package_id' => $package->id,
+        'name' => $product->name,
+        'unit_price' => 20,
+        'quantity' => 1,
+        'line_total' => 20,
+        'requirements_payload' => ['player_id' => '12345'],
+        'status' => OrderItemStatus::Pending,
+    ]);
+
+    (new CreateFulfillmentsForOrder)->handle($order);
+
+    $fulfillment = Fulfillment::query()->where('order_item_id', $item->id)->first();
+
+    expect($fulfillment)->not->toBeNull();
+    expect(data_get($fulfillment->meta, 'requirements_payload'))->toBe(['player_id' => '12345']);
+});
+
+test('process fulfillments includes requirements payload in delivered payload', function () {
+    $user = User::factory()->create();
+    $package = Package::factory()->create();
+    $product = Product::factory()->create(['package_id' => $package->id, 'retail_price' => 20]);
+
+    $order = Order::create([
+        'user_id' => $user->id,
+        'order_number' => Order::temporaryOrderNumber(),
+        'currency' => 'USD',
+        'subtotal' => 20,
+        'fee' => 0,
+        'total' => 20,
+        'status' => OrderStatus::Paid,
+    ]);
+
+    OrderItem::create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'package_id' => $package->id,
+        'name' => $product->name,
+        'unit_price' => 20,
+        'quantity' => 1,
+        'line_total' => 20,
+        'requirements_payload' => ['player_id' => '99999'],
+        'status' => OrderItemStatus::Pending,
+    ]);
+
+    (new CreateFulfillmentsForOrder)->handle($order);
+
+    $this->artisan('fulfillment:process', ['--only-pending' => true])->assertExitCode(0);
+
+    $fulfillment = Fulfillment::query()->where('order_id', $order->id)->first();
+
+    expect($fulfillment)->not->toBeNull();
+    expect(data_get($fulfillment->meta, 'delivered_payload.requirements_payload'))
+        ->toBe(['player_id' => '99999']);
 });
 
 test('append fulfillment log stores context', function () {
@@ -208,4 +285,49 @@ test('failed fulfillment can be retried and completed', function () {
     $fulfillment->refresh();
     expect($fulfillment->status)->toBe(FulfillmentStatus::Completed);
     expect($fulfillment->orderItem->refresh()->status)->toBe(OrderItemStatus::Fulfilled);
+});
+
+test('admin can fail fulfillment and refund immediately', function () {
+    $role = Role::firstOrCreate(['name' => 'admin']);
+    $admin = User::factory()->create();
+    $admin->assignRole($role);
+
+    $fulfillment = makeFulfillment();
+    $order = Order::query()->findOrFail($fulfillment->order_id);
+    $item = OrderItem::query()->findOrFail($fulfillment->order_item_id);
+
+    Livewire::actingAs($admin)
+        ->test('pages::backend.fulfillments.index')
+        ->set('selectedFulfillmentId', $fulfillment->id)
+        ->set('failureReason', 'Provider failed')
+        ->set('refundAfterFail', true)
+        ->call('failFulfillment');
+
+    $fulfillment->refresh();
+    $order->refresh();
+    $wallet = Wallet::query()->where('user_id', $order->user_id)->first();
+
+    expect($fulfillment->status)->toBe(FulfillmentStatus::Failed);
+    expect(data_get($fulfillment->meta, 'refund.status'))->toBe(WalletTransaction::STATUS_POSTED);
+    expect($order->status)->toBe(OrderStatus::Refunded);
+    expect($wallet)->not->toBeNull();
+    expect((float) $wallet->balance)->toBe((float) $item->line_total);
+
+    $transaction = WalletTransaction::query()
+        ->where('reference_type', Order::class)
+        ->where('reference_id', $order->id)
+        ->first();
+
+    expect($transaction)->not->toBeNull();
+    expect($transaction->status)->toBe(WalletTransaction::STATUS_POSTED);
+    expect($transaction->type)->toBe(\App\Enums\WalletTransactionType::Refund);
+    expect($transaction->direction)->toBe(\App\Enums\WalletTransactionDirection::Credit);
+
+    Livewire::actingAs($admin)
+        ->test('pages::backend.fulfillments.index')
+        ->assertDontSeeHtml('wire:click="markProcessing(')
+        ->assertDontSeeHtml('wire:click="openCompleteModal(')
+        ->assertDontSeeHtml('wire:click="openFailModal(')
+        ->assertDontSeeHtml('wire:click="retryFulfillment(')
+        ->assertSeeHtml('wire:click="openDetails(');
 });

@@ -5,11 +5,14 @@ use App\Models\Package;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
 test('packages page renders for authenticated user', function () {
+    $role = Role::firstOrCreate(['name' => 'admin']);
     $user = User::factory()->create();
+    $user->assignRole($role);
 
     $this->actingAs($user)
         ->get('/packages')
@@ -18,7 +21,9 @@ test('packages page renders for authenticated user', function () {
 });
 
 test('packages page lists existing packages', function () {
+    $role = Role::firstOrCreate(['name' => 'admin']);
     $user = User::factory()->create();
+    $user->assignRole($role);
     $package = Package::factory()->create([
         'name' => 'Gold Pack',
     ]);
@@ -30,7 +35,9 @@ test('packages page lists existing packages', function () {
 });
 
 test('package can be created from manager form', function () {
+    $role = Role::firstOrCreate(['name' => 'admin']);
     $user = User::factory()->create();
+    $user->assignRole($role);
     $category = Category::factory()->create();
 
     $this->actingAs($user);
@@ -50,8 +57,33 @@ test('package can be created from manager form', function () {
     ]);
 });
 
-test('package requirement can be added to selected package', function () {
+test('package can be created without description', function () {
+    $role = Role::firstOrCreate(['name' => 'admin']);
     $user = User::factory()->create();
+    $user->assignRole($role);
+    $category = Category::factory()->create();
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::backend.packages.index')
+        ->set('packageCategoryId', $category->id)
+        ->set('packageName', 'No Description Pack')
+        ->set('packageDescription', null)
+        ->set('packageOrder', 2)
+        ->set('packageIsActive', true)
+        ->call('savePackage')
+        ->assertHasNoErrors();
+
+    $this->assertDatabaseHas('packages', [
+        'name' => 'No Description Pack',
+        'description' => null,
+    ]);
+});
+
+test('package requirement can be added to selected package', function () {
+    $role = Role::firstOrCreate(['name' => 'admin']);
+    $user = User::factory()->create();
+    $user->assignRole($role);
     $package = Package::factory()->create();
 
     $this->actingAs($user);

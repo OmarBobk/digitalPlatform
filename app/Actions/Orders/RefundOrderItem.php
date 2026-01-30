@@ -33,7 +33,15 @@ class RefundOrderItem
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($order->user_id !== $actorId) {
+            $actor = User::query()->find($actorId);
+
+            if ($actor === null) {
+                throw ValidationException::withMessages([
+                    'order_item' => __('messages.refund_not_allowed'),
+                ]);
+            }
+
+            if ($order->user_id !== $actorId && ! $actor->hasRole('admin')) {
                 throw ValidationException::withMessages([
                     'order_item' => __('messages.refund_not_allowed'),
                 ]);
@@ -121,7 +129,7 @@ class RefundOrderItem
                 ->inLog('payments')
                 ->event('refund.requested')
                 ->performedOn($transaction)
-                ->causedBy(User::query()->find($actorId))
+                ->causedBy($actor)
                 ->withProperties(array_filter([
                     'transaction_id' => $transaction->id,
                     'order_id' => $order->id,

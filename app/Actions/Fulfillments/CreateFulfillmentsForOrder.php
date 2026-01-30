@@ -25,6 +25,11 @@ class CreateFulfillmentsForOrder
         $appendLog = new AppendFulfillmentLog;
 
         $order->items()->get()->each(function ($item) use ($order, $appendLog): void {
+            $requirementsPayload = $item->requirements_payload;
+            $meta = $requirementsPayload !== null && $requirementsPayload !== []
+                ? ['requirements_payload' => $requirementsPayload]
+                : [];
+
             $fulfillment = Fulfillment::firstOrCreate(
                 ['order_item_id' => $item->id],
                 [
@@ -32,8 +37,31 @@ class CreateFulfillmentsForOrder
                     'provider' => 'manual',
                     'status' => FulfillmentStatus::Queued,
                     'attempts' => 0,
+                    'meta' => $meta,
                 ]
             );
+
+            if (! $fulfillment->wasRecentlyCreated && $meta !== []) {
+                $currentMeta = $fulfillment->meta ?? [];
+
+                if (! array_key_exists('requirements_payload', $currentMeta)) {
+                    $fulfillment->update([
+                        'meta' => array_merge($currentMeta, $meta),
+                    ]);
+                }
+            }
+
+            if ($requirementsPayload !== null && $requirementsPayload !== []) {
+                $hasLog = $fulfillment->logs()
+                    ->where('message', 'Requirements captured')
+                    ->exists();
+
+                if (! $hasLog) {
+                    $appendLog->handle($fulfillment, FulfillmentLogLevel::Info, 'Requirements captured', [
+                        'action' => 'requirements_captured',
+                    ]);
+                }
+            }
 
             if ($fulfillment->wasRecentlyCreated) {
                 $appendLog->handle($fulfillment, FulfillmentLogLevel::Info, 'Fulfillment queued');

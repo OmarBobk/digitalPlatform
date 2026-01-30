@@ -5,8 +5,11 @@ use App\Actions\Fulfillments\FailFulfillment;
 use App\Actions\Fulfillments\GetFulfillments;
 use App\Actions\Fulfillments\RetryFulfillment;
 use App\Actions\Fulfillments\StartFulfillment;
+use App\Actions\Orders\RefundOrderItem;
+use App\Actions\Refunds\ApproveRefundRequest;
 use App\Enums\FulfillmentStatus;
 use App\Models\Fulfillment;
+use App\Models\WalletTransaction;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 use Livewire\Attributes\Url;
@@ -29,6 +32,7 @@ new class extends Component
 
     public ?string $deliveredPayloadInput = null;
     public ?string $failureReason = null;
+    public bool $refundAfterFail = false;
 
     public ?string $noticeMessage = null;
     public ?string $noticeVariant = null;
@@ -100,7 +104,7 @@ new class extends Component
 
     public function openFailModal(int $fulfillmentId): void
     {
-        $this->reset('failureReason');
+        $this->reset('failureReason', 'refundAfterFail');
         $this->selectedFulfillmentId = $fulfillmentId;
         $this->showFailModal = true;
     }
@@ -119,9 +123,23 @@ new class extends Component
 
         app(FailFulfillment::class)->handle($fulfillment, $this->failureReason ?? '', 'admin', auth()->id());
 
-        $this->reset('showFailModal', 'failureReason');
-        $this->noticeVariant = 'danger';
-        $this->noticeMessage = __('messages.fulfillment_marked_failed');
+        $refunded = false;
+
+        if ($this->refundAfterFail) {
+            $fulfillment->loadMissing('orderItem');
+
+            if ($fulfillment->orderItem) {
+                $transaction = app(RefundOrderItem::class)->handle($fulfillment->orderItem, auth()->id());
+                app(ApproveRefundRequest::class)->handle($transaction->id, auth()->id());
+                $refunded = true;
+            }
+        }
+
+        $this->reset('showFailModal', 'failureReason', 'refundAfterFail');
+        $this->noticeVariant = $refunded ? 'success' : 'danger';
+        $this->noticeMessage = $refunded
+            ? __('messages.fulfillment_failed_refunded')
+            : __('messages.fulfillment_marked_failed');
     }
 
     public function retryFulfillment(int $fulfillmentId): void
@@ -333,6 +351,7 @@ new class extends Component
                                         @php
                                             $retryCount = (int) data_get($fulfillment->meta, 'retry_count', 0);
                                             $refundStatus = data_get($fulfillment->meta, 'refund.status');
+                                    $isRefunded = $refundStatus === WalletTransaction::STATUS_POSTED;
                                         @endphp
                                         <flux:badge color="{{ $this->statusBadgeColor($fulfillment->status) }}">
                                             {{ __('messages.fulfillment_status_'.$fulfillment->status->value) }}
@@ -363,30 +382,36 @@ new class extends Component
                                         <flux:dropdown position="bottom" align="end">
                                             <flux:button variant="ghost" icon="ellipsis-vertical" />
                                             <flux:menu>
-                                                @if ($fulfillment->status === FulfillmentStatus::Queued)
-                                                    <flux:menu.item icon="clock" wire:click="markProcessing({{ $fulfillment->id }})">
-                                                        {{ __('messages.mark_processing') }}
+                                                @if ($fulfillment->status === FulfillmentStatus::Failed && $isRefunded)
+                                                    <flux:menu.item icon="eye" wire:click="openDetails({{ $fulfillment->id }})">
+                                                        {{ __('messages.details') }}
+                                                    </flux:menu.item>
+                                                @else
+                                                    @if ($fulfillment->status === FulfillmentStatus::Queued)
+                                                        <flux:menu.item icon="clock" wire:click="markProcessing({{ $fulfillment->id }})">
+                                                            {{ __('messages.mark_processing') }}
+                                                        </flux:menu.item>
+                                                    @endif
+                                                    @if ($fulfillment->status !== FulfillmentStatus::Completed)
+                                                        <flux:menu.item icon="check-circle" wire:click="openCompleteModal({{ $fulfillment->id }})">
+                                                            {{ __('messages.mark_completed') }}
+                                                        </flux:menu.item>
+                                                    @endif
+                                                    @if ($fulfillment->status !== FulfillmentStatus::Completed)
+                                                        <flux:menu.item icon="exclamation-triangle" wire:click="openFailModal({{ $fulfillment->id }})">
+                                                            {{ __('messages.mark_failed') }}
+                                                        </flux:menu.item>
+                                                    @endif
+                                                    @if ($fulfillment->status === FulfillmentStatus::Failed)
+                                                        <flux:menu.item icon="arrow-path" wire:click="retryFulfillment({{ $fulfillment->id }})">
+                                                            {{ __('messages.retry') }}
+                                                        </flux:menu.item>
+                                                    @endif
+                                                    <flux:menu.separator />
+                                                    <flux:menu.item icon="eye" wire:click="openDetails({{ $fulfillment->id }})">
+                                                        {{ __('messages.details') }}
                                                     </flux:menu.item>
                                                 @endif
-                                                @if ($fulfillment->status !== FulfillmentStatus::Completed)
-                                                    <flux:menu.item icon="check-circle" wire:click="openCompleteModal({{ $fulfillment->id }})">
-                                                        {{ __('messages.mark_completed') }}
-                                                    </flux:menu.item>
-                                                @endif
-                                                @if ($fulfillment->status !== FulfillmentStatus::Completed)
-                                                    <flux:menu.item icon="exclamation-triangle" wire:click="openFailModal({{ $fulfillment->id }})">
-                                                        {{ __('messages.mark_failed') }}
-                                                    </flux:menu.item>
-                                                @endif
-                                                @if ($fulfillment->status === FulfillmentStatus::Failed)
-                                                    <flux:menu.item icon="arrow-path" wire:click="retryFulfillment({{ $fulfillment->id }})">
-                                                        {{ __('messages.retry') }}
-                                                    </flux:menu.item>
-                                                @endif
-                                                <flux:menu.separator />
-                                                <flux:menu.item icon="eye" wire:click="openDetails({{ $fulfillment->id }})">
-                                                    {{ __('messages.details') }}
-                                                </flux:menu.item>
                                             </flux:menu>
                                         </flux:dropdown>
                                     </td>
@@ -444,9 +469,9 @@ new class extends Component
                         </div>
                         <div class="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
                             @php
-                                $payload = data_get($this->selectedFulfillment->meta, 'delivered_payload');
+                                $payload = data_get($this->selectedFulfillment->meta, 'requirements_payload');
                             @endphp
-                            @if ($payload)
+                            @if ($this->selectedFulfillment->meta)
                                 <pre class="whitespace-pre-wrap break-words rounded-lg border border-zinc-200 bg-white p-3 text-xs text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">{{ json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }}</pre>
                             @else
                                 <span class="text-zinc-500 dark:text-zinc-400">{{ __('messages.no_payload') }}</span>
@@ -543,6 +568,22 @@ new class extends Component
             @error('failureReason')
                 <flux:text color="red">{{ $message }}</flux:text>
             @enderror
+            <div class="rounded-xl border border-zinc-100 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-800/60">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="space-y-1">
+                        <flux:text class="text-sm text-zinc-700 dark:text-zinc-200">
+                            {{ __('messages.refund_to_wallet') }}
+                        </flux:text>
+                        <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">
+                            {{ __('messages.refund_to_wallet_hint') }}
+                        </flux:text>
+                    </div>
+                    <flux:switch
+                        class="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                        wire:model.defer="refundAfterFail"
+                    />
+                </div>
+            </div>
 
             <div class="flex flex-wrap items-center gap-2">
                 <flux:spacer />

@@ -275,7 +275,7 @@ new class extends Component
             x-bind:class="{ 'cursor-grabbing': isDragging }"
         >
             <div
-                class="flex items-start gap-0 sm:gap-2 motion-reduce:transition-none"
+                class="flex items-start gap-4 motion-reduce:transition-none"
                 x-ref="track"
                 x-bind:style="`transform: ${translateX()};`"
                 x-bind:class="{ 'transition-transform duration-500': !isDragging, 'transition-none': isDragging }"

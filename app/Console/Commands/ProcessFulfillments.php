@@ -54,6 +54,7 @@ class ProcessFulfillments extends Command
             ->whereIn('status', $statuses)
             ->orderBy('created_at')
             ->when($limit !== null && $limit > 0, fn ($query) => $query->limit($limit))
+            ->with('orderItem:id,requirements_payload')
             ->get();
 
         if ($fulfillments->isEmpty()) {
@@ -126,13 +127,17 @@ class ProcessFulfillments extends Command
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, mixed>
      */
     private function manualPayload(Fulfillment $fulfillment): array
     {
-        return [
+        $requirementsPayload = data_get($fulfillment->meta, 'requirements_payload')
+            ?? $fulfillment->orderItem?->requirements_payload;
+
+        return array_filter([
             'code' => 'MANUAL-'.$fulfillment->id,
             'delivered_at' => now()->toIso8601String(),
-        ];
+            'requirements_payload' => $requirementsPayload,
+        ], fn ($value) => $value !== null);
     }
 }

@@ -187,10 +187,10 @@
                             >
                                 <!-- Add side padding on desktop so arrows don't overlap items -->
                                 <flux:navbar class="gap-4 !py-0 ltr:lg:pr-12 rtl:lg:pl-12 justify-start sm:justify-center">
-                                    <flux:navbar.item class="border !border-accent !bg-accent hover:!bg-accent-hover !text-accent-foreground" href="{{route('home')}}" icon="home">Home</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="{{route('orders.index')}}">My Orders</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="{{route('wallet')}}" badge="{{ number_format((float) $walletBalance, 2) }} {{ $walletCurrency }}" badge:color="lime" badge:class="ms-3 whitespace-nowrap px-2" icon="plus">Add Sufficient </flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="#" >Contact Us</flux:navbar.item>
+                                    <flux:navbar.item class="border !border-accent !bg-accent hover:!bg-accent-hover !text-accent-foreground" href="{{route('home')}}" icon="home">{{__('main.home')}}</flux:navbar.item>
+                                    <flux:navbar.item class="border !border-accent" href="{{route('orders.index')}}">{{__('main.my_orders')}}</flux:navbar.item>
+                                    <flux:navbar.item class="border !border-accent" href="{{route('wallet')}}" badge="{{ number_format((float) $walletBalance, 2) }} {{ $walletCurrency }}" badge:color="lime" badge:class="ms-3 whitespace-nowrap px-2" icon="plus">{{__('main.add_sufficient')}}</flux:navbar.item>
+                                    <flux:navbar.item class="border !border-accent" href="#" >{{__('main.contact_us')}}</flux:navbar.item>
 
                                     <flux:dropdown class="border !border-accent rounded-lg">
                                         <flux:navbar.item icon:trailing="chevron-down" class="!border-accent">Account</flux:navbar.item>

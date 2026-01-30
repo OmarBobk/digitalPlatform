@@ -177,10 +177,14 @@ class CreateOrderFromCartPayload
             return;
         }
 
-        $message = $validator->errors()->first() ?? 'Missing or invalid requirements.';
+        $messages = [];
 
-        throw ValidationException::withMessages([
-            "items.$index.requirements" => $message,
+        foreach ($validator->errors()->messages() as $field => $fieldMessages) {
+            $messages["items.$index.requirements.$field"] = $fieldMessages;
+        }
+
+        throw ValidationException::withMessages($messages !== [] ? $messages : [
+            "items.$index.requirements" => 'Missing or invalid requirements.',
         ]);
     }
 }
