@@ -19,7 +19,7 @@ new class extends Component
             ->withCount(['products' => fn ($query) => $query->where('is_active', true)])
             ->orderBy('order')
             ->orderBy('name')
-            ->limit(8)
+//            ->limit(8)
             ->get()
             ->map(fn (Package $package): array => [
                 'id' => $package->id,

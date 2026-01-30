@@ -16,7 +16,6 @@ new class extends Component
             ->where('is_active', true)
             ->orderBy('order')
             ->orderBy('name')
-            ->limit(19)
             ->get()
             ->map(fn (Package $package): array => [
                 'name' => $package->name,
