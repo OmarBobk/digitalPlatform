@@ -80,6 +80,51 @@ test('package can be created without description', function () {
     ]);
 });
 
+test('package order must be unique', function () {
+    $role = Role::firstOrCreate(['name' => 'admin']);
+    $user = User::factory()->create();
+    $user->assignRole($role);
+    $category = Category::factory()->create();
+
+    Package::factory()->create([
+        'category_id' => $category->id,
+        'order' => 6,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::backend.packages.index')
+        ->set('packageCategoryId', $category->id)
+        ->set('packageName', 'Duplicate Order')
+        ->set('packageDescription', 'Trying to reuse order')
+        ->set('packageOrder', 6)
+        ->set('packageIsActive', true)
+        ->call('savePackage')
+        ->assertHasErrors(['packageOrder' => 'unique']);
+});
+
+test('packages page shows order range placeholder from database', function () {
+    $role = Role::firstOrCreate(['name' => 'admin']);
+    $user = User::factory()->create();
+    $user->assignRole($role);
+    $category = Category::factory()->create();
+
+    Package::factory()->create([
+        'category_id' => $category->id,
+        'order' => 2,
+    ]);
+
+    Package::factory()->create([
+        'category_id' => $category->id,
+        'order' => 8,
+    ]);
+
+    $this->actingAs($user)
+        ->get('/packages')
+        ->assertOk()
+        ->assertSee(__('messages.order_range_placeholder', ['min' => 2, 'max' => 8]));
+});
+
 test('package requirement can be added to selected package', function () {
     $role = Role::firstOrCreate(['name' => 'admin']);
     $user = User::factory()->create();

@@ -103,6 +103,7 @@ return [
     'select_category' => 'اختر الفئة',
     'no_category' => 'بدون فئة',
     'order_placeholder' => 'مثال: 1',
+    'order_range_placeholder' => 'الأقل: :min / الأعلى: :max',
     'delete_package_title' => 'حذف الباقة؟',
     'delete_package_body' => 'أنت على وشك حذف ":name" وكل متطلباتها.',
     'delete_requirement_title' => 'حذف المتطلب؟',

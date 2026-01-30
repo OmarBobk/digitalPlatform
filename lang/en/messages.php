@@ -101,6 +101,7 @@ return [
     'select_category' => 'Select category',
     'no_category' => 'No category',
     'order_placeholder' => 'e.g. 1',
+    'order_range_placeholder' => 'Min: :min / Max: :max',
     'delete_package_title' => 'Delete package?',
     'delete_package_body' => 'You are about to delete ":name" and all its requirements.',
     'delete_requirement_title' => 'Delete requirement?',

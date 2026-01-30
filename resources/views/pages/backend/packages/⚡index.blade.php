@@ -80,7 +80,12 @@ new class extends Component
             'packageCategoryId' => ['required', 'integer', 'exists:categories,id'],
             'packageName' => ['required', 'string', 'max:255'],
             'packageDescription' => ['nullable', 'string'],
-            'packageOrder' => ['required', 'integer', 'min:0'],
+            'packageOrder' => [
+                'required',
+                'integer',
+                'min:0',
+                Rule::unique('packages', 'order')->ignore($this->editingPackageId),
+            ],
             'packageIcon' => ['nullable', 'string', 'max:255'],
             'packageImageFile' => ['nullable', 'image', 'max:2048'],
             'packageIsActive' => ['boolean'],
@@ -321,6 +326,22 @@ new class extends Component
         return app(GetPackageRequirements::class)->handle($this->selectedPackageId);
     }
 
+    public function getPackageOrderPlaceholderProperty(): string
+    {
+        $range = Package::query()
+            ->selectRaw('MIN(`order`) as min_order, MAX(`order`) as max_order')
+            ->first();
+
+        if ($range === null || $range->min_order === null || $range->max_order === null) {
+            return __('messages.order_placeholder');
+        }
+
+        return __('messages.order_range_placeholder', [
+            'min' => $range->min_order,
+            'max' => $range->max_order,
+        ]);
+    }
+
     /**
      * @return array<string, string>
      */
@@ -552,9 +573,6 @@ new class extends Component
                             <flux:select.option value="{{ $category->id }}">{{ $category->name }}</flux:select.option>
                         @endforeach
                     </flux:select>
-                    @error('packageCategoryId')
-                        <flux:text color="red">{{ $message }}</flux:text>
-                    @enderror
                 </div>
                 <div class="grid gap-2">
                     <flux:input
@@ -564,12 +582,9 @@ new class extends Component
                         type="number"
                         min="0"
                         step="1"
-                        placeholder="{{ __('messages.order_placeholder') }}"
+                        placeholder="{{ $this->packageOrderPlaceholder }}"
                         wire:model.defer="packageOrder"
                     />
-                    @error('packageOrder')
-                        <flux:text color="red">{{ $message }}</flux:text>
-                    @enderror
                 </div>
                 <div class="grid gap-2">
                     <flux:input
