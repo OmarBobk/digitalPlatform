@@ -290,7 +290,7 @@ new class extends Component
                     >
                         <div
                             class="w-full h-full rounded-full flex items-center justify-center border border-zinc-200
-                             bg-white text-zinc-700 shadow-sm transition duration-200
+                             bg-white text-zinc-700 shadow-sm transition duration-200 group-hover:-translate-y-0.5
                               group-hover:border-accent group-hover:bg-zinc-50 group-hover:shadow-md
                                dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200
                                dark:group-hover:border-accent dark:group-hover:bg-zinc-700/40"
