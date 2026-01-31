@@ -16,6 +16,7 @@ new class extends Component
             ->where('is_active', true)
             ->orderBy('order')
             ->orderBy('name')
+            ->limit(19)
             ->get()
             ->map(fn (Package $package): array => [
                 'name' => $package->name,
@@ -38,24 +39,18 @@ new class extends Component
         timer: null,
         paused: false,
         isRtl: false,
+        rtlScrollType: 'reverse',
         reducedMotion: false,
         mediaQuery: null,
         motionHandler: null,
         resizeHandler: null,
-        // Touch/Swipe properties
-        isDragging: false,
-        hasMoved: false,
-        startX: 0,
-        currentX: 0,
-        dragOffset: 0,
-        startTime: 0,
-        velocityThreshold: 0.3,
-        dragThreshold: 10,
-        isTransitioning: false,
+        scrollTimeout: null,
+        rafId: null,
         init() {
             this.mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
             this.reducedMotion = this.mediaQuery.matches;
             this.isRtl = this.getDirection() === 'rtl';
+            this.rtlScrollType = this.isRtl ? this.getRtlScrollType() : 'ltr';
             this.motionHandler = (event) => {
                 this.reducedMotion = event.matches;
                 if (this.reducedMotion) {
@@ -93,6 +88,23 @@ new class extends Component
             const root = this.$root.closest('[dir]');
             return root?.getAttribute('dir') ?? document.documentElement.getAttribute('dir') ?? 'ltr';
         },
+        getRtlScrollType() {
+            const el = this.$refs.viewport;
+            if (!el) {
+                return 'reverse';
+            }
+
+            const initial = el.scrollLeft;
+            el.scrollLeft = 1;
+            const after = el.scrollLeft;
+            el.scrollLeft = initial;
+
+            if (after === 0) {
+                return 'negative';
+            }
+
+            return initial === 0 ? 'reverse' : 'default';
+        },
         updateMeasurements() {
             if (!this.$refs.viewport || !this.$refs.track) {
                 return;
@@ -116,6 +128,7 @@ new class extends Component
                 this.index = Math.min(this.index, this.maxIndex());
                 this.startAutoplay();
             }
+            this.scrollToIndex(this.index, 'auto');
         },
         maxIndex() {
             return Math.max(this.total - this.perView, 0);
@@ -123,105 +136,108 @@ new class extends Component
         canSlide() {
             return this.total > this.perView;
         },
-        translateX() {
-            const baseOffset = (this.itemWidth + this.gap) * this.index;
-            const distance = baseOffset + this.dragOffset;
-            const direction = this.isRtl ? 1 : -1;
-            return `translateX(${distance * direction}px)`;
+        getLogicalScroll() {
+            const el = this.$refs.viewport;
+            if (!el) {
+                return 0;
+            }
+
+            const max = Math.max(el.scrollWidth - el.clientWidth, 0);
+
+            if (!this.isRtl) {
+                return Math.max(0, Math.min(el.scrollLeft, max));
+            }
+
+            const raw = el.scrollLeft;
+
+            if (this.rtlScrollType === 'negative') {
+                return Math.abs(raw);
+            }
+
+            if (this.rtlScrollType === 'default') {
+                return max - raw;
+            }
+
+            return raw;
         },
-        next() {
-            if (!this.canSlide() || this.isTransitioning) {
+        scrollToLogical(position, behavior = 'smooth') {
+            const el = this.$refs.viewport;
+            if (!el) {
                 return;
             }
-            this.index = this.index >= this.maxIndex() ? 0 : this.index + 1;
-        },
-        prev() {
-            if (!this.canSlide() || this.isTransitioning) {
-                return;
+
+            const max = Math.max(el.scrollWidth - el.clientWidth, 0);
+            const clamped = Math.max(0, Math.min(position, max));
+            let left = clamped;
+
+            if (this.isRtl) {
+                if (this.rtlScrollType === 'negative') {
+                    left = -clamped;
+                } else if (this.rtlScrollType === 'default') {
+                    left = max - clamped;
+                }
             }
-            this.index = this.index <= 0 ? this.maxIndex() : this.index - 1;
+
+            el.scrollTo({
+                left,
+                behavior: this.reducedMotion ? 'auto' : behavior,
+            });
         },
-        // Touch/Swipe handlers
-        handleDragStart(event) {
+        scrollToIndex(index, behavior = 'smooth') {
             if (!this.canSlide()) {
                 return;
             }
-            this.isDragging = true;
-            this.isTransitioning = false;
-            this.hasMoved = false;
-            this.startX = this.getEventX(event);
-            this.currentX = this.startX;
-            this.dragOffset = 0;
-            this.startTime = Date.now();
+
+            const stride = this.itemWidth + this.gap;
+            const offset = stride * index;
+            this.scrollToLogical(offset, behavior);
+        },
+        next() {
+            if (!this.canSlide()) {
+                return;
+            }
+            this.index = this.index >= this.maxIndex() ? 0 : this.index + 1;
+            this.scrollToIndex(this.index);
+        },
+        prev() {
+            if (!this.canSlide()) {
+                return;
+            }
+            this.index = this.index <= 0 ? this.maxIndex() : this.index - 1;
+            this.scrollToIndex(this.index);
+        },
+        handleScroll() {
+            if (!this.canSlide()) {
+                return;
+            }
+
             this.pause();
-        },
-        handleDragMove(event) {
-            if (!this.isDragging) {
-                return;
+            if (this.scrollTimeout) {
+                clearTimeout(this.scrollTimeout);
             }
-            this.currentX = this.getEventX(event);
-            const diff = this.startX - this.currentX;
+            this.scrollTimeout = setTimeout(() => this.resume(), 800);
 
-            // Only prevent default if we've moved past the threshold
-            if (Math.abs(diff) > this.dragThreshold) {
-                event.preventDefault();
-                this.hasMoved = true;
-                this.dragOffset = diff * (this.isRtl ? -1 : 1);
-            }
-        },
-        handleDragEnd(event) {
-            if (!this.isDragging) {
+            if (this.rafId) {
                 return;
             }
 
-            const diff = this.startX - this.currentX;
-            const timeDiff = Date.now() - this.startTime;
-            const velocity = Math.abs(diff) / timeDiff;
-
-            // Determine if we should slide to next/prev
-            const minSwipeDistance = this.itemWidth * 0.2;
-            const shouldNavigate = Math.abs(diff) > minSwipeDistance || velocity > this.velocityThreshold;
-
-            this.isDragging = false;
-            this.isTransitioning = true;
-
-            if (shouldNavigate) {
-                // Calculate the target index based on swipe direction
-                let targetIndex = this.index;
-                const movedForward = this.isRtl ? diff < 0 : diff > 0;
-
-                if (movedForward) {
-                    // Swiped forward - go to next
-                    targetIndex = this.index >= this.maxIndex() ? 0 : this.index + 1;
-                } else {
-                    // Swiped backward - go to prev
-                    targetIndex = this.index <= 0 ? this.maxIndex() : this.index - 1;
+            this.rafId = requestAnimationFrame(() => {
+                this.rafId = null;
+                const stride = this.itemWidth + this.gap;
+                if (stride <= 0) {
+                    return;
                 }
-
-                // Update index and reset dragOffset simultaneously
-                // This ensures smooth transition from current visual position to target position
-                this.index = targetIndex;
-                this.dragOffset = 0;
-            } else {
-                // Snap back to current position - reset offset to animate back
-                this.dragOffset = 0;
-            }
-
-            // Resume autoplay after transition completes
-            setTimeout(() => {
-                this.isTransitioning = false;
-                this.resume();
-            }, 500);
-        },
-        getEventX(event) {
-            return event.type.includes('mouse') ? event.clientX : event.touches[0].clientX;
+                const position = this.getLogicalScroll();
+                const nextIndex = Math.min(this.maxIndex(), Math.max(0, Math.round(position / stride)));
+                this.index = nextIndex;
+            });
         },
         startAutoplay() {
             if (this.timer || this.reducedMotion || !this.canSlide()) {
                 return;
             }
             this.timer = setInterval(() => {
-                if (!this.paused && !this.isDragging) {
+                if (!this.paused) {
                     this.next();
                 }
             }, this.intervalMs);
@@ -261,30 +277,19 @@ new class extends Component
 {{--        </button>--}}
 
         <div
-            class="overflow-hidden !px-2 sm:px-0 pb-2 sm:pb-4 pt-4 sm:pt-8 cursor-grab select-none touch-pan-y"
+            class="overflow-x-auto scrollbar-hide !px-2 sm:px-0 pb-2 sm:pb-4 pt-4 sm:pt-8 select-none scroll-smooth"
             x-ref="viewport"
-            x-on:mousedown="handleDragStart($event)"
-            x-on:mousemove="handleDragMove($event)"
-            x-on:mouseup="handleDragEnd($event)"
-            x-on:mouseleave="isDragging && handleDragEnd($event)"
-            x-on:touchstart.passive="handleDragStart($event)"
-            x-on:touchmove="handleDragMove($event)"
-            x-on:touchend.passive="handleDragEnd($event)"
-            x-on:touchcancel.passive="handleDragEnd($event)"
-            x-bind:class="{ 'cursor-grabbing': isDragging }"
+            x-on:scroll.passive="handleScroll()"
         >
             <div
                 class="flex items-start gap-4 motion-reduce:transition-none"
                 x-ref="track"
-                x-bind:style="`transform: ${translateX()};`"
-                x-bind:class="{ 'transition-transform duration-500': !isDragging, 'transition-none': isDragging }"
             >
                 @foreach ($categoryItems as $item)
                     <a
                         href="{{ $item['href'] }}"
                         class="group flex shrink-0 flex-col items-center gap-2 text-center select-none
                         focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
-                        x-on:click="if (hasMoved) { $event.preventDefault(); }"
                         draggable="false"
                     >
                         <div
