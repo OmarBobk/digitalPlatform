@@ -187,10 +187,19 @@
                             >
                                 <!-- Add side padding on desktop so arrows don't overlap items -->
                                 <flux:navbar class="gap-4 !py-0 ltr:lg:pr-12 rtl:lg:pl-12 justify-start sm:justify-center">
-                                    <flux:navbar.item class="border !border-accent !bg-accent hover:!bg-accent-hover !text-accent-foreground" href="{{route('home')}}" icon="home">{{__('main.home')}}</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="{{route('orders.index')}}">{{__('main.my_orders')}}</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="{{route('wallet')}}" badge="{{ number_format((float) $walletBalance, 2) }} {{ $walletCurrency }}" badge:color="lime" badge:class="ms-3 whitespace-nowrap px-2" icon="plus">{{__('main.add_sufficient')}}</flux:navbar.item>
-                                    <flux:navbar.item class="border !border-accent" href="#" >{{__('main.contact_us')}}</flux:navbar.item>
+                                    <flux:navbar.item class="border !border-accent  after:!h-0 {{request()->routeIs('home') ? '!bg-accent hover:!bg-accent-hover !text-accent-foreground' : ''}}"
+                                                      data-nav-active="{{ request()->routeIs('home') ? 'true' : 'false' }}"
+                                                      href="{{route('home')}}" icon="home">{{__('main.home')}}</flux:navbar.item>
+                                    <flux:navbar.item class="border !border-accent after:!h-0 {{request()->routeIs('orders.index') ? '!bg-accent hover:!bg-accent-hover !text-accent-foreground' : ''}}"
+                                                      data-nav-active="{{ request()->routeIs('orders.index') ? 'true' : 'false' }}"
+                                                      href="{{route('orders.index')}}">{{__('main.my_orders')}}</flux:navbar.item>
+                                    <flux:navbar.item class="border !border-accent after:!h-0 {{request()->routeIs('wallet') ? '!bg-accent hover:!bg-accent-hover !text-accent-foreground' : ''}}"
+                                                      data-nav-active="{{ request()->routeIs('wallet') ? 'true' : 'false' }}"
+                                                      href="{{route('wallet')}}"
+                                                      badge="{{ number_format((float) $walletBalance, 2) }} {{ $walletCurrency }}"
+                                                      badge:color="sky" badge:class="ms-3 whitespace-nowrap px-2"
+                                                      icon="plus">{{__('main.add_sufficient')}}</flux:navbar.item>
+                                    <flux:navbar.item class="border !border-accent after:!h-0" href="#" >{{__('main.contact_us')}}</flux:navbar.item>
 
                                     <flux:dropdown class="border !border-accent rounded-lg">
                                         <flux:navbar.item icon:trailing="chevron-down" class="!border-accent">Account</flux:navbar.item>
@@ -220,7 +229,10 @@
                                 init() {
                                     this.isRtl = this.getDirection() === 'rtl';
                                     this.rtlScrollType = this.isRtl ? this.getRtlScrollType() : 'ltr';
-                                    this.update();
+                                    this.$nextTick(() => {
+                                        this.update();
+                                        this.scrollToActive();
+                                    });
                                     // keep buttons correct on resize
                                     window.addEventListener('resize', () => this.update());
                                 },
@@ -282,6 +294,21 @@
                                     this.$refs.scroller.scrollBy({ left: px * direction, behavior: 'smooth' });
                                     // update after scroll animation starts
                                     setTimeout(() => this.update(), 80);
+                                },
+
+                                scrollToActive() {
+                                    const el = this.$refs.scroller;
+                                    if (!el) {
+                                        return;
+                                    }
+
+                                    const activeItem = el.querySelector('[data-nav-active="true"]');
+                                    if (!activeItem) {
+                                        return;
+                                    }
+
+                                    activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                                    setTimeout(() => this.update(), 120);
                                 },
 
                                 update() {
