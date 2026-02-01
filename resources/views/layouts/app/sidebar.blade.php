@@ -17,22 +17,20 @@
                     </flux:sidebar.item>
                 </flux:sidebar.group>
 
-                <flux:sidebar.group :heading="__('messages.nav_content_management')" class="grid">
-                    <flux:sidebar.item icon="tag" :href="route('categories')" :current="request()->routeIs('categories')" wire:navigate>
+                <flux:sidebar.group expandable :expanded="(request()->routeIs('categories')) or (request()->routeIs('packages')) or (request()->routeIs('products'))" :heading="__('messages.nav_content_management')" class="grid">
+                    <flux:sidebar.item icon="tag" :href="route('categories')" :current="(request()->routeIs('categories'))" wire:navigate>
                         {{ __('messages.categories') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="cube" :href="route('packages')" :current="request()->routeIs('packages')" wire:navigate>
+                    <flux:sidebar.item icon="cube" :href="route('packages')" :current="(request()->routeIs('packages'))" wire:navigate>
                         {{ __('messages.packages') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="shopping-cart" :href="route('products')" :current="request()->routeIs('products')" wire:navigate>
+                    <flux:sidebar.item icon="shopping-cart" :href="route('products')" :current="(request()->routeIs('products'))" wire:navigate>
                         {{ __('messages.products') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
 
-                <flux:sidebar.group :heading="__('messages.nav_operations')" class="grid">
-                    <flux:sidebar.item icon="list-bullet" :href="route('fulfillments')" :current="request()->routeIs('fulfillments')" wire:navigate>
-                        {{ __('messages.fulfillments') }}
-                    </flux:sidebar.item>
+                <flux:sidebar.group expandable :expanded="(request()->routeIs('fulfillments')) or (request()->routeIs('admin.orders.*'))" :heading="__('messages.nav_operations')" class="grid transition-all duration-300 ease">
+                    <flux:sidebar.item icon="list-bullet" :href="route('fulfillments')" :current="request()->routeIs('fulfillments')" wire:navigate>{{ __('messages.fulfillments') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="shopping-bag" :href="route('admin.orders.index')" :current="request()->routeIs('admin.orders.*')" wire:navigate>
                         {{ __('messages.orders') }}
                     </flux:sidebar.item>
@@ -42,7 +40,7 @@
                 </flux:sidebar.group>
 
                 @if (auth()->user()?->can('manage_topups'))
-                    <flux:sidebar.group :heading="__('messages.nav_financials')" class="grid">
+                    <flux:sidebar.group expandable :expanded="request()->routeIs('topups')" :heading="__('messages.nav_financials')" class="grid">
                         <flux:sidebar.item icon="wallet" :href="route('topups')" :current="request()->routeIs('topups')" wire:navigate>
                             {{ __('messages.topups') }}
                         </flux:sidebar.item>

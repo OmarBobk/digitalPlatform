@@ -39,10 +39,10 @@ new #[Layout('layouts::frontend')] class extends Component {
     <!-- Start Promotional Sliders -->
     <section class="mx-auto w-full max-w-7xl pb-4 pt-2 sm:pt-4" data-section="homepage-promos" aria-labelledby="homepage-promos-heading">
         <h2 id="homepage-promos-heading" class="sr-only">{{ __('main.homepage_promos') }}</h2>
-        <div class="grid sm:gap-6 gap-4 sm:grid-cols-4">
-            <div class="flex sm:flex-col sm:gap-4 gap-2 justify-between">
+        <div class="grid sm:grid md:flex lg:grid md:flex-col sm:gap-6 gap-4 sm:grid-cols-4">
+            <div class="flex sm:flex-col md:flex-row lg:flex-col sm:gap-4 gap-2 justify-between">
                 <a href="{{ $heroBanner['href'] }}"
-                   class="group block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
+                   class="group sm:w-full md:w-1/2 lg:w-full block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
                    aria-label="{{ __('main.featured_promo') }}">
                     <div
                         class="sm:aspect-[16/9] aspect-[15/9] w-full overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900">
@@ -52,7 +52,7 @@ new #[Layout('layouts::frontend')] class extends Component {
                     </div>
                 </a>
                 <a href="{{ $heroBanner2['href'] }}"
-                   class="group block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
+                   class="group sm:w-full md:w-1/2 lg:w-full block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
                    aria-label="{{ __('main.featured_promo') }}">
                     <div
                         class="sm:aspect-[16/9] aspect-[15/9] w-full overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900">

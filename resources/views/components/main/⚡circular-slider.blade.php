@@ -44,6 +44,11 @@ new class extends Component
         mediaQuery: null,
         motionHandler: null,
         resizeHandler: null,
+        isPointerDown: false,
+        hasMoved: false,
+        startX: 0,
+        startScroll: 0,
+        dragThreshold: 2,
         scrollTimeout: null,
         rafId: null,
         init() {
@@ -232,6 +237,51 @@ new class extends Component
                 this.index = nextIndex;
             });
         },
+        handlePointerDown(event) {
+            if (event.pointerType && event.pointerType !== 'mouse') {
+                return;
+            }
+            if (event.button !== undefined && event.button !== 0) {
+                return;
+            }
+            if (!this.canSlide()) {
+                return;
+            }
+            this.isPointerDown = true;
+            this.hasMoved = false;
+            this.startX = event.clientX;
+            this.startScroll = this.getLogicalScroll();
+            this.pause();
+        },
+        handlePointerMove(event) {
+            if (event.pointerType && event.pointerType !== 'mouse') {
+                return;
+            }
+            if (!this.isPointerDown) {
+                return;
+            }
+            const delta = event.clientX - this.startX;
+            if (!this.hasMoved && Math.abs(delta) > this.dragThreshold) {
+                this.hasMoved = true;
+            }
+            if (this.hasMoved) {
+                event.preventDefault();
+            }
+            this.scrollToLogical(this.startScroll - delta, 'auto');
+        },
+        handlePointerUp() {
+            if (!this.isPointerDown) {
+                return;
+            }
+            this.isPointerDown = false;
+            setTimeout(() => {
+                this.hasMoved = false;
+            }, 120);
+            if (this.scrollTimeout) {
+                clearTimeout(this.scrollTimeout);
+            }
+            this.scrollTimeout = setTimeout(() => this.resume(), 800);
+        },
         startAutoplay() {
             if (this.timer || this.reducedMotion || !this.canSlide()) {
                 return;
@@ -277,9 +327,15 @@ new class extends Component
 {{--        </button>--}}
 
         <div
-            class="overflow-x-auto scrollbar-hide !px-2 sm:px-0 pb-2 sm:pb-4 pt-4 sm:pt-8 select-none scroll-smooth"
+            class="overflow-x-auto scrollbar-hide !px-2 sm:px-0 pb-2 sm:pb-4 pt-4 sm:pt-8 select-none scroll-smooth cursor-grab"
             x-ref="viewport"
             x-on:scroll.passive="handleScroll()"
+            x-on:pointerdown="handlePointerDown($event)"
+            x-on:pointermove="handlePointerMove($event)"
+            x-on:pointerup="handlePointerUp()"
+            x-on:pointercancel="handlePointerUp()"
+            x-on:pointerleave="handlePointerUp()"
+            x-bind:class="{ 'cursor-grabbing': isPointerDown }"
         >
             <div
                 class="flex items-start gap-4 motion-reduce:transition-none"
@@ -290,6 +346,7 @@ new class extends Component
                         href="{{ $item['href'] }}"
                         class="group flex shrink-0 flex-col items-center gap-2 text-center select-none
                         focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
+                        x-on:click="if (hasMoved) { $event.preventDefault(); }"
                         draggable="false"
                     >
                         <div
