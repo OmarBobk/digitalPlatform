@@ -22,5 +22,12 @@
 - Topups when admin approving topups he should scan the proof first
 - Activities when admin is login there is two logs registering
 - Refund when admin is mark a fulfillment as failed the customer will see two buttons next to his order item failed status "refund" or "retry" and customer is allowed to ask for retry "two times only"
-- /categories, /packages, /products filters should be hidden as default    
+- /categories, /packages, /products filters should be hidden as default
+- Fulfillments: fulfillment details -> Order details: should contain the price (prefer to get the price from the transaction) + username (instead of email) and on the fulfillments details modal I want you to display also the Delivered payload
+- /wallet request top up with proof
+
+
+
+
+
 

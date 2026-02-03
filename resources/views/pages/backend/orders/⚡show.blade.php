@@ -252,7 +252,7 @@ new class extends Component
                                 <td class="px-5 py-4 text-end">
                                     @if ($item->fulfillment)
                                         <a
-                                            href="{{ route('fulfillments', ['search' => $item->fulfillment->id]) }}"
+                                            href="{{ route('fulfillments', ['search' => $item->order->order_number]) }}"
                                             wire:navigate
                                             class="text-sm font-semibold text-zinc-900 hover:underline dark:text-zinc-100"
                                         >

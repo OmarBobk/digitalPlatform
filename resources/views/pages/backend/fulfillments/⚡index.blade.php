@@ -8,7 +8,9 @@ use App\Actions\Fulfillments\StartFulfillment;
 use App\Actions\Orders\RefundOrderItem;
 use App\Actions\Refunds\ApproveRefundRequest;
 use App\Enums\FulfillmentStatus;
+use App\Enums\WalletTransactionType;
 use App\Models\Fulfillment;
+use App\Models\Order;
 use App\Models\WalletTransaction;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
@@ -166,11 +168,27 @@ new class extends Component
 
         return Fulfillment::query()
             ->with([
-                'order.user:id,name,email',
+                'order.user:id,username',
                 'orderItem.product:id,name,slug',
                 'logs' => fn ($query) => $query->latest('created_at'),
             ])
             ->find($this->selectedFulfillmentId);
+    }
+
+    public function getPaymentTransactionProperty(): ?WalletTransaction
+    {
+        $order = $this->selectedFulfillment?->order;
+
+        if ($order === null) {
+            return null;
+        }
+
+        return WalletTransaction::query()
+            ->where('reference_type', Order::class)
+            ->where('reference_id', $order->id)
+            ->where('type', WalletTransactionType::Purchase->value)
+            ->latest('created_at')
+            ->first();
     }
 
     /**
@@ -431,7 +449,7 @@ new class extends Component
     <flux:modal
         wire:model.self="showDetailsModal"
         variant="floating"
-        class="max-w-4xl"
+        class="max-w-4xl pt-14"
         @close="closeDetails"
         @cancel="closeDetails"
     >
@@ -456,26 +474,125 @@ new class extends Component
                         <div class="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                             {{ __('messages.order_details') }}
                         </div>
-                        <div class="mt-2 space-y-1 text-sm text-zinc-700 dark:text-zinc-300">
-                            <div>{{ __('messages.order_number') }}: {{ $this->selectedFulfillment->order?->order_number ?? '—' }}</div>
-                            <div>{{ __('messages.user') }}: {{ $this->selectedFulfillment->order?->user?->email ?? '—' }}</div>
-                            <div>{{ __('messages.item') }}: {{ $this->selectedFulfillment->orderItem?->name ?? '—' }}</div>
+                        <div class="mt-3">
+                            @php
+                                $order = $this->selectedFulfillment->order;
+                                $orderItem = $this->selectedFulfillment->orderItem;
+                                $currency = $order?->currency ?? 'USD';
+                                $paymentAmount = $this->paymentTransaction?->amount;
+                                $totalPrice = $paymentAmount ?? $orderItem?->line_total;
+                            @endphp
+                            <dl class="grid gap-3 text-sm sm:grid-cols-2">
+                                <div class="rounded-lg border border-zinc-200 bg-white/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
+                                    <dt class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                        {{ __('messages.order_id') }}
+                                    </dt>
+                                    <dd class="mt-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                        {{ $order?->id ?? '—' }}
+                                    </dd>
+                                </div>
+                                <div class="rounded-lg border border-zinc-200 bg-white/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
+                                    <dt class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                        {{ __('messages.username') }}
+                                    </dt>
+                                    <dd class="mt-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                        {{ $order?->user?->username ?? '—' }}
+                                    </dd>
+                                </div>
+                                <div class="rounded-lg border border-zinc-200 bg-white/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/40 sm:col-span-2">
+                                    <dt class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                        {{ __('messages.item') }}
+                                    </dt>
+                                    <dd class="mt-1 text-sm text-zinc-900 dark:text-zinc-100">
+                                        {{ $orderItem?->name ?? '—' }}
+                                    </dd>
+                                </div>
+                                <div class="rounded-lg border border-zinc-200 bg-white/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
+                                    <dt class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                        {{ __('messages.quantity') }}
+                                    </dt>
+                                    <dd class="mt-1 text-sm text-zinc-900 dark:text-zinc-100">
+                                        {{ $orderItem?->quantity ?? '—' }}
+                                    </dd>
+                                </div>
+                                <div class="rounded-lg border border-zinc-200 bg-white/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
+                                    <dt class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                        {{ __('messages.unit_price') }}
+                                    </dt>
+                                    <dd class="mt-1 text-sm text-zinc-900 dark:text-zinc-100" dir="ltr">
+                                        {{ $orderItem?->unit_price ?? '—' }} {{ $currency }}
+                                    </dd>
+                                </div>
+                                <div class="rounded-lg border border-zinc-200 bg-white/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/40 sm:col-span-2">
+                                    <dt class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                        {{ __('messages.total') }}
+                                    </dt>
+                                    <dd class="mt-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
+                                        {{ $totalPrice ?? '—' }} {{ $currency }}
+                                    </dd>
+                                </div>
+                            </dl>
                         </div>
                     </div>
 
                     <div class="rounded-xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-800/60">
                         <div class="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                            {{ __('messages.delivery_payload') }}
+                            {{ __('messages.payloads') }}
                         </div>
                         <div class="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
                             @php
-                                $payload = data_get($this->selectedFulfillment->meta, 'requirements_payload');
+                                $requirementsPayload = $orderItem?->requirements_payload
+                                    ?? data_get($this->selectedFulfillment->meta, 'requirements_payload');
+                                $deliveredPayload = data_get($this->selectedFulfillment->meta, 'delivered_payload');
+                                $formatPayload = static function (mixed $payload): string {
+                                    if (is_string($payload)) {
+                                        return $payload;
+                                    }
+
+                                    $json = json_encode(
+                                        $payload,
+                                        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+                                    );
+
+                                    return $json === false ? '' : $json;
+                                };
+                                $hasRequirementsPayload = ! blank($requirementsPayload);
+                                $hasDeliveredPayload = ! blank($deliveredPayload);
                             @endphp
-                            @if ($this->selectedFulfillment->meta)
-                                <pre class="whitespace-pre-wrap break-words rounded-lg border border-zinc-200 bg-white p-3 text-xs text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">{{ json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }}</pre>
-                            @else
-                                <span class="text-zinc-500 dark:text-zinc-400">{{ __('messages.no_payload') }}</span>
+
+                            @if ($this->selectedFulfillment->status === \App\Enums\FulfillmentStatus::Failed && $this->selectedFulfillment->last_error)
+                                <flux:callout variant="subtle" icon="exclamation-triangle" class="mb-3">
+                                    <div class="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                        {{ __('messages.failure_reason') }}
+                                    </div>
+                                    <div class="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
+                                        {{ $this->selectedFulfillment->last_error }}
+                                    </div>
+                                </flux:callout>
                             @endif
+
+                            <div class="space-y-3">
+                                <div>
+                                    <div class="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                        {{ __('messages.requirements_payload') }}
+                                    </div>
+                                    @if ($hasRequirementsPayload)
+                                        <pre class="mt-2 whitespace-pre-wrap break-words rounded-lg border border-zinc-200 bg-white p-3 text-xs text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">{{ $formatPayload($requirementsPayload) }}</pre>
+                                    @else
+                                        <span class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('messages.no_payload') }}</span>
+                                    @endif
+                                </div>
+                                <div>
+                                    <div class="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                        {{ __('messages.delivery_payload') }}
+                                    </div>
+                                    @if ($hasDeliveredPayload)
+                                        <pre class="mt-2 whitespace-pre-wrap break-words rounded-lg border border-zinc-200 bg-white p-3 text-xs text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">{{ $formatPayload($deliveredPayload) }}</pre>
+                                    @else
+                                        <span class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('messages.no_payload') }}</span>
+                                    @endif
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
