@@ -503,15 +503,6 @@ new #[Layout('layouts::frontend')] class extends Component
                                                         >
                                                             {{ __('messages.request_refund') }}
                                                         </flux:button>
-                                                        <flux:button
-                                                            variant="primary"
-                                                            size="sm"
-                                                            wire:click="retryFulfillment({{ $fulfillment->id }})"
-                                                            wire:loading.attr="disabled"
-                                                            wire:target="retryFulfillment({{ $fulfillment->id }})"
-                                                        >
-                                                            {{ __('messages.retry') }}
-                                                        </flux:button>
                                                     </div>
                                                 @endif
                                             </div>
