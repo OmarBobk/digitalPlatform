@@ -57,20 +57,15 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
-            activity()
-                ->inLog('admin')
-                ->event('user.logout')
-                ->performedOn($user)
-                ->causedBy($user)
-                ->withProperties([
-                    'user_id' => $user->id,
-                    'username' => $user->username,
-                    'email' => $user->email,
-                    'is_active' => $user->is_active,
-                    'email_verified_at' => $user->email_verified_at?->format('M d, Y H:i') ?? '—',
-                    'phone' => $user->phone,
-                ])
-                ->log('User logout');
+            $properties = [
+                'user_id' => $user->id,
+                'username' => $user->username,
+                'email' => $user->email,
+                'role' => $user->getRoleNames()->toArray(),
+                'is_active' => $user->is_active,
+                'email_verified_at' => $user->email_verified_at?->format('M d, Y H:i') ?? '—',
+                'phone' => $user->phone,
+            ];
 
             if ($user->hasAnyRole(['admin', 'supervisor'])) {
                 activity()
@@ -78,15 +73,16 @@ class AppServiceProvider extends ServiceProvider
                     ->event('admin.logout')
                     ->performedOn($user)
                     ->causedBy($user)
-                    ->withProperties([
-                        'user_id' => $user->id,
-                        'username' => $user->username,
-                        'email' => $user->email,
-                        'is_active' => $user->is_active,
-                        'email_verified_at' => $user->email_verified_at?->format('M d, Y H:i') ?? '—',
-                        'phone' => $user->phone,
-                    ])
+                    ->withProperties($properties)
                     ->log('Admin logout');
+            } else {
+                activity()
+                    ->inLog('admin')
+                    ->event('user.logout')
+                    ->performedOn($user)
+                    ->causedBy($user)
+                    ->withProperties($properties)
+                    ->log('User logout');
             }
         });
     }

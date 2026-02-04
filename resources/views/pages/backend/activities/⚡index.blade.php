@@ -181,6 +181,7 @@ new class extends Component
             'provider',
             'reason',
             'username',
+            'role',
             'phone',
             'is_active',
             'last_login_at',
@@ -421,7 +422,7 @@ new class extends Component
                                                 $summaryCount = count($summary);
                                             @endphp
                                             <div class="space-y-1 text-xs" x-data="{ expanded: false }">
-                                                
+
                                                 @if ($summaryCount > 2)
                                                     <button
                                                         type="button"
