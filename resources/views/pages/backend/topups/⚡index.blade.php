@@ -23,6 +23,10 @@ new class extends Component
     public ?int $selectedTopupRequestId = null;
     public ?int $selectedProofId = null;
 
+    public bool $showRejectModal = false;
+    public ?int $selectedTopupRequestIdForReject = null;
+    public string $rejectReason = '';
+
     public ?string $noticeMessage = null;
     public ?string $noticeVariant = null;
 
@@ -80,18 +84,41 @@ new class extends Component
         $this->noticeMessage = __('messages.topup_approved');
     }
 
-    public function rejectTopup(int $topupRequestId): void
+    public function openRejectModal(int $topupRequestId): void
     {
-        $this->reset('noticeMessage', 'noticeVariant');
+        $this->selectedTopupRequestIdForReject = $topupRequestId;
+        $this->rejectReason = '';
+        $this->showRejectModal = true;
+    }
 
-        $topupRequest = TopupRequest::query()->findOrFail($topupRequestId);
+    public function closeRejectModal(): void
+    {
+        $this->reset(['showRejectModal', 'selectedTopupRequestIdForReject', 'rejectReason']);
+    }
 
-        if ($topupRequest->status !== TopupRequestStatus::Pending) {
+    public function confirmReject(): void
+    {
+        if ($this->selectedTopupRequestIdForReject === null) {
             return;
         }
 
-        app(RejectTopupRequest::class)->handle($topupRequest, auth()->id());
+        $this->reset('noticeMessage', 'noticeVariant');
 
+        $topupRequest = TopupRequest::query()->findOrFail($this->selectedTopupRequestIdForReject);
+
+        if ($topupRequest->status !== TopupRequestStatus::Pending) {
+            $this->closeRejectModal();
+
+            return;
+        }
+
+        app(RejectTopupRequest::class)->handle(
+            $topupRequest,
+            auth()->id(),
+            $this->rejectReason !== '' ? $this->rejectReason : null
+        );
+
+        $this->closeRejectModal();
         $this->noticeVariant = 'danger';
         $this->noticeMessage = __('messages.topup_rejected');
     }
@@ -251,7 +278,7 @@ new class extends Component
                                                 <flux:button
                                                     size="sm"
                                                     variant="danger"
-                                                    wire:click="rejectTopup({{ $topupRequest->id }})"
+                                                    wire:click="openRejectModal({{ $topupRequest->id }})"
                                                 >
                                                     {{ __('messages.reject') }}
                                                 </flux:button>
@@ -354,5 +381,37 @@ new class extends Component
                 </div>
             </div>
         @endif
+    </flux:modal>
+
+    <flux:modal
+        wire:model.self="showRejectModal"
+        variant="floating"
+        class="max-w-xl"
+        @close="closeRejectModal"
+        @cancel="closeRejectModal"
+    >
+        <div class="space-y-4">
+            <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
+                {{ __('messages.reject_topup') }}
+            </flux:heading>
+            <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">
+                {{ __('messages.reject_topup_reason_hint') }}
+            </flux:text>
+            <flux:textarea
+                name="rejectReason"
+                :label="__('messages.rejection_reason')"
+                rows="3"
+                wire:model.defer="rejectReason"
+                :placeholder="__('messages.rejection_reason_placeholder')"
+            />
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                <flux:button variant="ghost" wire:click="closeRejectModal">
+                    {{ __('messages.close') }}
+                </flux:button>
+                <flux:button variant="danger" wire:click="confirmReject">
+                    {{ __('messages.reject') }}
+                </flux:button>
+            </div>
+        </div>
     </flux:modal>
 </div>

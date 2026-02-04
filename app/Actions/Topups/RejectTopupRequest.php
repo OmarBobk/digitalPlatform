@@ -15,10 +15,11 @@ class RejectTopupRequest
 {
     /**
      * Reject a pending top-up without changing wallet balance.
+     * Optionally store a reason in the request's note.
      */
-    public function handle(TopupRequest $topupRequest, int $rejectedById): TopupRequest
+    public function handle(TopupRequest $topupRequest, int $rejectedById, ?string $reason = null): TopupRequest
     {
-        return DB::transaction(function () use ($topupRequest, $rejectedById): TopupRequest {
+        return DB::transaction(function () use ($topupRequest, $rejectedById, $reason): TopupRequest {
             $request = TopupRequest::query()
                 ->whereKey($topupRequest->id)
                 ->lockForUpdate()
@@ -40,29 +41,39 @@ class RejectTopupRequest
 
             if ($transaction !== null && $transaction->status === WalletTransaction::STATUS_PENDING) {
                 $transaction->status = WalletTransaction::STATUS_REJECTED;
+                $meta = $transaction->meta ?? [];
+                if ($reason !== null && $reason !== '') {
+                    $meta['note'] = $reason;
+                }
+                $transaction->meta = $meta;
                 $transaction->save();
             }
 
             $request->fill([
                 'status' => TopupRequestStatus::Rejected,
+                'note' => $reason !== null && $reason !== '' ? $reason : $request->note,
                 'approved_by' => null,
                 'approved_at' => null,
             ])->save();
 
             if (Schema::hasTable('activity_log')) {
+                $properties = [
+                    'topup_request_id' => $request->id,
+                    'wallet_id' => $request->wallet_id,
+                    'user_id' => $request->user_id,
+                    'amount' => $request->amount,
+                    'currency' => $request->currency,
+                    'transaction_id' => $transaction?->id,
+                ];
+                if ($reason !== null && $reason !== '') {
+                    $properties['rejection_reason'] = $reason;
+                }
                 activity()
                     ->inLog('payments')
                     ->event('topup.rejected')
                     ->performedOn($request)
                     ->causedBy(User::query()->find($rejectedById))
-                    ->withProperties([
-                        'topup_request_id' => $request->id,
-                        'wallet_id' => $request->wallet_id,
-                        'user_id' => $request->user_id,
-                        'amount' => $request->amount,
-                        'currency' => $request->currency,
-                        'transaction_id' => $transaction?->id,
-                    ])
+                    ->withProperties($properties)
                     ->log('Topup rejected');
             }
 
