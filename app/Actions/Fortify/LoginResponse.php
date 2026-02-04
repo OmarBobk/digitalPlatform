@@ -15,25 +15,20 @@ class LoginResponse implements LoginResponseContract
      */
     public function toResponse($request)
     {
-        // Update last login timestamp
+        // Update last login timestamp and log once (admin login or user login, not both)
         if (Auth::check()) {
             $user = Auth::user();
             $user->update(['last_login_at' => now()]);
 
-            activity()
-                ->inLog('admin')
-                ->event('user.login')
-                ->performedOn($user)
-                ->causedBy($user)
-                ->withProperties([
-                    'user_id' => $user->id,
-                    'username' => $user->username,
-                    'email' => $user->email,
-                    'is_active' => $user->is_active,
-                    'email_verified_at' => $user->email_verified_at?->format('M d, Y H:i') ?? '—',
-                    'phone' => $user->phone,
-                ])
-                ->log('User login');
+            $properties = [
+                'user_id' => $user->id,
+                'username' => $user->username,
+                'email' => $user->email,
+                'role' => $user->getRoleNames()->toArray(),
+                'is_active' => $user->is_active,
+                'email_verified_at' => $user->email_verified_at?->format('M d, Y H:i') ?? '—',
+                'phone' => $user->phone,
+            ];
 
             if ($user->hasAnyRole(['admin', 'supervisor'])) {
                 activity()
@@ -41,15 +36,16 @@ class LoginResponse implements LoginResponseContract
                     ->event('admin.login')
                     ->performedOn($user)
                     ->causedBy($user)
-                    ->withProperties([
-                        'user_id' => $user->id,
-                        'username' => $user->username,
-                        'email' => $user->email,
-                        'is_active' => $user->is_active,
-                        'email_verified_at' => $user->email_verified_at?->format('M d, Y H:i') ?? '—',
-                        'phone' => $user->phone,
-                    ])
+                    ->withProperties($properties)
                     ->log('Admin login');
+            } else {
+                activity()
+                    ->inLog('admin')
+                    ->event('user.login')
+                    ->performedOn($user)
+                    ->causedBy($user)
+                    ->withProperties($properties)
+                    ->log('User login');
             }
         }
 
