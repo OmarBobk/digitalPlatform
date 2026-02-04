@@ -216,7 +216,7 @@ new class extends Component
 <div
     class="flex h-full w-full flex-1 flex-col gap-6"
     x-data="{
-        showFilters: true,
+        showFilters: false,
         showCreate: false,
         toggleCreate() {
             if (this.showCreate) {
