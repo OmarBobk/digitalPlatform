@@ -5,6 +5,7 @@ use App\Actions\Topups\GetTopupRequests;
 use App\Actions\Topups\RejectTopupRequest;
 use App\Enums\TopupMethod;
 use App\Enums\TopupRequestStatus;
+use App\Models\TopupProof;
 use App\Models\TopupRequest;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
@@ -17,6 +18,10 @@ new class extends Component
 
     public string $statusFilter = 'all';
     public int $perPage = 10;
+
+    public bool $showProofModal = false;
+    public ?int $selectedTopupRequestId = null;
+    public ?int $selectedProofId = null;
 
     public ?string $noticeMessage = null;
     public ?string $noticeVariant = null;
@@ -35,6 +40,28 @@ new class extends Component
     {
         $this->reset(['statusFilter', 'perPage']);
         $this->resetPage();
+    }
+
+    public function openProofModal(int $topupRequestId, int $proofId): void
+    {
+        $this->selectedTopupRequestId = $topupRequestId;
+        $this->selectedProofId = $proofId;
+        $this->showProofModal = true;
+    }
+
+    public function closeProofModal(): void
+    {
+        $this->reset(['showProofModal', 'selectedTopupRequestId', 'selectedProofId']);
+    }
+
+    public function approveFromModal(): void
+    {
+        if ($this->selectedTopupRequestId === null) {
+            return;
+        }
+
+        $this->approveTopup($this->selectedTopupRequestId);
+        $this->closeProofModal();
     }
 
     public function approveTopup(int $topupRequestId): void
@@ -72,6 +99,15 @@ new class extends Component
     public function getTopupRequestsProperty(): LengthAwarePaginator
     {
         return app(GetTopupRequests::class)->handle($this->statusFilter, $this->perPage);
+    }
+
+    public function getViewingProofProperty(): ?TopupProof
+    {
+        if ($this->selectedProofId === null) {
+            return null;
+        }
+
+        return TopupProof::query()->find($this->selectedProofId);
     }
 
     public function render(): View
@@ -201,15 +237,17 @@ new class extends Component
                                         </flux:badge>
                                     </td>
                                     <td class="px-5 py-4 text-end">
-                                        @if ($topupRequest->status === TopupRequestStatus::Pending)
-                                            <div class="flex items-center justify-end gap-2">
-                                                <flux:button
-                                                    size="sm"
-                                                    variant="primary"
-                                                    wire:click="approveTopup({{ $topupRequest->id }})"
-                                                >
-                                                    {{ __('messages.approve') }}
-                                                </flux:button>
+                                        <div class="flex flex-wrap items-center justify-end gap-2">
+                                            @if ($topupRequest->status === TopupRequestStatus::Pending)
+                                                @if ($topupRequest->proofs->isNotEmpty())
+                                                    <flux:button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        wire:click="openProofModal({{ $topupRequest->id }}, {{ $topupRequest->proofs->first()->id }})"
+                                                    >
+                                                        {{ __('messages.view') }}
+                                                    </flux:button>
+                                                @endif
                                                 <flux:button
                                                     size="sm"
                                                     variant="danger"
@@ -217,10 +255,21 @@ new class extends Component
                                                 >
                                                     {{ __('messages.reject') }}
                                                 </flux:button>
-                                            </div>
-                                        @else
-                                            <span class="text-xs text-zinc-500 dark:text-zinc-400">—</span>
-                                        @endif
+                                            @elseif ($topupRequest->proofs->isNotEmpty())
+                                                <flux:button
+                                                    as="a"
+                                                    href="{{ route('topup-proofs.show', $topupRequest->proofs->first()) }}"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    {{ __('messages.view_proof') }}
+                                                </flux:button>
+                                            @else
+                                                <span class="text-xs text-zinc-500 dark:text-zinc-400">—</span>
+                                            @endif
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach
@@ -234,4 +283,76 @@ new class extends Component
             </div>
         </div>
     </section>
+
+    <flux:modal
+        wire:model.self="showProofModal"
+        variant="floating"
+        class="max-w-4xl pt-14"
+        @close="closeProofModal"
+        @cancel="closeProofModal"
+    >
+        @if ($this->viewingProof)
+            @php
+                $proofUrl = route('topup-proofs.show', $this->viewingProof);
+                $isImage = $this->viewingProof->mime_type && str_starts_with($this->viewingProof->mime_type, 'image/');
+            @endphp
+            <div class="space-y-4">
+                <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
+                    {{ __('messages.view_proof') }}
+                </flux:heading>
+
+                <div class="min-h-[280px] overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/60">
+                    @if ($isImage)
+                        <div
+                            class="flex size-full min-h-[280px] items-center justify-center overflow-auto p-4"
+                            x-data="{ scale: 1 }"
+                        >
+                            <div class="flex flex-col items-center gap-3">
+                                <img
+                                    :style="`transform: scale(${scale}); transform-origin: center;`"
+                                    src="{{ $proofUrl }}"
+                                    alt="{{ __('messages.view_proof') }}"
+                                    class="max-h-[60vh] w-auto max-w-full object-contain"
+                                />
+                                <div class="flex items-center gap-2">
+                                    <flux:button
+                                        size="sm"
+                                        variant="outline"
+                                        type="button"
+                                        @click="scale = Math.max(0.25, scale - 0.25)"
+                                    >
+                                        −
+                                    </flux:button>
+                                    <span class="min-w-[4rem] text-center text-sm text-zinc-600 dark:text-zinc-400" x-text="Math.round(scale * 100) + '%'"></span>
+                                    <flux:button
+                                        size="sm"
+                                        variant="outline"
+                                        type="button"
+                                        @click="scale = Math.min(3, scale + 0.25)"
+                                    >
+                                        +
+                                    </flux:button>
+                                </div>
+                            </div>
+                        </div>
+                    @else
+                        <iframe
+                            src="{{ $proofUrl }}"
+                            class="size-full min-h-[60vh] w-full border-0"
+                            title="{{ __('messages.view_proof') }}"
+                        ></iframe>
+                    @endif
+                </div>
+
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                    <flux:button variant="ghost" wire:click="closeProofModal">
+                        {{ __('messages.close') }}
+                    </flux:button>
+                    <flux:button variant="primary" wire:click="approveFromModal">
+                        {{ __('messages.approve') }}
+                    </flux:button>
+                </div>
+            </div>
+        @endif
+    </flux:modal>
 </div>

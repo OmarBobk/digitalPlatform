@@ -117,10 +117,20 @@ new class extends Component
             ];
         }
 
-        $hasFailed = $items->contains(fn ($item) => $item->fulfillment?->status === FulfillmentStatus::Failed);
-        $hasProcessing = $items->contains(fn ($item) => $item->fulfillment?->status === FulfillmentStatus::Processing);
-        $hasQueued = $items->contains(fn ($item) => $item->fulfillment?->status === FulfillmentStatus::Queued || $item->fulfillment === null);
-        $allCompleted = $items->every(fn ($item) => $item->fulfillment?->status === FulfillmentStatus::Completed);
+        $fulfillments = $items->flatMap(fn ($item) => $item->fulfillments);
+        $hasEmpty = $items->contains(fn ($item) => $item->fulfillments->isEmpty());
+
+        if ($hasEmpty || $fulfillments->isEmpty()) {
+            return [
+                'label' => __('messages.fulfillment_status_queued'),
+                'color' => 'gray',
+            ];
+        }
+
+        $hasFailed = $fulfillments->contains(fn ($fulfillment) => $fulfillment->status === FulfillmentStatus::Failed);
+        $hasProcessing = $fulfillments->contains(fn ($fulfillment) => $fulfillment->status === FulfillmentStatus::Processing);
+        $hasQueued = $fulfillments->contains(fn ($fulfillment) => $fulfillment->status === FulfillmentStatus::Queued);
+        $allCompleted = $fulfillments->every(fn ($fulfillment) => $fulfillment->status === FulfillmentStatus::Completed);
 
         if ($hasFailed) {
             return [

@@ -39,21 +39,46 @@ class RejectRefundRequest
                 ]);
             }
 
-            if ($transaction->reference_type !== OrderItem::class) {
+            if (! in_array($transaction->reference_type, [Fulfillment::class, OrderItem::class], true)) {
                 throw ValidationException::withMessages([
                     'refund' => __('messages.refund_not_allowed'),
                 ]);
             }
 
-            $orderItem = OrderItem::query()
-                ->whereKey($transaction->reference_id)
-                ->lockForUpdate()
-                ->firstOrFail();
+            $orderItem = null;
+            $fulfillment = null;
 
-            $fulfillment = Fulfillment::query()
-                ->where('order_item_id', $orderItem->id)
-                ->lockForUpdate()
-                ->first();
+            if ($transaction->reference_type === Fulfillment::class) {
+                $fulfillment = Fulfillment::query()
+                    ->whereKey($transaction->reference_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                $orderItem = OrderItem::query()
+                    ->whereKey($fulfillment->order_item_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+            } else {
+                $orderItem = OrderItem::query()
+                    ->whereKey($transaction->reference_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $fulfillmentId = (int) data_get($transaction->meta, 'fulfillment_id', 0);
+                if ($fulfillmentId > 0) {
+                    $fulfillment = Fulfillment::query()
+                        ->whereKey($fulfillmentId)
+                        ->lockForUpdate()
+                        ->first();
+                }
+
+                if ($fulfillment === null) {
+                    $fulfillment = Fulfillment::query()
+                        ->where('order_item_id', $orderItem->id)
+                        ->lockForUpdate()
+                        ->oldest('id')
+                        ->first();
+                }
+            }
 
             if ($fulfillment === null || $fulfillment->status !== FulfillmentStatus::Failed) {
                 throw ValidationException::withMessages([

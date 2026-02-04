@@ -18,16 +18,16 @@
 - ###DONE Main Page Design: turn the user menu into links and display them in the navbar
 - ###DONE create log on register new user
 - ###DONE "Buy now" after user click "pay now" button the modal should be closed and the successfull message will be appeared as a notification and
-- Topups when customer requesting topups he need to upload a proof which is an image.
-- Topups when admin approving topups he should scan the proof first
-- Activities when admin is login there is two logs registering
-- Refund when admin is mark a fulfillment as failed the customer will see two buttons next to his order item failed status "refund" or "retry" and customer is allowed to ask for retry "two times only"
+- ###DOING Topups when customer requesting topups he need to upload a proof which is an image.
+- ###DOING Topups when admin approving topups he should scan the proof first
+- ###DOING Activities when admin is login there is two logs registering
+- ###DONE Refund when admin is mark a fulfillment as failed the customer will see two buttons next to his order item failed status "refund" or "retry" and customer is allowed to ask for retry "two times only"
 - /categories, /packages, /products filters should be hidden as default
-- Fulfillments: fulfillment details -> Order details: should contain the price (prefer to get the price from the transaction) + username (instead of email) and on the fulfillments details modal I want you to display also the Delivered payload
-- /wallet request top up with proof
-
-
-
-
+- ###DONE Fulfillments: fulfillment details -> Order details: should contain the price (prefer to get the price from the transaction) + username (instead of email) and on the fulfillments details modal I want you to display also the Delivered payload
+- ###DONE Fulfillments: when admin mark a fulfillment as faild and does not refund it and does not mark it as a retry customer should see two buttons "refund" and "retry" if customer click on refund admin will see a new refund request on the refunds page and the fulfillment will be marked as "refund requested" if admin accept the refund the fulfillment should be marked as "refunded" if customer click retry fulfillment should be marked as "retry requested"
+- ###DONE fulfillments: when admin is marking a fulfillment as completed give him a toggle button that would automatically write DONE in the delivered payload if he checked it the 
+- ###DONE fulfillments: fulfillment details there is no need to display the quantity and the total price
+- ###DONE when customer is incrementing the products that are in the shopping cart the dropdown not the page the dropdown will immediately closed
+- Wallet /wallet Request topup form borders remove the ring
 
 

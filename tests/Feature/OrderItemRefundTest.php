@@ -74,15 +74,15 @@ test('refund request creates pending transaction without changing balance', func
     $payload = makeOrderItem($user, FulfillmentStatus::Failed);
 
     $action = new RefundOrderItem;
-    $transaction = $action->handle($payload['item'], $user->id);
+    $transaction = $action->handle($payload['fulfillment'], $user->id);
 
     $wallet->refresh();
     expect((float) $wallet->balance)->toBe(0.0);
     expect($transaction->status)->toBe(WalletTransaction::STATUS_PENDING);
 
     expect(WalletTransaction::query()
-        ->where('reference_type', OrderItem::class)
-        ->where('reference_id', $payload['item']->id)
+        ->where('reference_type', Fulfillment::class)
+        ->where('reference_id', $payload['fulfillment']->id)
         ->count())->toBe(1);
 });
 
@@ -92,13 +92,13 @@ test('refund request is idempotent and does not duplicate', function () {
     $payload = makeOrderItem($user, FulfillmentStatus::Failed);
 
     $action = new RefundOrderItem;
-    $first = $action->handle($payload['item'], $user->id);
-    $second = $action->handle($payload['item'], $user->id);
+    $first = $action->handle($payload['fulfillment'], $user->id);
+    $second = $action->handle($payload['fulfillment'], $user->id);
 
     expect($first->id)->toBe($second->id);
     expect(WalletTransaction::query()
-        ->where('reference_type', OrderItem::class)
-        ->where('reference_id', $payload['item']->id)
+        ->where('reference_type', Fulfillment::class)
+        ->where('reference_id', $payload['fulfillment']->id)
         ->count())->toBe(1);
 });
 
@@ -109,7 +109,7 @@ test('refund is allowed only when fulfillment failed', function () {
 
     $action = new RefundOrderItem;
 
-    expect(fn () => $action->handle($payload['item'], $user->id))
+    expect(fn () => $action->handle($payload['fulfillment'], $user->id))
         ->toThrow(ValidationException::class);
 
     expect(WalletTransaction::count())->toBe(0);
@@ -122,18 +122,18 @@ test('retry is blocked when refund pending and allowed when failed', function ()
 
     Livewire::actingAs($user)
         ->test('pages::frontend.order-details', ['order' => $payload['order']])
-        ->call('retryFulfillment', $payload['item']->id)
+        ->call('retryFulfillment', $payload['fulfillment']->id)
         ->assertSet('actionMessage', __('messages.fulfillment_marked_queued'));
 
     $payload['fulfillment']->refresh();
     expect($payload['fulfillment']->status)->toBe(FulfillmentStatus::Queued);
 
     $payload = makeOrderItem($user, FulfillmentStatus::Failed);
-    (new RefundOrderItem)->handle($payload['item'], $user->id);
+    (new RefundOrderItem)->handle($payload['fulfillment'], $user->id);
 
     Livewire::actingAs($user)
         ->test('pages::frontend.order-details', ['order' => $payload['order']])
-        ->call('retryFulfillment', $payload['item']->id)
+        ->call('retryFulfillment', $payload['fulfillment']->id)
         ->assertSet('actionMessage', __('messages.retry_not_allowed'));
 });
 
@@ -145,7 +145,7 @@ test('refund request is denied for other user items', function () {
 
     $action = new RefundOrderItem;
 
-    expect(fn () => $action->handle($payload['item'], $user->id))
+    expect(fn () => $action->handle($payload['fulfillment'], $user->id))
         ->toThrow(ValidationException::class);
 });
 
@@ -154,7 +154,7 @@ test('refund request creates credit pending ledger entry', function () {
     Wallet::forUser($user);
     $payload = makeOrderItem($user, FulfillmentStatus::Failed);
 
-    $transaction = (new RefundOrderItem)->handle($payload['item'], $user->id);
+    $transaction = (new RefundOrderItem)->handle($payload['fulfillment'], $user->id);
 
     expect($transaction->type)->toBe(WalletTransactionType::Refund);
     expect($transaction->direction)->toBe(WalletTransactionDirection::Credit);

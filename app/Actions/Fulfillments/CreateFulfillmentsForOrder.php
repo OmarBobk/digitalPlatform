@@ -9,7 +9,9 @@ use App\Enums\FulfillmentStatus;
 use App\Enums\OrderStatus;
 use App\Models\Fulfillment;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 class CreateFulfillmentsForOrder
 {
@@ -25,61 +27,70 @@ class CreateFulfillmentsForOrder
         $appendLog = new AppendFulfillmentLog;
 
         $order->items()->get()->each(function ($item) use ($order, $appendLog): void {
-            $requirementsPayload = $item->requirements_payload;
-            $meta = $requirementsPayload !== null && $requirementsPayload !== []
-                ? ['requirements_payload' => $requirementsPayload]
-                : [];
+            DB::transaction(function () use ($order, $appendLog, $item): void {
+                $lockedItem = OrderItem::query()
+                    ->whereKey($item->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-            $fulfillment = Fulfillment::firstOrCreate(
-                ['order_item_id' => $item->id],
-                [
-                    'order_id' => $order->id,
-                    'provider' => 'manual',
-                    'status' => FulfillmentStatus::Queued,
-                    'attempts' => 0,
-                    'meta' => $meta,
-                ]
-            );
+                $quantity = max(0, (int) $lockedItem->quantity);
+                $requirementsPayload = $lockedItem->requirements_payload;
+                $meta = $requirementsPayload !== null && $requirementsPayload !== []
+                    ? ['requirements_payload' => $requirementsPayload]
+                    : [];
 
-            if (! $fulfillment->wasRecentlyCreated && $meta !== []) {
-                $currentMeta = $fulfillment->meta ?? [];
+                $existingFulfillments = Fulfillment::query()
+                    ->where('order_item_id', $lockedItem->id)
+                    ->lockForUpdate()
+                    ->get();
 
-                if (! array_key_exists('requirements_payload', $currentMeta)) {
-                    $fulfillment->update([
-                        'meta' => array_merge($currentMeta, $meta),
-                    ]);
+                if ($meta !== []) {
+                    foreach ($existingFulfillments as $existing) {
+                        $currentMeta = $existing->meta ?? [];
+
+                        if (! array_key_exists('requirements_payload', $currentMeta)) {
+                            $existing->update([
+                                'meta' => array_merge($currentMeta, $meta),
+                            ]);
+                        }
+                    }
                 }
-            }
 
-            if ($requirementsPayload !== null && $requirementsPayload !== []) {
-                $hasLog = $fulfillment->logs()
-                    ->where('message', 'Requirements captured')
-                    ->exists();
+                $needed = max(0, $quantity - $existingFulfillments->count());
 
-                if (! $hasLog) {
-                    $appendLog->handle($fulfillment, FulfillmentLogLevel::Info, 'Requirements captured', [
-                        'action' => 'requirements_captured',
-                    ]);
-                }
-            }
-
-            if ($fulfillment->wasRecentlyCreated) {
-                $appendLog->handle($fulfillment, FulfillmentLogLevel::Info, 'Fulfillment queued');
-
-                activity()
-                    ->inLog('fulfillment')
-                    ->event('fulfillment.queued')
-                    ->performedOn($fulfillment)
-                    ->causedBy(User::query()->find($order->user_id))
-                    ->withProperties([
-                        'fulfillment_id' => $fulfillment->id,
+                for ($i = 0; $i < $needed; $i++) {
+                    $fulfillment = Fulfillment::create([
                         'order_id' => $order->id,
-                        'order_item_id' => $item->id,
-                        'provider' => $fulfillment->provider,
-                        'status_to' => FulfillmentStatus::Queued->value,
-                    ])
-                    ->log('Fulfillment queued');
-            }
+                        'order_item_id' => $lockedItem->id,
+                        'provider' => 'manual',
+                        'status' => FulfillmentStatus::Queued,
+                        'attempts' => 0,
+                        'meta' => $meta,
+                    ]);
+
+                    if ($requirementsPayload !== null && $requirementsPayload !== []) {
+                        $appendLog->handle($fulfillment, FulfillmentLogLevel::Info, 'Requirements captured', [
+                            'action' => 'requirements_captured',
+                        ]);
+                    }
+
+                    $appendLog->handle($fulfillment, FulfillmentLogLevel::Info, 'Fulfillment queued');
+
+                    activity()
+                        ->inLog('fulfillment')
+                        ->event('fulfillment.queued')
+                        ->performedOn($fulfillment)
+                        ->causedBy(User::query()->find($order->user_id))
+                        ->withProperties([
+                            'fulfillment_id' => $fulfillment->id,
+                            'order_id' => $order->id,
+                            'order_item_id' => $lockedItem->id,
+                            'provider' => $fulfillment->provider,
+                            'status_to' => FulfillmentStatus::Queued->value,
+                        ])
+                        ->log('Fulfillment queued');
+                }
+            });
         });
     }
 }

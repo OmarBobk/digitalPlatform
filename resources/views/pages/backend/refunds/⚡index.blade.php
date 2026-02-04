@@ -4,6 +4,7 @@ use App\Actions\Refunds\ApproveRefundRequest;
 use App\Actions\Refunds\GetRefundRequests;
 use App\Actions\Refunds\RejectRefundRequest;
 use App\Enums\OrderStatus;
+use App\Models\Fulfillment;
 use App\Models\OrderItem;
 use App\Models\WalletTransaction;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -109,10 +110,16 @@ new class extends Component
                         <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
                             @foreach ($this->refundRequests as $transaction)
                                 @php
-                                    $orderItem = $transaction->reference instanceof OrderItem ? $transaction->reference : null;
-                                    $order = $orderItem?->order;
+                                    $fulfillment = $transaction->reference instanceof Fulfillment ? $transaction->reference : null;
+                                    $orderItem = $fulfillment?->orderItem
+                                        ?? ($transaction->reference instanceof OrderItem ? $transaction->reference : null);
+                                    $order = $fulfillment?->order ?? $orderItem?->order;
                                     $user = $order?->user;
-                                    $fulfillment = $orderItem?->fulfillment;
+                                    $metaFulfillmentId = (int) data_get($transaction->meta, 'fulfillment_id', 0);
+                                    $legacyFulfillment = $metaFulfillmentId > 0
+                                        ? $orderItem?->fulfillments?->firstWhere('id', $metaFulfillmentId)
+                                        : $orderItem?->fulfillments?->first();
+                                    $displayFulfillment = $fulfillment ?? $legacyFulfillment;
                                     $note = data_get($transaction->meta, 'note');
                                     $isRefunded = $order?->status === OrderStatus::Refunded;
                                     $canApprove = $transaction->status === WalletTransaction::STATUS_PENDING && ! $isRefunded;
@@ -139,14 +146,14 @@ new class extends Component
                                             {{ $order?->order_number ?? __('messages.no_details') }}
                                         </div>
                                         <div class="text-xs text-zinc-500 dark:text-zinc-400">
-                                            #{{ $orderItem?->id ?? '—' }} / #{{ $fulfillment?->id ?? '—' }}
+                                            #{{ $orderItem?->id ?? '—' }} / #{{ $displayFulfillment?->id ?? data_get($transaction->meta, 'fulfillment_id', '—') }}
                                         </div>
                                     </td>
                                     <td class="px-5 py-4 text-zinc-700 dark:text-zinc-200" dir="ltr">
                                         {{ $transaction->amount }} {{ $order?->currency ?? 'USD' }}
                                     </td>
                                     <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
-                                        {{ $fulfillment?->last_error ?? '—' }}
+                                        {{ $displayFulfillment?->last_error ?? '—' }}
                                     </td>
                                     <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
                                         {{ $note ?: '—' }}

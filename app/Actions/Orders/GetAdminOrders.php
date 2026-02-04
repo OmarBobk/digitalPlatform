@@ -22,7 +22,7 @@ class GetAdminOrders
         $query = Order::query()
             ->with([
                 'user:id,name,email',
-                'items.fulfillment',
+                'items.fulfillments',
             ])
             ->latest('created_at');
 

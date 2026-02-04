@@ -30,6 +30,7 @@ new class extends Component
         </div>
 
         <flux:menu
+            keep-open
             x-on:click.stop
             class="min-w-72 w-80 !p-0 rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
         >

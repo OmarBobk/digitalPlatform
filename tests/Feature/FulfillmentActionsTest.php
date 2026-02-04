@@ -113,6 +113,43 @@ test('create fulfillments action is idempotent and logs queued', function () {
     expect($logCount)->toBe(2);
 });
 
+test('create fulfillments generates one per quantity', function () {
+    $user = User::factory()->create();
+    $package = Package::factory()->create();
+    $product = Product::factory()->create(['package_id' => $package->id, 'retail_price' => 15]);
+
+    $order = Order::create([
+        'user_id' => $user->id,
+        'order_number' => Order::temporaryOrderNumber(),
+        'currency' => 'USD',
+        'subtotal' => 45,
+        'fee' => 0,
+        'total' => 45,
+        'status' => OrderStatus::Paid,
+    ]);
+
+    $item = OrderItem::create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'package_id' => $package->id,
+        'name' => $product->name,
+        'unit_price' => 15,
+        'quantity' => 3,
+        'line_total' => 45,
+        'status' => OrderItemStatus::Pending,
+    ]);
+
+    (new CreateFulfillmentsForOrder)->handle($order);
+    (new CreateFulfillmentsForOrder)->handle($order);
+
+    $fulfillments = Fulfillment::query()
+        ->where('order_item_id', $item->id)
+        ->get();
+
+    expect($fulfillments)->toHaveCount(3);
+    expect($fulfillments->pluck('status')->unique()->all())->toBe([FulfillmentStatus::Queued]);
+});
+
 test('create fulfillments stores requirements payload in meta', function () {
     $user = User::factory()->create();
     $package = Package::factory()->create();

@@ -70,12 +70,12 @@ test('checkout creates paid order and fulfillments from cart payload', function 
     $wallet->refresh();
     expect((float) $wallet->balance)->toBe(60.0);
 
-    $fulfillment = Fulfillment::query()
+    $fulfillments = Fulfillment::query()
         ->where('order_item_id', $orderItem->id)
-        ->first();
+        ->get();
 
-    expect($fulfillment)->not->toBeNull();
-    expect($fulfillment?->status)->toBe(FulfillmentStatus::Queued);
+    expect($fulfillments)->toHaveCount(2);
+    expect($fulfillments->pluck('status')->unique()->all())->toBe([FulfillmentStatus::Queued]);
 });
 
 test('checkout fails when wallet balance is insufficient', function () {

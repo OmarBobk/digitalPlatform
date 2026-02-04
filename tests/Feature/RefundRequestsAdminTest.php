@@ -84,7 +84,7 @@ test('admin can approve refund request and credit wallet once', function () {
         ->get('/refunds')
         ->assertOk();
 
-    $refundTx = (new RefundOrderItem)->handle($payload['item'], $user->id);
+    $refundTx = (new RefundOrderItem)->handle($payload['fulfillment'], $user->id);
 
     $action = new ApproveRefundRequest;
     $action->handle($refundTx->id, $admin->id);
@@ -96,11 +96,11 @@ test('admin can approve refund request and credit wallet once', function () {
 
     expect((float) $wallet->balance)->toBe(30.0);
     expect($refundTx->status)->toBe(WalletTransaction::STATUS_POSTED);
-    expect($refundTx->idempotency_key)->toBe('refund:order:'.$payload['order']->id);
+    expect($refundTx->idempotency_key)->toBe('refund:fulfillment:'.$payload['fulfillment']->id);
     expect($payload['order']->status)->toBe(OrderStatus::Refunded);
     expect(
         WalletTransaction::query()
-            ->where('idempotency_key', 'refund:order:'.$payload['order']->id)
+            ->where('idempotency_key', 'refund:fulfillment:'.$payload['fulfillment']->id)
             ->count()
     )->toBe(1);
     expect(Activity::query()
@@ -132,20 +132,21 @@ test('approving duplicate refund requests for same order only credits once', fun
     $wallet = Wallet::forUser($user);
     $payload = makeRefundableItem($user);
 
-    $firstRefund = (new RefundOrderItem)->handle($payload['item'], $user->id);
+    $firstRefund = (new RefundOrderItem)->handle($payload['fulfillment'], $user->id);
 
     $secondRefund = WalletTransaction::create([
         'wallet_id' => $wallet->id,
         'type' => WalletTransactionType::Refund,
         'direction' => WalletTransactionDirection::Credit,
-        'amount' => $payload['item']->line_total,
+        'amount' => $payload['item']->unit_price,
         'status' => WalletTransaction::STATUS_PENDING,
-        'reference_type' => OrderItem::class,
-        'reference_id' => $payload['item']->id,
+        'reference_type' => Fulfillment::class,
+        'reference_id' => $payload['fulfillment']->id,
         'meta' => [
             'order_id' => $payload['order']->id,
             'order_number' => $payload['order']->order_number,
             'order_item_id' => $payload['item']->id,
+            'fulfillment_id' => $payload['fulfillment']->id,
         ],
     ]);
 
@@ -164,7 +165,7 @@ test('approving duplicate refund requests for same order only credits once', fun
     expect($secondRefund->status)->toBe(WalletTransaction::STATUS_PENDING);
     expect(
         WalletTransaction::query()
-            ->where('idempotency_key', 'refund:order:'.$payload['order']->id)
+            ->where('idempotency_key', 'refund:fulfillment:'.$payload['fulfillment']->id)
             ->count()
     )->toBe(1);
 });
@@ -178,7 +179,7 @@ test('admin can reject refund request and user can retry', function () {
     Wallet::forUser($user);
     $payload = makeRefundableItem($user);
 
-    $refundTx = (new RefundOrderItem)->handle($payload['item'], $user->id);
+    $refundTx = (new RefundOrderItem)->handle($payload['fulfillment'], $user->id);
 
     (new RejectRefundRequest)->handle($refundTx->id, $admin->id);
 

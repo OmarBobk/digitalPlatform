@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\TopupProofController;
 use Illuminate\Support\Facades\Route;
 
 Route::livewire('/404', 'pages::errors.404')->name('404');
@@ -27,6 +28,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('/wallet', 'pages::frontend.wallet')->name('wallet');
     Route::livewire('/orders', 'pages::frontend.orders')->name('orders.index');
     Route::livewire('/orders/{order:order_number}', 'pages::frontend.order-details')->name('orders.show');
+    Route::get('/topup-proofs/{proof}', [TopupProofController::class, 'show'])->name('topup-proofs.show');
 });
 
 Route::middleware(['auth', 'verified', 'admin'])->group(function () {

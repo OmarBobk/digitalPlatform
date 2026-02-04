@@ -25,7 +25,7 @@ class GetTopupRequests
                 'approved_by',
                 'approved_at',
             ])
-            ->with('user:id,name,email')
+            ->with(['user:id,name,email', 'proofs'])
             ->latest('created_at');
 
         if ($statusFilter !== 'all') {

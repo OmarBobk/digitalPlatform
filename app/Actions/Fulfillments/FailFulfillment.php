@@ -6,7 +6,6 @@ namespace App\Actions\Fulfillments;
 
 use App\Enums\FulfillmentLogLevel;
 use App\Enums\FulfillmentStatus;
-use App\Enums\OrderItemStatus;
 use App\Models\Fulfillment;
 use App\Models\OrderItem;
 use App\Models\User;
@@ -46,9 +45,15 @@ class FailFulfillment
                 'last_error' => $reason,
             ])->save();
 
-            OrderItem::query()
+            $orderItem = OrderItem::query()
                 ->whereKey($lockedFulfillment->order_item_id)
-                ->update(['status' => OrderItemStatus::Failed]);
+                ->lockForUpdate()
+                ->firstOrFail();
+            $fulfillments = Fulfillment::query()
+                ->where('order_item_id', $orderItem->id)
+                ->lockForUpdate()
+                ->get();
+            $orderItem->syncStatusFromFulfillments($fulfillments);
 
             app(AppendFulfillmentLog::class)->handle(
                 $lockedFulfillment,

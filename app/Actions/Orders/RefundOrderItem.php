@@ -20,11 +20,16 @@ use Illuminate\Validation\ValidationException;
 
 class RefundOrderItem
 {
-    public function handle(OrderItem $orderItem, int $actorId, ?string $note = null): WalletTransaction
+    public function handle(Fulfillment $fulfillment, int $actorId, ?string $note = null): WalletTransaction
     {
-        return DB::transaction(function () use ($orderItem, $actorId, $note): WalletTransaction {
+        return DB::transaction(function () use ($fulfillment, $actorId, $note): WalletTransaction {
+            $lockedFulfillment = Fulfillment::query()
+                ->whereKey($fulfillment->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
             $lockedItem = OrderItem::query()
-                ->whereKey($orderItem->id)
+                ->whereKey($lockedFulfillment->order_item_id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
@@ -47,20 +52,15 @@ class RefundOrderItem
                 ]);
             }
 
-            $fulfillment = Fulfillment::query()
-                ->where('order_item_id', $lockedItem->id)
-                ->lockForUpdate()
-                ->first();
-
-            if ($fulfillment === null || $fulfillment->status !== FulfillmentStatus::Failed) {
+            if ($lockedFulfillment->status !== FulfillmentStatus::Failed) {
                 throw ValidationException::withMessages([
                     'order_item' => __('messages.refund_not_allowed'),
                 ]);
             }
 
             $existing = WalletTransaction::query()
-                ->where('reference_type', OrderItem::class)
-                ->where('reference_id', $lockedItem->id)
+                ->where('reference_type', Fulfillment::class)
+                ->where('reference_id', $lockedFulfillment->id)
                 ->where('type', WalletTransactionType::Refund->value)
                 ->whereIn('status', [WalletTransaction::STATUS_PENDING, WalletTransaction::STATUS_POSTED])
                 ->lockForUpdate()
@@ -91,7 +91,7 @@ class RefundOrderItem
                     ->firstOrFail();
             }
 
-            if ((float) $lockedItem->line_total <= 0) {
+            if ((float) $lockedItem->unit_price <= 0) {
                 throw ValidationException::withMessages([
                     'order_item' => __('messages.refund_not_allowed'),
                 ]);
@@ -107,10 +107,10 @@ class RefundOrderItem
                 'wallet_id' => $wallet->id,
                 'type' => WalletTransactionType::Refund,
                 'direction' => WalletTransactionDirection::Credit,
-                'amount' => $lockedItem->line_total,
+                'amount' => $lockedItem->unit_price,
                 'status' => WalletTransaction::STATUS_PENDING,
-                'reference_type' => OrderItem::class,
-                'reference_id' => $lockedItem->id,
+                'reference_type' => Fulfillment::class,
+                'reference_id' => $lockedFulfillment->id,
                 'meta' => array_filter([
                     'state' => 'refund_requested',
                     'requested_at' => now()->toIso8601String(),
@@ -118,7 +118,7 @@ class RefundOrderItem
                     'order_id' => $order->id,
                     'order_number' => $order->order_number,
                     'order_item_id' => $lockedItem->id,
-                    'fulfillment_id' => $fulfillment->id,
+                    'fulfillment_id' => $lockedFulfillment->id,
                     'user_id' => $order->user_id,
                     'currency' => 'USD',
                     'note' => $note,
@@ -134,7 +134,7 @@ class RefundOrderItem
                     'transaction_id' => $transaction->id,
                     'order_id' => $order->id,
                     'order_item_id' => $lockedItem->id,
-                    'fulfillment_id' => $fulfillment->id,
+                    'fulfillment_id' => $lockedFulfillment->id,
                     'wallet_id' => $wallet->id,
                     'amount' => $transaction->amount,
                     'currency' => 'USD',
@@ -142,7 +142,7 @@ class RefundOrderItem
                 ], fn ($value) => $value !== null && $value !== ''))
                 ->log('Refund requested');
 
-            $fulfillmentMeta = $fulfillment->meta ?? [];
+            $fulfillmentMeta = $lockedFulfillment->meta ?? [];
             $fulfillmentMeta['refund'] = array_filter([
                 'status' => WalletTransaction::STATUS_PENDING,
                 'wallet_transaction_id' => $transaction->id,
@@ -151,12 +151,12 @@ class RefundOrderItem
                 'note' => $note,
             ], fn ($value) => $value !== null && $value !== '');
 
-            $fulfillment->update([
+            $lockedFulfillment->update([
                 'meta' => $fulfillmentMeta,
             ]);
 
             app(AppendFulfillmentLog::class)->handle(
-                $fulfillment,
+                $lockedFulfillment,
                 FulfillmentLogLevel::Info,
                 'Refund requested',
                 array_filter([

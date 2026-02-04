@@ -110,10 +110,10 @@ test('pays order with wallet once', function () {
     expect($order->status)->toBe(OrderStatus::Paid);
     expect($order->paid_at)->not->toBeNull();
 
-    $fulfillment = Fulfillment::query()
+    $fulfillments = Fulfillment::query()
         ->where('order_item_id', $orderItem->id)
-        ->first();
+        ->get();
 
-    expect($fulfillment)->not->toBeNull();
-    expect($fulfillment?->status)->toBe(FulfillmentStatus::Queued);
+    expect($fulfillments)->toHaveCount($orderItem->quantity);
+    expect($fulfillments->pluck('status')->unique()->all())->toBe([FulfillmentStatus::Queued]);
 });

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Refunds;
 
 use App\Enums\WalletTransactionType;
+use App\Models\Fulfillment;
 use App\Models\OrderItem;
 use App\Models\WalletTransaction;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -32,9 +33,14 @@ class GetRefundRequests
             ->with([
                 'reference' => function (MorphTo $morphTo): void {
                     $morphTo->morphWith([
+                        Fulfillment::class => [
+                            'orderItem.order.user:id,name,email',
+                            'orderItem',
+                            'order',
+                        ],
                         OrderItem::class => [
                             'order.user:id,name,email',
-                            'fulfillment',
+                            'fulfillments',
                         ],
                     ]);
                 },

@@ -62,6 +62,46 @@ function makeCompletedOrder(User $user, array $payload): array
     ];
 }
 
+function makeOrderWithItem(User $user, FulfillmentStatus $status): Order
+{
+    $package = Package::factory()->create();
+    $product = Product::factory()->create([
+        'package_id' => $package->id,
+        'retail_price' => 10,
+    ]);
+
+    $order = Order::create([
+        'user_id' => $user->id,
+        'order_number' => Order::temporaryOrderNumber(),
+        'currency' => 'USD',
+        'subtotal' => 10,
+        'fee' => 0,
+        'total' => 10,
+        'status' => OrderStatus::Paid,
+    ]);
+
+    $item = OrderItem::create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'package_id' => $package->id,
+        'name' => $product->name,
+        'unit_price' => 10,
+        'quantity' => 1,
+        'line_total' => 10,
+        'status' => $status === FulfillmentStatus::Failed ? OrderItemStatus::Failed : OrderItemStatus::Pending,
+    ]);
+
+    Fulfillment::create([
+        'order_id' => $order->id,
+        'order_item_id' => $item->id,
+        'provider' => 'manual',
+        'status' => $status,
+        'attempts' => 0,
+    ]);
+
+    return $order;
+}
+
 test('order details page renders for owner', function () {
     $user = User::factory()->create();
     $order = Order::create([
@@ -114,17 +154,9 @@ test('delivered payload renders masked by default', function () {
         ->assertSee($payload['server']);
 });
 
-test('order details page has no refund actions', function () {
+test('order details page shows refund actions only for failed items', function () {
     $user = User::factory()->create();
-    $order = Order::create([
-        'user_id' => $user->id,
-        'order_number' => Order::temporaryOrderNumber(),
-        'currency' => 'USD',
-        'subtotal' => 10,
-        'fee' => 0,
-        'total' => 10,
-        'status' => OrderStatus::Paid,
-    ]);
+    $order = makeOrderWithItem($user, FulfillmentStatus::Queued);
 
     $this->actingAs($user)
         ->get(route('orders.show', $order->order_number))
@@ -133,4 +165,12 @@ test('order details page has no refund actions', function () {
         ->assertDontSee(__('messages.retry_fulfillment'))
         ->assertDontSee('requestRefund')
         ->assertDontSee('retryFulfillment');
+
+    $failedOrder = makeOrderWithItem($user, FulfillmentStatus::Failed);
+
+    $this->actingAs($user)
+        ->get(route('orders.show', $failedOrder->order_number))
+        ->assertOk()
+        ->assertSee(__('messages.request_refund'))
+        ->assertSee(__('messages.retry'));
 });

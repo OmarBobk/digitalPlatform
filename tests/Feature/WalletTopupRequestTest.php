@@ -2,21 +2,26 @@
 
 use App\Enums\TopupMethod;
 use App\Enums\TopupRequestStatus;
+use App\Models\TopupProof;
 use App\Models\TopupRequest;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
-test('user can create a topup request from wallet page', function () {
+test('user can create a topup request with proof from wallet page', function () {
+    Storage::fake('local');
     $user = User::factory()->create();
 
     Livewire::actingAs($user)
         ->test('pages::frontend.wallet')
         ->set('topupAmount', '25')
         ->set('topupMethod', TopupMethod::ShamCash->value)
+        ->set('proofFile', UploadedFile::fake()->image('proof.jpg'))
         ->call('submitTopup')
         ->assertSet('noticeMessage', __('messages.topup_request_created'));
 
@@ -24,6 +29,10 @@ test('user can create a topup request from wallet page', function () {
 
     expect($topupRequest)->not->toBeNull();
     expect($topupRequest->status)->toBe(TopupRequestStatus::Pending);
+
+    $proof = TopupProof::query()->where('topup_request_id', $topupRequest->id)->first();
+    expect($proof)->not->toBeNull();
+    expect(Storage::disk('local')->exists($proof->file_path))->toBeTrue();
 
     $transaction = WalletTransaction::query()
         ->where('reference_type', TopupRequest::class)
@@ -51,8 +60,67 @@ test('user cannot create a second pending topup request', function () {
         ->test('pages::frontend.wallet')
         ->set('topupAmount', '30')
         ->set('topupMethod', TopupMethod::ShamCash->value)
+        ->set('proofFile', UploadedFile::fake()->image('proof.jpg'))
         ->call('submitTopup')
         ->assertSet('noticeMessage', __('messages.topup_request_pending'));
 
     expect(TopupRequest::query()->where('user_id', $user->id)->count())->toBe(1);
+});
+
+test('submit topup without proof fails validation', function () {
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('pages::frontend.wallet')
+        ->set('topupAmount', '25')
+        ->set('topupMethod', TopupMethod::ShamCash->value)
+        ->call('submitTopup')
+        ->assertHasErrors('proofFile');
+
+    expect(TopupRequest::query()->count())->toBe(0);
+});
+
+test('submit topup with invalid file type fails validation', function () {
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('pages::frontend.wallet')
+        ->set('topupAmount', '25')
+        ->set('topupMethod', TopupMethod::ShamCash->value)
+        ->set('proofFile', UploadedFile::fake()->create('proof.txt', 100, 'text/plain'))
+        ->call('submitTopup')
+        ->assertHasErrors('proofFile');
+
+    expect(TopupRequest::query()->count())->toBe(0);
+});
+
+test('submit topup with file exceeding max size fails validation', function () {
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('pages::frontend.wallet')
+        ->set('topupAmount', '25')
+        ->set('topupMethod', TopupMethod::ShamCash->value)
+        ->set('proofFile', UploadedFile::fake()->create('proof.pdf', 5121, 'application/pdf'))
+        ->call('submitTopup')
+        ->assertHasErrors('proofFile');
+
+    expect(TopupRequest::query()->count())->toBe(0);
+});
+
+test('valid proof creates request and single proof record', function () {
+    Storage::fake('local');
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('pages::frontend.wallet')
+        ->set('topupAmount', '10')
+        ->set('topupMethod', TopupMethod::EftTransfer->value)
+        ->set('proofFile', UploadedFile::fake()->create('proof.pdf', 100, 'application/pdf'))
+        ->call('submitTopup')
+        ->assertSet('noticeMessage', __('messages.topup_request_created'));
+
+    $topupRequest = TopupRequest::query()->first();
+    expect($topupRequest)->not->toBeNull();
+    expect($topupRequest->proofs()->count())->toBe(1);
 });

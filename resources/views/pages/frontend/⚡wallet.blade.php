@@ -5,20 +5,29 @@ use App\Enums\TopupMethod;
 use App\Enums\TopupRequestStatus;
 use App\Enums\WalletTransactionDirection;
 use App\Enums\WalletTransactionType;
+use App\Models\TopupProof;
 use App\Models\TopupRequest;
 use App\Models\Order;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
-new #[Layout('layouts::frontend')] class extends Component {
+new #[Layout('layouts::frontend')] class extends Component
+{
+    use WithFileUploads;
 
     public ?string $topupAmount = null;
     public string $topupMethod = TopupMethod::ShamCash->value;
+
+    /** @var \Illuminate\Http\UploadedFile|null */
+    public $proofFile = null;
 
     public ?string $noticeMessage = null;
     public ?string $noticeVariant = null;
@@ -36,6 +45,7 @@ new #[Layout('layouts::frontend')] class extends Component {
         return [
             'topupAmount' => ['required', 'numeric', 'min:0.01'],
             'topupMethod' => ['required', Rule::in(TopupMethod::values())],
+            'proofFile' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ];
     }
 
@@ -55,34 +65,54 @@ new #[Layout('layouts::frontend')] class extends Component {
         if ($hasPending) {
             $this->noticeVariant = 'danger';
             $this->noticeMessage = __('messages.topup_request_pending');
+
             return;
         }
 
-        $topupRequest = TopupRequest::create([
-            'user_id' => $user->id,
-            'wallet_id' => $wallet->id,
-            'method' => TopupMethod::from($validated['topupMethod']),
-            'amount' => $validated['topupAmount'],
-            'currency' => $wallet->currency,
-            'status' => TopupRequestStatus::Pending,
-        ]);
-
-        activity()
-            ->inLog('payments')
-            ->event('topup.requested')
-            ->performedOn($topupRequest)
-            ->causedBy($user)
-            ->withProperties([
-                'topup_request_id' => $topupRequest->id,
-                'wallet_id' => $wallet->id,
+        DB::transaction(function () use ($user, $wallet, $validated): void {
+            $topupRequest = TopupRequest::create([
                 'user_id' => $user->id,
-                'amount' => $topupRequest->amount,
+                'wallet_id' => $wallet->id,
+                'method' => TopupMethod::from($validated['topupMethod']),
+                'amount' => $validated['topupAmount'],
                 'currency' => $wallet->currency,
-                'method' => $topupRequest->method->value,
-            ])
-            ->log('Topup requested');
+                'status' => TopupRequestStatus::Pending,
+            ]);
 
-        $this->reset('topupAmount');
+            $ext = $this->proofFile->getClientOriginalExtension() ?: $this->proofFile->guessExtension() ?? 'bin';
+            $filename = Str::uuid()->toString().'.'.$ext;
+            $dir = 'topups/proofs/'.$topupRequest->id;
+            $path = $this->proofFile->storeAs($dir, $filename, 'local');
+
+            if ($path === false) {
+                throw new \RuntimeException('Failed to store top-up proof file.');
+            }
+
+            TopupProof::create([
+                'topup_request_id' => $topupRequest->id,
+                'file_path' => $path,
+                'file_original_name' => $this->proofFile->getClientOriginalName(),
+                'mime_type' => $this->proofFile->getMimeType(),
+                'size_bytes' => $this->proofFile->getSize(),
+            ]);
+
+            activity()
+                ->inLog('payments')
+                ->event('topup.requested')
+                ->performedOn($topupRequest)
+                ->causedBy($user)
+                ->withProperties([
+                    'topup_request_id' => $topupRequest->id,
+                    'wallet_id' => $wallet->id,
+                    'user_id' => $user->id,
+                    'amount' => $topupRequest->amount,
+                    'currency' => $wallet->currency,
+                    'method' => $topupRequest->method->value,
+                ])
+                ->log('Topup requested');
+        });
+
+        $this->reset('topupAmount', 'proofFile');
         $this->topupMethod = TopupMethod::ShamCash->value;
 
         $this->noticeVariant = 'success';
@@ -114,6 +144,7 @@ new #[Layout('layouts::frontend')] class extends Component {
     {
         return TopupRequest::query()
             ->where('user_id', auth()->id())
+            ->with('proofs')
             ->latest('created_at')
             ->limit(10)
             ->get();
@@ -505,6 +536,22 @@ new #[Layout('layouts::frontend')] class extends Component {
                         @enderror
                     </div>
 
+                    <div class="grid gap-2">
+                        <flux:field>
+                            <flux:label>{{ __('messages.proof_of_payment') }}</flux:label>
+                            <input
+                                type="file"
+                                name="proofFile"
+                                accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                wire:model.defer="proofFile"
+                                class="block w-full text-sm text-zinc-600 file:mr-4 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-zinc-800 hover:file:bg-zinc-200 dark:text-zinc-400 dark:file:bg-zinc-700 dark:file:text-zinc-200 dark:hover:file:bg-zinc-600"
+                            />
+                        </flux:field>
+                        @error('proofFile')
+                            <flux:text class="text-xs text-red-600">{{ $message }}</flux:text>
+                        @enderror
+                    </div>
+
                     <flux:button
                         type="submit"
                         variant="primary"
@@ -545,9 +592,23 @@ new #[Layout('layouts::frontend')] class extends Component {
                                         {{ $topupRequest->created_at?->format('M d, Y') ?? '—' }}
                                     </div>
                                 </div>
-                                <flux:badge color="{{ $statusColor }}">
-                                    {{ __('messages.'.$topupRequest->status->value) }}
-                                </flux:badge>
+                                <div class="flex items-center gap-2">
+                                    @if ($topupRequest->proofs->isNotEmpty())
+                                        <flux:button
+                                            as="a"
+                                            href="{{ route('topup-proofs.show', $topupRequest->proofs->first()) }}"
+                                            variant="ghost"
+                                            size="sm"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            {{ __('messages.view_proof') }}
+                                        </flux:button>
+                                    @endif
+                                    <flux:badge color="{{ $statusColor }}">
+                                        {{ __('messages.'.$topupRequest->status->value) }}
+                                    </flux:badge>
+                                </div>
                             </div>
                         @endforeach
                     @endif

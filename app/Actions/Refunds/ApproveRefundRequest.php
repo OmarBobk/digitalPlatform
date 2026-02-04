@@ -59,18 +59,56 @@ class ApproveRefundRequest
                     ]);
                 }
 
-                if (! in_array($transaction->reference_type, [OrderItem::class, Order::class], true)) {
+                if (! in_array($transaction->reference_type, [Fulfillment::class, OrderItem::class, Order::class], true)) {
                     throw ValidationException::withMessages([
                         'refund' => __('messages.refund_not_allowed'),
                     ]);
                 }
 
                 $orderId = (int) data_get($transaction->meta, 'order_id', 0);
+                $orderItem = null;
+                $fulfillment = null;
+
+                if ($transaction->reference_type === Fulfillment::class) {
+                    $fulfillment = Fulfillment::query()
+                        ->whereKey($transaction->reference_id)
+                        ->lockForUpdate()
+                        ->firstOrFail();
+
+                    $orderItem = OrderItem::query()
+                        ->whereKey($fulfillment->order_item_id)
+                        ->lockForUpdate()
+                        ->firstOrFail();
+
+                    $orderId = $orderItem->order_id;
+                }
 
                 if ($orderId === 0 && $transaction->reference_type === OrderItem::class) {
-                    $orderId = (int) OrderItem::query()
+                    $orderItem = OrderItem::query()
                         ->whereKey($transaction->reference_id)
-                        ->value('order_id');
+                        ->lockForUpdate()
+                        ->firstOrFail();
+                    $orderId = $orderItem->order_id;
+
+                    $fulfillmentId = (int) data_get($transaction->meta, 'fulfillment_id', 0);
+                    if ($fulfillmentId > 0) {
+                        $fulfillment = Fulfillment::query()
+                            ->whereKey($fulfillmentId)
+                            ->lockForUpdate()
+                            ->first();
+                    }
+
+                    if ($fulfillment === null) {
+                        $fulfillment = Fulfillment::query()
+                            ->where('order_item_id', $orderItem->id)
+                            ->lockForUpdate()
+                            ->oldest('id')
+                            ->first();
+                    }
+                }
+
+                if ($orderId === 0 && $transaction->reference_type === Order::class) {
+                    $orderId = (int) $transaction->reference_id;
                 }
 
                 if ($orderId === 0) {
@@ -129,33 +167,18 @@ class ApproveRefundRequest
                     ]);
                 }
 
-                $orderItem = null;
-                $fulfillment = null;
-
-                if ($transaction->reference_type === OrderItem::class) {
-                    $orderItem = OrderItem::query()
-                        ->whereKey($transaction->reference_id)
-                        ->lockForUpdate()
-                        ->firstOrFail();
-
-                    $fulfillment = Fulfillment::query()
-                        ->where('order_item_id', $orderItem->id)
-                        ->lockForUpdate()
-                        ->first();
-
-                    if ($fulfillment === null || $fulfillment->status !== FulfillmentStatus::Failed) {
-                        throw ValidationException::withMessages([
-                            'refund' => __('messages.refund_not_allowed'),
-                        ]);
-                    }
+                if ($fulfillment !== null && $fulfillment->status !== FulfillmentStatus::Failed) {
+                    throw ValidationException::withMessages([
+                        'refund' => __('messages.refund_not_allowed'),
+                    ]);
                 }
 
-                $idempotencyKey = 'refund:order:'.$order->id;
+                $idempotencyKey = $fulfillment !== null
+                    ? 'refund:fulfillment:'.$fulfillment->id
+                    : ($orderItem !== null ? 'refund:order_item:'.$orderItem->id : 'refund:order:'.$order->id);
                 $approvedReason = data_get($transaction->meta, 'reason') ?? data_get($transaction->meta, 'note');
 
                 $transaction->status = WalletTransaction::STATUS_POSTED;
-                $transaction->reference_type = Order::class;
-                $transaction->reference_id = $order->id;
                 $transaction->idempotency_key = $idempotencyKey;
                 $transaction->meta = array_merge($transaction->meta ?? [], array_filter([
                     'state' => 'refund_posted',
@@ -169,8 +192,10 @@ class ApproveRefundRequest
 
                 $wallet->increment('balance', $transaction->amount);
 
-                if ($order->status !== OrderStatus::Refunded) {
+                $orderRefunded = false;
+                if ($transaction->reference_type === Order::class && $order->status !== OrderStatus::Refunded) {
                     $order->update(['status' => OrderStatus::Refunded]);
+                    $orderRefunded = true;
                 }
 
                 if ($fulfillment !== null) {
@@ -193,6 +218,23 @@ class ApproveRefundRequest
                             'transaction_id' => $transaction->id,
                         ]
                     );
+                }
+
+                if ($fulfillment !== null && ! $orderRefunded) {
+                    $orderFulfillments = Fulfillment::query()
+                        ->where('order_id', $order->id)
+                        ->lockForUpdate()
+                        ->get();
+
+                    $allRefunded = $orderFulfillments->isNotEmpty()
+                        && $orderFulfillments->every(
+                            fn (Fulfillment $item) => data_get($item->meta, 'refund.status') === WalletTransaction::STATUS_POSTED
+                        );
+
+                    if ($allRefunded && $order->status !== OrderStatus::Refunded) {
+                        $order->update(['status' => OrderStatus::Refunded]);
+                        $orderRefunded = true;
+                    }
                 }
 
                 $admin = User::query()->find($adminId);
@@ -228,21 +270,23 @@ class ApproveRefundRequest
                     ])
                     ->log('Wallet credited');
 
-                activity()
-                    ->inLog('orders')
-                    ->event('order.refunded')
-                    ->performedOn($order)
-                    ->causedBy($admin)
-                    ->withProperties(array_filter([
-                        'order_id' => $order->id,
-                        'order_number' => $order->order_number,
-                        'status_from' => $orderStatusFrom->value,
-                        'status_to' => OrderStatus::Refunded->value,
-                        'amount' => $transaction->amount,
-                        'currency' => $order->currency,
-                        'transaction_id' => $transaction->id,
-                    ], fn ($value) => $value !== null && $value !== ''))
-                    ->log('Order refunded');
+                if ($orderRefunded) {
+                    activity()
+                        ->inLog('orders')
+                        ->event('order.refunded')
+                        ->performedOn($order)
+                        ->causedBy($admin)
+                        ->withProperties(array_filter([
+                            'order_id' => $order->id,
+                            'order_number' => $order->order_number,
+                            'status_from' => $orderStatusFrom->value,
+                            'status_to' => OrderStatus::Refunded->value,
+                            'amount' => $transaction->amount,
+                            'currency' => $order->currency,
+                            'transaction_id' => $transaction->id,
+                        ], fn ($value) => $value !== null && $value !== ''))
+                        ->log('Order refunded');
+                }
 
                 return $transaction;
             });

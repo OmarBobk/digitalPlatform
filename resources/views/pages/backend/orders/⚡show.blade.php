@@ -19,7 +19,7 @@ new class extends Component
 
         $this->order = $order->load([
             'user',
-            'items.fulfillment',
+            'items.fulfillments',
         ]);
     }
 
@@ -225,7 +225,10 @@ new class extends Component
                     </thead>
                     <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
                         @foreach ($this->items as $item)
-                            @php($requirementsEntries = $this->requirementsEntries($item->requirements_payload))
+                            @php
+                                $requirementsEntries = $this->requirementsEntries($item->requirements_payload);
+                                $itemStatus = $item->aggregateFulfillmentStatus($item->fulfillments);
+                            @endphp
                             <tr class="transition hover:bg-zinc-50 dark:hover:bg-zinc-800/60" wire:key="admin-order-item-{{ $item->id }}">
                                 <td class="px-5 py-4">
                                     <div class="font-semibold text-zinc-900 dark:text-zinc-100">
@@ -245,21 +248,21 @@ new class extends Component
                                     {{ $item->line_total }} {{ $order->currency }}
                                 </td>
                                 <td class="px-5 py-4">
-                                    <flux:badge color="{{ $this->fulfillmentStatusColor($item->fulfillment?->status) }}">
-                                        {{ $this->fulfillmentStatusLabel($item->fulfillment?->status) }}
+                                    <flux:badge color="{{ $this->fulfillmentStatusColor($itemStatus) }}">
+                                        {{ $this->fulfillmentStatusLabel($itemStatus) }}
                                     </flux:badge>
                                 </td>
                                 <td class="px-5 py-4 text-end">
-                                    @if ($item->fulfillment)
+                                    @if ($item->fulfillments->isNotEmpty())
                                         <a
                                             href="{{ route('fulfillments', ['search' => $item->order->order_number]) }}"
                                             wire:navigate
                                             class="text-sm font-semibold text-zinc-900 hover:underline dark:text-zinc-100"
                                         >
-                                            {{ __('messages.view_fulfillment') }}
+                                            {{ __('messages.view_fulfillment') }} ({{ $item->fulfillments->count() }})
                                         </a>
                                     @else
-                                        —
+                                        <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.no_details') }}</span>
                                     @endif
                                 </td>
                             </tr>

@@ -6,7 +6,6 @@ namespace App\Actions\Fulfillments;
 
 use App\Enums\FulfillmentLogLevel;
 use App\Enums\FulfillmentStatus;
-use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\WalletTransactionType;
 use App\Models\Fulfillment;
@@ -47,19 +46,17 @@ class RetryFulfillment
                 return $lockedFulfillment;
             }
 
-            $idempotencyKey = 'refund:order:'.$order->id;
-
             $hasRefund = WalletTransaction::query()
                 ->where('type', WalletTransactionType::Refund->value)
                 ->whereIn('status', [WalletTransaction::STATUS_PENDING, WalletTransaction::STATUS_POSTED])
-                ->where(function ($query) use ($orderItem, $order, $idempotencyKey): void {
-                    $query->where(function ($subQuery) use ($orderItem): void {
+                ->where(function ($query) use ($orderItem, $lockedFulfillment): void {
+                    $query->where(function ($subQuery) use ($lockedFulfillment): void {
+                        $subQuery->where('reference_type', Fulfillment::class)
+                            ->where('reference_id', $lockedFulfillment->id);
+                    })->orWhere(function ($subQuery) use ($orderItem): void {
                         $subQuery->where('reference_type', OrderItem::class)
                             ->where('reference_id', $orderItem->id);
-                    })->orWhere(function ($subQuery) use ($order): void {
-                        $subQuery->where('reference_type', Order::class)
-                            ->where('reference_id', $order->id);
-                    })->orWhere('idempotency_key', $idempotencyKey);
+                    });
                 })
                 ->lockForUpdate()
                 ->exists();
@@ -84,7 +81,11 @@ class RetryFulfillment
                 ]),
             ])->save();
 
-            $orderItem->update(['status' => OrderItemStatus::Pending]);
+            $fulfillments = Fulfillment::query()
+                ->where('order_item_id', $orderItem->id)
+                ->lockForUpdate()
+                ->get();
+            $orderItem->syncStatusFromFulfillments($fulfillments);
 
             app(AppendFulfillmentLog::class)->handle(
                 $lockedFulfillment,

@@ -35,6 +35,7 @@ new class extends Component
     public ?string $deliveredPayloadInput = null;
     public ?string $failureReason = null;
     public bool $refundAfterFail = false;
+    public bool $autoDonePayload = false;
 
     public ?string $noticeMessage = null;
     public ?string $noticeVariant = null;
@@ -79,7 +80,7 @@ new class extends Component
 
     public function openCompleteModal(int $fulfillmentId): void
     {
-        $this->reset('deliveredPayloadInput');
+        $this->reset('deliveredPayloadInput', 'autoDonePayload');
         $this->selectedFulfillmentId = $fulfillmentId;
         $this->showCompleteModal = true;
     }
@@ -92,6 +93,10 @@ new class extends Component
             return;
         }
 
+        if ($this->autoDonePayload && blank($this->deliveredPayloadInput)) {
+            $this->deliveredPayloadInput = 'DONE';
+        }
+
         app(CompleteFulfillment::class)->handle(
             $fulfillment,
             $this->parseDeliveredPayload(),
@@ -99,9 +104,21 @@ new class extends Component
             auth()->id()
         );
 
-        $this->reset('showCompleteModal', 'deliveredPayloadInput');
+        $this->reset('showCompleteModal', 'deliveredPayloadInput', 'autoDonePayload');
         $this->noticeVariant = 'success';
         $this->noticeMessage = __('messages.fulfillment_marked_completed');
+    }
+
+    public function updatedAutoDonePayload(bool $value): void
+    {
+        if ($value) {
+            $this->deliveredPayloadInput = 'DONE';
+            return;
+        }
+
+        if (trim((string) $this->deliveredPayloadInput) === 'DONE') {
+            $this->deliveredPayloadInput = null;
+        }
     }
 
     public function openFailModal(int $fulfillmentId): void
@@ -131,7 +148,7 @@ new class extends Component
             $fulfillment->loadMissing('orderItem');
 
             if ($fulfillment->orderItem) {
-                $transaction = app(RefundOrderItem::class)->handle($fulfillment->orderItem, auth()->id());
+                $transaction = app(RefundOrderItem::class)->handle($fulfillment, auth()->id());
                 app(ApproveRefundRequest::class)->handle($transaction->id, auth()->id());
                 $refunded = true;
             }
@@ -369,7 +386,8 @@ new class extends Component
                                         @php
                                             $retryCount = (int) data_get($fulfillment->meta, 'retry_count', 0);
                                             $refundStatus = data_get($fulfillment->meta, 'refund.status');
-                                    $isRefunded = $refundStatus === WalletTransaction::STATUS_POSTED;
+                                            $isRefunded = $refundStatus === WalletTransaction::STATUS_POSTED;
+                                            $isRefundPending = $refundStatus === WalletTransaction::STATUS_PENDING;
                                         @endphp
                                         <flux:badge color="{{ $this->statusBadgeColor($fulfillment->status) }}">
                                             {{ __('messages.fulfillment_status_'.$fulfillment->status->value) }}
@@ -400,7 +418,11 @@ new class extends Component
                                         <flux:dropdown position="bottom" align="end">
                                             <flux:button variant="ghost" icon="ellipsis-vertical" />
                                             <flux:menu>
-                                                @if ($fulfillment->status === FulfillmentStatus::Failed && $isRefunded)
+                                                @if ($isRefundPending)
+                                                    <flux:menu.item icon="eye" wire:click="openDetails({{ $fulfillment->id }})">
+                                                        {{ __('messages.details') }}
+                                                    </flux:menu.item>
+                                                @elseif ($fulfillment->status === FulfillmentStatus::Failed && $isRefunded)
                                                     <flux:menu.item icon="eye" wire:click="openDetails({{ $fulfillment->id }})">
                                                         {{ __('messages.details') }}
                                                     </flux:menu.item>
@@ -410,7 +432,7 @@ new class extends Component
                                                             {{ __('messages.mark_processing') }}
                                                         </flux:menu.item>
                                                     @endif
-                                                    @if ($fulfillment->status !== FulfillmentStatus::Completed)
+                                                    @if (! in_array($fulfillment->status, [FulfillmentStatus::Completed, FulfillmentStatus::Failed], true))
                                                         <flux:menu.item icon="check-circle" wire:click="openCompleteModal({{ $fulfillment->id }})">
                                                             {{ __('messages.mark_completed') }}
                                                         </flux:menu.item>
@@ -479,8 +501,6 @@ new class extends Component
                                 $order = $this->selectedFulfillment->order;
                                 $orderItem = $this->selectedFulfillment->orderItem;
                                 $currency = $order?->currency ?? 'USD';
-                                $paymentAmount = $this->paymentTransaction?->amount;
-                                $totalPrice = $paymentAmount ?? $orderItem?->line_total;
                             @endphp
                             <dl class="grid gap-3 text-sm sm:grid-cols-2">
                                 <div class="rounded-lg border border-zinc-200 bg-white/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
@@ -507,28 +527,12 @@ new class extends Component
                                         {{ $orderItem?->name ?? '—' }}
                                     </dd>
                                 </div>
-                                <div class="rounded-lg border border-zinc-200 bg-white/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
-                                    <dt class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                                        {{ __('messages.quantity') }}
-                                    </dt>
-                                    <dd class="mt-1 text-sm text-zinc-900 dark:text-zinc-100">
-                                        {{ $orderItem?->quantity ?? '—' }}
-                                    </dd>
-                                </div>
-                                <div class="rounded-lg border border-zinc-200 bg-white/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
+                                <div class="rounded-lg border border-zinc-200 bg-white/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/40 sm:col-span-2">
                                     <dt class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                                         {{ __('messages.unit_price') }}
                                     </dt>
                                     <dd class="mt-1 text-sm text-zinc-900 dark:text-zinc-100" dir="ltr">
                                         {{ $orderItem?->unit_price ?? '—' }} {{ $currency }}
-                                    </dd>
-                                </div>
-                                <div class="rounded-lg border border-zinc-200 bg-white/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/40 sm:col-span-2">
-                                    <dt class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                                        {{ __('messages.total') }}
-                                    </dt>
-                                    <dd class="mt-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
-                                        {{ $totalPrice ?? '—' }} {{ $currency }}
                                     </dd>
                                 </div>
                             </dl>
@@ -641,6 +645,21 @@ new class extends Component
                     {{ __('messages.fulfillment_payload_hint') }}
                 </flux:text>
             </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300">
+            <div>
+                <div class="font-semibold text-zinc-900 dark:text-zinc-100">
+                    {{ __('messages.done_payload_toggle') }}
+                </div>
+                <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                    {{ __('messages.done_payload_hint') }}
+                </div>
+            </div>
+            <flux:switch
+                class="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                wire:model.live="autoDonePayload"
+            />
+        </div>
 
             <flux:textarea
                 name="deliveredPayloadInput"
