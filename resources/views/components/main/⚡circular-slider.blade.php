@@ -19,6 +19,7 @@ new class extends Component
             ->limit(19)
             ->get()
             ->map(fn (Package $package): array => [
+                'id' => $package->id,
                 'name' => $package->name,
                 'image' => filled($package->image) ? asset($package->image) : $placeholderImage,
                 'href' => '#',
@@ -346,7 +347,13 @@ new class extends Component
                         href="{{ $item['href'] }}"
                         class="group flex shrink-0 flex-col items-center gap-2 text-center select-none
                         focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
-                        x-on:click="if (hasMoved) { $event.preventDefault(); }"
+                        x-on:click="
+                            if (hasMoved) {
+                                $event.preventDefault();
+                                return;
+                            }
+                            $dispatch('open-package-overlay', { packageId: {{ $item['id'] }} });
+                        "
                         draggable="false"
                     >
                         <div
