@@ -12,6 +12,10 @@ uses(RefreshDatabase::class);
 function adminUser(): User
 {
     $role = Role::firstOrCreate(['name' => 'admin']);
+    $role->syncPermissions([
+        \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'manage_sections']),
+        \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'manage_products']),
+    ]);
     $admin = User::factory()->create();
     $admin->assignRole($role);
 

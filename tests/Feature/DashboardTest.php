@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
@@ -18,6 +19,7 @@ test('non-admin users receive a not found response', function () {
 
 test('admin users can visit the dashboard', function () {
     $role = Role::firstOrCreate(['name' => 'admin']);
+    $role->givePermissionTo(Permission::firstOrCreate(['name' => 'view_sales']));
     $admin = User::factory()->create();
     $admin->assignRole($role);
 

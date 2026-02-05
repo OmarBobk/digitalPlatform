@@ -46,7 +46,7 @@ class RefundOrderItem
                 ]);
             }
 
-            if ($order->user_id !== $actorId && ! $actor->hasRole('admin')) {
+            if ($order->user_id !== $actorId && ! $actor->can('process_refunds')) {
                 throw ValidationException::withMessages([
                     'order_item' => __('messages.refund_not_allowed'),
                 ]);

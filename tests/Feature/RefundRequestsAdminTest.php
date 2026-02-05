@@ -19,9 +19,18 @@ use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    $adminRole = Role::firstOrCreate(['name' => 'admin']);
+    $adminRole->syncPermissions([
+        Permission::firstOrCreate(['name' => 'view_refunds']),
+        Permission::firstOrCreate(['name' => 'process_refunds']),
+    ]);
+});
 
 /**
  * @return array{item: OrderItem, fulfillment: Fulfillment, order: Order}
@@ -196,7 +205,7 @@ test('non-admin cannot access refund dashboard', function () {
 
     $this->actingAs($user)
         ->get('/refunds')
-        ->assertRedirect('/404');
+        ->assertNotFound();
 });
 
 test('refund approval validates transaction type and direction', function () {

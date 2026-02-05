@@ -34,3 +34,5 @@
   - wallet transaction in /wallets should be more described
   - Wallet /wallet Request topups form borders remove the ring
   - /orders Redesign
+
+$x = ['view_orders','view_fulfillments','manage_fulfillments','view_refunds','process_refunds','view_activities',];foreach ($x as $a) { \Spatie\Permission\Models\Permission::firstOrCreate(['name' => $a]); }$admin = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin']);$admin->givePermissionTo(\Spatie\Permission\Models\Permission::all());

@@ -199,4 +199,25 @@ return [
 
         'store' => 'default',
     ],
+
+    /*
+     * Permissions that grant access to the backend (dashboard and admin routes).
+     * User needs at least one of these to pass EnsureBackendAccess middleware.
+     */
+    'backend_permissions' => [
+        'manage_users',
+        'manage_sections',
+        'manage_products',
+        'manage_topups',
+        'view_sales',
+        'create_orders',
+        'edit_orders',
+        'delete_orders',
+        'view_orders',
+        'view_fulfillments',
+        'manage_fulfillments',
+        'view_refunds',
+        'process_refunds',
+        'view_activities',
+    ],
 ];

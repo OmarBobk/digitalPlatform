@@ -5,11 +5,22 @@ use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    $role = Role::firstOrCreate(['name' => 'admin']);
+    $role->syncPermissions([
+        Permission::firstOrCreate(['name' => 'manage_products']),
+    ]);
+    app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+});
+
 test('products page renders for authenticated user', function () {
     $user = User::factory()->create();
+    $user->assignRole('admin');
 
     $this->actingAs($user)
         ->get('/products')
@@ -19,6 +30,7 @@ test('products page renders for authenticated user', function () {
 
 test('products page lists existing products', function () {
     $user = User::factory()->create();
+    $user->assignRole('admin');
     $product = Product::factory()->create([
         'name' => 'Bronze Product',
     ]);
@@ -31,6 +43,7 @@ test('products page lists existing products', function () {
 
 test('product can be created from manager form', function () {
     $user = User::factory()->create();
+    $user->assignRole('admin');
     $package = Package::factory()->create();
 
     $this->actingAs($user);

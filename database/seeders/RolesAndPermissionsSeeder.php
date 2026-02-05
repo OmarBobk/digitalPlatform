@@ -15,7 +15,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // Clear cache
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // Define permissions
+        // Define permissions (assign to roles; app checks these, not role names)
         $permissions = [
             'manage_users',
             'manage_sections',
@@ -26,6 +26,12 @@ class RolesAndPermissionsSeeder extends Seeder
             'customer_profile',
             'edit_orders',
             'delete_orders',
+            'view_orders',
+            'view_fulfillments',
+            'manage_fulfillments',
+            'view_refunds',
+            'process_refunds',
+            'view_activities',
         ];
 
         // Create permissions
@@ -38,18 +44,20 @@ class RolesAndPermissionsSeeder extends Seeder
         $admin = Role::firstOrCreate(['name' => 'admin']);
         $admin->givePermissionTo(Permission::all());
 
-        // Salesperson: Limited permissions
+        // Salesperson: can view and manage orders, view sales
         $salesperson = Role::firstOrCreate(['name' => 'salesperson']);
-        $salesperson->givePermissionTo([
+        $salesperson->syncPermissions([
             'view_sales',
+            'view_orders',
             'create_orders',
             'edit_orders',
         ]);
 
-        // Shop Owner: Restricted permissions
+        // Supervisor: can view sales and orders, create orders (no edit)
         $supervisor = Role::firstOrCreate(['name' => 'supervisor']);
-        $supervisor->givePermissionTo([
+        $supervisor->syncPermissions([
             'view_sales',
+            'view_orders',
             'create_orders',
         ]);
 

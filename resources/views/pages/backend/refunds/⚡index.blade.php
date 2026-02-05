@@ -23,11 +23,12 @@ new class extends Component
 
     public function mount(): void
     {
-        abort_unless(auth()->user()?->hasRole('admin'), 403);
+        abort_unless(auth()->user()?->can('view_refunds'), 403);
     }
 
     public function approveRefund(int $transactionId): void
     {
+        abort_unless(auth()->user()?->can('process_refunds'), 403);
         $this->reset('noticeMessage', 'noticeVariant');
 
         app(ApproveRefundRequest::class)->handle($transactionId, auth()->id());
@@ -38,6 +39,7 @@ new class extends Component
 
     public function rejectRefund(int $transactionId): void
     {
+        abort_unless(auth()->user()?->can('process_refunds'), 403);
         $this->reset('noticeMessage', 'noticeVariant');
 
         app(RejectRefundRequest::class)->handle($transactionId, auth()->id());
@@ -164,6 +166,7 @@ new class extends Component
                                         </flux:badge>
                                     </td>
                                     <td class="px-5 py-4 text-end">
+                                        @can('process_refunds')
                                         <div class="flex items-center justify-end gap-2">
                                             <flux:button
                                                 size="sm"
@@ -181,6 +184,9 @@ new class extends Component
                                                 {{ __('messages.reject') }}
                                             </flux:button>
                                         </div>
+                                        @else
+                                        <span class="text-zinc-500 dark:text-zinc-400">—</span>
+                                        @endcan
                                     </td>
                                 </tr>
                             @endforeach

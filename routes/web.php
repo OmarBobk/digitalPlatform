@@ -31,7 +31,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/topup-proofs/{proof}', [TopupProofController::class, 'show'])->name('topup-proofs.show');
 });
 
-Route::middleware(['auth', 'verified', 'admin'])->group(function () {
+Route::middleware(['auth', 'verified', 'backend'])->group(function () {
     Route::livewire('/dashboard', 'pages::backend.dashboard')->name('dashboard');
     Route::livewire('/categories', 'pages::backend.categories.index')->name('categories');
     Route::livewire('/packages', 'pages::backend.packages.index')->name('packages');
@@ -39,6 +39,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::livewire('/admin/orders', 'pages::backend.orders.index')->name('admin.orders.index');
     Route::livewire('/admin/orders/{order}', 'pages::backend.orders.show')->name('admin.orders.show');
     Route::livewire('/admin/activities', 'pages::backend.activities.index')->name('admin.activities.index');
+    Route::livewire('/admin/users', 'pages::backend.users.index')->name('admin.users.index');
     Route::livewire('/fulfillments', 'pages::backend.fulfillments.index')->name('fulfillments');
     Route::livewire('/refunds', 'pages::backend.refunds.index')->name('refunds');
     Route::livewire('/topups', 'pages::backend.topups.index')->name('topups');

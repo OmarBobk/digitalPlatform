@@ -10,6 +10,9 @@ uses(RefreshDatabase::class);
 
 test('package validation uses arabic attribute names', function () {
     $role = Role::firstOrCreate(['name' => 'admin']);
+    $role->syncPermissions([
+        \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'manage_products']),
+    ]);
     $admin = User::factory()->create();
     $admin->assignRole($role);
 

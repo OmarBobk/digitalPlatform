@@ -17,26 +17,38 @@
                     </flux:sidebar.item>
                 </flux:sidebar.group>
 
+                @if (auth()->user()?->can('manage_products') || auth()->user()?->can('manage_sections'))
                 <flux:sidebar.group expandable :expanded="(request()->routeIs('categories')) or (request()->routeIs('packages')) or (request()->routeIs('products'))" :heading="__('messages.nav_content_management')" class="grid">
+                    @can('manage_sections')
                     <flux:sidebar.item icon="tag" :href="route('categories')" :current="(request()->routeIs('categories'))" wire:navigate>
                         {{ __('messages.categories') }}
                     </flux:sidebar.item>
+                    @endcan
+                    @can('manage_products')
                     <flux:sidebar.item icon="cube" :href="route('packages')" :current="(request()->routeIs('packages'))" wire:navigate>
                         {{ __('messages.packages') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="shopping-cart" :href="route('products')" :current="(request()->routeIs('products'))" wire:navigate>
                         {{ __('messages.products') }}
                     </flux:sidebar.item>
+                    @endcan
                 </flux:sidebar.group>
+                @endif
 
                 <flux:sidebar.group expandable :expanded="(request()->routeIs('fulfillments')) or (request()->routeIs('admin.orders.*'))" :heading="__('messages.nav_operations')" class="grid transition-all duration-300 ease">
+                    @can('view_fulfillments')
                     <flux:sidebar.item icon="list-bullet" :href="route('fulfillments')" :current="request()->routeIs('fulfillments')" wire:navigate>{{ __('messages.fulfillments') }}</flux:sidebar.item>
+                    @endcan
+                    @can('view_orders')
                     <flux:sidebar.item icon="shopping-bag" :href="route('admin.orders.index')" :current="request()->routeIs('admin.orders.*')" wire:navigate>
                         {{ __('messages.orders') }}
                     </flux:sidebar.item>
+                    @endcan
+                    @can('view_refunds')
                     <flux:sidebar.item icon="receipt-refund" :href="route('refunds')" :current="request()->routeIs('refunds')" wire:navigate>
                         {{ __('messages.refund_requests') }}
                     </flux:sidebar.item>
+                    @endcan
                 </flux:sidebar.group>
 
                 @if (auth()->user()?->can('manage_topups'))
@@ -48,9 +60,16 @@
                 @endif
 
                 <flux:sidebar.group :heading="__('messages.nav_audit_monitoring')" class="grid">
+                    @can('view_activities')
                     <flux:sidebar.item icon="clock" :href="route('admin.activities.index')" :current="request()->routeIs('admin.activities.*')" wire:navigate>
                         {{ __('messages.activities') }}
                     </flux:sidebar.item>
+                    @endcan
+                    @can('manage_users')
+                    <flux:sidebar.item icon="users" :href="route('admin.users.index')" :current="request()->routeIs('admin.users.*')" wire:navigate>
+                        {{ __('messages.users') }}
+                    </flux:sidebar.item>
+                    @endcan
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 

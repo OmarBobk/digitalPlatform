@@ -22,7 +22,7 @@ new class extends Component
 
     public function mount(): void
     {
-        abort_unless(auth()->user()?->hasRole('admin'), 403);
+        $this->authorize('viewAny', Order::class);
     }
 
     public function applyFilters(): void

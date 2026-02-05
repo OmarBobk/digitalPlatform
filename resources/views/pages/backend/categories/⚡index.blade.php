@@ -48,6 +48,11 @@ new class extends Component
     public ?int $deleteCategoryId = null;
     public string $deleteCategoryName = '';
 
+    public function mount(): void
+    {
+        abort_unless(auth()->user()?->can('manage_sections'), 403);
+    }
+
     public function applyFilters(): void
     {
         $this->resetPage();

@@ -20,9 +20,19 @@ use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    $role = Role::firstOrCreate(['name' => 'admin']);
+    $role->syncPermissions([
+        Permission::firstOrCreate(['name' => 'view_fulfillments']),
+        Permission::firstOrCreate(['name' => 'manage_fulfillments']),
+        Permission::firstOrCreate(['name' => 'process_refunds']),
+    ]);
+});
 
 function makeFulfillment(): Fulfillment
 {
@@ -325,9 +335,8 @@ test('failed fulfillment can be retried and completed', function () {
 });
 
 test('admin can fail fulfillment and refund immediately', function () {
-    $role = Role::firstOrCreate(['name' => 'admin']);
     $admin = User::factory()->create();
-    $admin->assignRole($role);
+    $admin->assignRole('admin');
 
     $fulfillment = makeFulfillment();
     $order = Order::query()->findOrFail($fulfillment->order_id);
@@ -351,8 +360,8 @@ test('admin can fail fulfillment and refund immediately', function () {
     expect((float) $wallet->balance)->toBe((float) $item->line_total);
 
     $transaction = WalletTransaction::query()
-        ->where('reference_type', Order::class)
-        ->where('reference_id', $order->id)
+        ->where('reference_type', Fulfillment::class)
+        ->where('reference_id', $fulfillment->id)
         ->first();
 
     expect($transaction)->not->toBeNull();

@@ -35,7 +35,7 @@ new class extends Component
 
     public function mount(): void
     {
-        abort_unless(auth()->user()?->hasRole('admin'), 403);
+        abort_unless(auth()->user()?->can('view_activities'), 403);
     }
 
     public function applyFilters(): void

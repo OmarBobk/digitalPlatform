@@ -4,14 +4,21 @@ use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
-test('admin can view activities page', function () {
+beforeEach(function (): void {
     $role = Role::firstOrCreate(['name' => 'admin']);
+    $role->syncPermissions([
+        Permission::firstOrCreate(['name' => 'view_activities']),
+    ]);
+});
+
+test('admin can view activities page', function () {
     $admin = User::factory()->create();
-    $admin->assignRole($role);
+    $admin->assignRole('admin');
 
     $order = Order::create([
         'user_id' => $admin->id,
@@ -47,5 +54,5 @@ test('non-admin cannot access activities page', function () {
 
     $this->actingAs($user)
         ->get('/admin/activities')
-        ->assertRedirect('/404');
+        ->assertNotFound();
 });

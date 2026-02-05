@@ -10,9 +10,17 @@ use App\Models\Package;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    $role = Role::firstOrCreate(['name' => 'admin']);
+    $role->syncPermissions([
+        Permission::firstOrCreate(['name' => 'view_orders']),
+    ]);
+});
 
 function makeAdminOrder(User $user): Order
 {
@@ -55,9 +63,8 @@ function makeAdminOrder(User $user): Order
 }
 
 test('admin can view orders index and detail', function () {
-    $role = Role::firstOrCreate(['name' => 'admin']);
     $admin = User::factory()->create();
-    $admin->assignRole($role);
+    $admin->assignRole('admin');
 
     $user = User::factory()->create();
     $order = makeAdminOrder($user);
@@ -74,9 +81,8 @@ test('admin can view orders index and detail', function () {
 });
 
 test('admin order detail does not render refund action', function () {
-    $role = Role::firstOrCreate(['name' => 'admin']);
     $admin = User::factory()->create();
-    $admin->assignRole($role);
+    $admin->assignRole('admin');
 
     $user = User::factory()->create();
     $order = makeAdminOrder($user);
@@ -94,9 +100,9 @@ test('non-admin cannot access admin orders pages', function () {
 
     $this->actingAs($user)
         ->get('/admin/orders')
-        ->assertRedirect('/404');
+        ->assertNotFound();
 
     $this->actingAs($user)
         ->get(route('admin.orders.show', $order))
-        ->assertRedirect('/404');
+        ->assertNotFound();
 });

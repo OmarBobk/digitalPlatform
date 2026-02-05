@@ -15,7 +15,7 @@ new class extends Component
     public Order $order;
     public function mount(Order $order): void
     {
-        abort_unless(auth()->user()?->hasRole('admin'), 403);
+        $this->authorize('view', $order);
 
         $this->order = $order->load([
             'user',

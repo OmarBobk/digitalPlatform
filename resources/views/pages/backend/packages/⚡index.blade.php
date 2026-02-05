@@ -60,6 +60,11 @@ new class extends Component
     public ?int $deleteRequirementId = null;
     public string $deleteRequirementLabel = '';
 
+    public function mount(): void
+    {
+        abort_unless(auth()->user()?->can('manage_products'), 403);
+    }
+
     public function applyFilters(): void
     {
         $this->resetPage();

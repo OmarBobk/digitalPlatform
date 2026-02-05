@@ -42,7 +42,7 @@ new class extends Component
 
     public function mount(): void
     {
-        abort_unless(auth()->user()?->hasRole('admin'), 403);
+        $this->authorize('viewAny', Fulfillment::class);
     }
 
     public function applyFilters(): void
@@ -72,6 +72,7 @@ new class extends Component
         $this->reset('noticeMessage', 'noticeVariant');
 
         $fulfillment = Fulfillment::query()->findOrFail($fulfillmentId);
+        $this->authorize('update', $fulfillment);
         app(StartFulfillment::class)->handle($fulfillment, 'admin', auth()->id(), ['source' => 'admin']);
 
         $this->noticeVariant = 'success';
@@ -92,6 +93,8 @@ new class extends Component
         if ($fulfillment === null) {
             return;
         }
+
+        $this->authorize('update', $fulfillment);
 
         if ($this->autoDonePayload && blank($this->deliveredPayloadInput)) {
             $this->deliveredPayloadInput = 'DONE';
@@ -140,6 +143,8 @@ new class extends Component
             return;
         }
 
+        $this->authorize('update', $fulfillment);
+
         app(FailFulfillment::class)->handle($fulfillment, $this->failureReason ?? '', 'admin', auth()->id());
 
         $refunded = false;
@@ -166,6 +171,7 @@ new class extends Component
         $this->reset('noticeMessage', 'noticeVariant');
 
         $fulfillment = Fulfillment::query()->findOrFail($fulfillmentId);
+        $this->authorize('update', $fulfillment);
         app(RetryFulfillment::class)->handle($fulfillment, 'admin', auth()->id());
 
         $this->noticeVariant = 'success';

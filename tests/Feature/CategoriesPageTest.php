@@ -6,11 +6,21 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    $role = Role::firstOrCreate(['name' => 'admin']);
+    $role->syncPermissions([
+        Permission::firstOrCreate(['name' => 'manage_sections']),
+    ]);
+});
+
 test('categories page renders for authenticated user', function () {
     $user = User::factory()->create();
+    $user->assignRole('admin');
 
     $this->actingAs($user)
         ->get('/categories')
@@ -20,6 +30,7 @@ test('categories page renders for authenticated user', function () {
 
 test('categories page lists existing categories', function () {
     $user = User::factory()->create();
+    $user->assignRole('admin');
     $category = Category::factory()->create([
         'name' => 'Accessories',
     ]);
@@ -32,6 +43,7 @@ test('categories page lists existing categories', function () {
 
 test('order placeholder reflects current order range', function () {
     $user = User::factory()->create();
+    $user->assignRole('admin');
 
     Category::factory()->create(['order' => 2]);
     Category::factory()->create(['order' => 9]);
@@ -44,6 +56,7 @@ test('order placeholder reflects current order range', function () {
 
 test('category can be created from manager form', function () {
     $user = User::factory()->create();
+    $user->assignRole('admin');
 
     $this->actingAs($user);
 
@@ -62,6 +75,7 @@ test('category can be created from manager form', function () {
 
 test('category can be edited from manager form', function () {
     $user = User::factory()->create();
+    $user->assignRole('admin');
     $category = Category::factory()->create([
         'name' => 'Adapters',
         'order' => 7,
@@ -87,6 +101,7 @@ test('category can be edited from manager form', function () {
 
 test('category order must be unique', function () {
     $user = User::factory()->create();
+    $user->assignRole('admin');
     Category::factory()->create(['order' => 3]);
 
     $this->actingAs($user);
@@ -101,6 +116,7 @@ test('category order must be unique', function () {
 
 test('status filter can show inactive categories only', function () {
     $user = User::factory()->create();
+    $user->assignRole('admin');
     $activeCategory = Category::factory()->create(['name' => 'Active Category X', 'is_active' => true]);
     $inactiveCategory = Category::factory()->create(['name' => 'Inactive Category Y', 'is_active' => false]);
 
@@ -117,6 +133,7 @@ test('status filter can show inactive categories only', function () {
 
 test('category image is stored when uploaded', function () {
     $user = User::factory()->create();
+    $user->assignRole('admin');
 
     $this->actingAs($user);
 
@@ -137,6 +154,7 @@ test('category image is stored when uploaded', function () {
 
 test('category status can be toggled', function () {
     $user = User::factory()->create();
+    $user->assignRole('admin');
     $category = Category::factory()->create(['is_active' => true]);
 
     $this->actingAs($user);
@@ -151,6 +169,7 @@ test('category status can be toggled', function () {
 
 test('deleting a category removes its descendants', function () {
     $user = User::factory()->create();
+    $user->assignRole('admin');
 
     $parent = Category::factory()->create();
     $child = Category::factory()->create(['parent_id' => $parent->id]);
@@ -168,6 +187,7 @@ test('deleting a category removes its descendants', function () {
 
 test('resetting create form clears inputs', function () {
     $user = User::factory()->create();
+    $user->assignRole('admin');
 
     $this->actingAs($user);
 

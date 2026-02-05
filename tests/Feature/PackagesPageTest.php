@@ -5,14 +5,21 @@ use App\Models\Package;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
-test('packages page renders for authenticated user', function () {
+beforeEach(function (): void {
     $role = Role::firstOrCreate(['name' => 'admin']);
+    $role->syncPermissions([
+        Permission::firstOrCreate(['name' => 'manage_products']),
+    ]);
+});
+
+test('packages page renders for authenticated user', function () {
     $user = User::factory()->create();
-    $user->assignRole($role);
+    $user->assignRole('admin');
 
     $this->actingAs($user)
         ->get('/packages')
@@ -21,9 +28,8 @@ test('packages page renders for authenticated user', function () {
 });
 
 test('packages page lists existing packages', function () {
-    $role = Role::firstOrCreate(['name' => 'admin']);
     $user = User::factory()->create();
-    $user->assignRole($role);
+    $user->assignRole('admin');
     $package = Package::factory()->create([
         'name' => 'Gold Pack',
     ]);
@@ -35,9 +41,8 @@ test('packages page lists existing packages', function () {
 });
 
 test('package can be created from manager form', function () {
-    $role = Role::firstOrCreate(['name' => 'admin']);
     $user = User::factory()->create();
-    $user->assignRole($role);
+    $user->assignRole('admin');
     $category = Category::factory()->create();
 
     $this->actingAs($user);
@@ -58,9 +63,8 @@ test('package can be created from manager form', function () {
 });
 
 test('package can be created without description', function () {
-    $role = Role::firstOrCreate(['name' => 'admin']);
     $user = User::factory()->create();
-    $user->assignRole($role);
+    $user->assignRole('admin');
     $category = Category::factory()->create();
 
     $this->actingAs($user);
@@ -81,9 +85,8 @@ test('package can be created without description', function () {
 });
 
 test('package order must be unique', function () {
-    $role = Role::firstOrCreate(['name' => 'admin']);
     $user = User::factory()->create();
-    $user->assignRole($role);
+    $user->assignRole('admin');
     $category = Category::factory()->create();
 
     Package::factory()->create([
@@ -104,9 +107,8 @@ test('package order must be unique', function () {
 });
 
 test('packages page shows order range placeholder from database', function () {
-    $role = Role::firstOrCreate(['name' => 'admin']);
     $user = User::factory()->create();
-    $user->assignRole($role);
+    $user->assignRole('admin');
     $category = Category::factory()->create();
 
     Package::factory()->create([
@@ -126,9 +128,8 @@ test('packages page shows order range placeholder from database', function () {
 });
 
 test('package requirement can be added to selected package', function () {
-    $role = Role::firstOrCreate(['name' => 'admin']);
     $user = User::factory()->create();
-    $user->assignRole($role);
+    $user->assignRole('admin');
     $package = Package::factory()->create();
 
     $this->actingAs($user);

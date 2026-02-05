@@ -37,6 +37,11 @@ new class extends Component
     public ?int $deleteProductId = null;
     public string $deleteProductName = '';
 
+    public function mount(): void
+    {
+        abort_unless(auth()->user()?->can('manage_products'), 403);
+    }
+
     public function applyFilters(): void
     {
         $this->resetPage();
