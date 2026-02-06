@@ -66,8 +66,8 @@ new class extends Component
                         x-data="{ product: @js($product) }"
                         class="group flex h-full flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white text-zinc-900 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-accent hover:shadow-md dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-accent"
                     >
-                        <a
-                            href="{{ $product['href'] }}"
+                        <button
+                            x-on:click="$dispatch('open-buy-now', { productId: {{ $product['id'] }} })"
                             class="block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
                             aria-label="{{ $product['name'] }}"
                         >
@@ -82,14 +82,14 @@ new class extends Component
                                     decoding="async"
                                 />
                             </div>
-                        </a>
+                        </button>
                         <div class="flex flex-1 flex-col gap-2 px-3 pb-3 pt-2">
-                            <a
-                                href="{{ $product['href'] }}"
+                            <button
+                                x-on:click="$dispatch('open-buy-now', { productId: {{ $product['id'] }} })"
                                 class="text-start text-sm font-semibold text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) dark:text-zinc-100"
                             >
                                 {{ $product['name'] }}
-                            </a>
+                            </button>
                             <div class="flex items-center justify-between gap-2">
                                 <span class="text-sm font-semibold text-(--color-accent)" dir="ltr">
                                     ₺{{ number_format($product['price'], 0, ',', '.') }}
