@@ -127,3 +127,11 @@ html:has([popover]:popover-open) {
         animation-play-state: paused;
     }
 }
+
+.main-bg {
+    background-image: url('http://karman.store/images/background-pattern.jpg');
+}
+
+.dark .main-bg {
+    background-image: url('http://karman.store/images/background-pattern-dark.jpg') !important;
+}

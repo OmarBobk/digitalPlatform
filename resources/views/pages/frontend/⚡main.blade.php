@@ -105,10 +105,6 @@ new #[Layout('layouts::frontend')] class extends Component {
                 <flux:radio value="dark" icon="moon">{{ __('messages.dark') }}</flux:radio>
                 <flux:radio value="system" icon="computer-desktop">{{ __('messages.system') }}</flux:radio>
             </flux:radio.group>
-
-            <div class="sm:shrink-0">
-                <livewire:language-switcher />
-            </div>
         </div>
     </section>
 </div>

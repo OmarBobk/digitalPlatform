@@ -5,6 +5,7 @@
     $previousUrl = url()->previous();
     $currentUrl = url()->current();
     $backUrl = $previousUrl && $previousUrl !== $currentUrl ? $previousUrl : $fallbackUrl;
+    $backIcon = app()->isLocale('ar') ? 'arrow-right' : 'arrow-left';
 @endphp
 
 <flux:button
@@ -12,7 +13,7 @@
     href="{{ $backUrl }}"
     wire:navigate
     variant="ghost"
-    icon="arrow-left"
+    :icon="$backIcon"
     aria-label="{{ $label }}"
     data-test="back-button"
     {{ $attributes->merge([
