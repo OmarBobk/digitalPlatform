@@ -16,7 +16,8 @@ new class extends Component
     public ?int $buyNowProductId = null;
     public ?string $buyNowProductName = null;
     public ?string $buyNowPackageName = null;
-    public int $buyNowQuantity = 1;
+    /** @var int|string Livewire can send empty string from number input; we normalize to int. */
+    public int|string $buyNowQuantity = 1;
     public array $buyNowRequirements = [];
     public array $buyNowRequirementsSchema = [];
     public array $buyNowRequirementsRules = [];
@@ -98,6 +99,7 @@ new class extends Component
 
     public function updatedBuyNowQuantity(mixed $value): void
     {
+        $this->buyNowQuantity = max(1, (int) $this->buyNowQuantity);
         $this->validateOnly('buyNowQuantity', $this->buyNowRules(), [], $this->buyNowAttributes());
     }
 
@@ -127,6 +129,7 @@ new class extends Component
             return;
         }
 
+        $this->buyNowQuantity = max(1, (int) $this->buyNowQuantity);
         $this->validate($this->buyNowRules(), [], $this->buyNowAttributes());
 
         try {
@@ -135,7 +138,7 @@ new class extends Component
                 [[
                     'product_id' => $this->buyNowProductId,
                     'package_id' => $product['package_id'] ?? null,
-                    'quantity' => max(1, $this->buyNowQuantity),
+                    'quantity' => $this->buyNowQuantity,
                     'requirements' => $this->buyNowRequirements,
                 ]],
                 [
@@ -155,7 +158,8 @@ new class extends Component
         } catch (ValidationException $exception) {
             $this->buyNowError = collect($exception->errors())->flatten()->first()
                 ?? 'Checkout validation failed.';
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            report($e);
             $this->buyNowError = 'Something went wrong while processing your checkout.';
         }
     }
@@ -253,7 +257,7 @@ new class extends Component
             return false;
         }
 
-        if ($this->buyNowQuantity < 1) {
+        if ((int) $this->buyNowQuantity < 1) {
             return false;
         }
 

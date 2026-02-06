@@ -2,6 +2,8 @@
 
 return [
 
+    'indirim' => 'İndirim',
+    'go' => 'Go',
     'homepage' => 'Homepage',
     'homepage_marquee' => 'Shop by category',
     'homepage_promos' => 'Promotions',

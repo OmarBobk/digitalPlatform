@@ -31,7 +31,7 @@
                     <!-- Logo -->
                     <a href="{{ route('home') }}" wire:navigate class="flex items-center shrink-0 order-1">
                         <span class="text-3xl font-bold leading-none">
-                            <span class="text-(--color-accent)">indirim</span><span class="text-(--color-zinc-900) dark:text-(--color-zinc-100)">Go</span>
+                            <span class="text-(--color-accent)">İndirim</span><span class="text-(--color-zinc-900) dark:text-(--color-zinc-100)">Go</span>
                         </span>
                     </a>
 

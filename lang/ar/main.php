@@ -1,7 +1,8 @@
 <?php
 
 return [
-
+    'indirim' => 'إندريم',
+    'go' => ' غو',
     'homepage' => 'الرئيسية',
     'homepage_marquee' => 'تسوق حسب الفئة',
     'homepage_promos' => 'العروض',
