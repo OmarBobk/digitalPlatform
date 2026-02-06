@@ -269,9 +269,9 @@ new class extends Component
                                     </td>
                                     <td class="px-5 py-4">
                                         @if ($u->blocked_at)
-                                            <flux:badge variant="danger">{{ __('messages.blocked') }}</flux:badge>
+                                            <flux:badge color="red">{{ __('messages.blocked') }}</flux:badge>
                                         @else
-                                            <flux:badge variant="primary">{{ __('messages.active') }}</flux:badge>
+                                            <flux:badge color="green">{{ __('messages.active') }}</flux:badge>
                                         @endif
                                     </td>
                                     <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">

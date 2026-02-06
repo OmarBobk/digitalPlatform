@@ -290,7 +290,7 @@ new #[Layout('layouts::frontend')] class extends Component
                     $requirementsEntries = $this->requirementsEntries($item->requirements_payload);
                 @endphp
 
-                <div class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900" wire:key="order-item-{{ $item->id }}">
+                <div id="item-{{ $item->id }}" class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900" wire:key="order-item-{{ $item->id }}">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div class="space-y-1">
                             <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">

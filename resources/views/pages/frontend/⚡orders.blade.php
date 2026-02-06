@@ -24,7 +24,7 @@ new #[Layout('layouts::frontend')] class extends Component
     {
         return Order::query()
             ->where('user_id', auth()->id())
-            ->with(['items.fulfillments'])
+            ->with(['items.fulfillments', 'items.product', 'items.package'])
             ->latest('created_at')
             ->paginate($this->perPage);
     }
@@ -123,95 +123,184 @@ new #[Layout('layouts::frontend')] class extends Component
 };
 ?>
 
-<div class="mx-auto w-full max-w-6xl px-3 py-6 sm:px-0 sm:py-10">
-    <div class="mb-4 flex items-center">
+<div class="mx-auto w-full max-w-4xl px-3 py-6 sm:px-0 sm:py-10">
+    <div class="mb-6 flex items-center">
         <x-back-button />
     </div>
 
-    <section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-            <div class="space-y-1">
-                <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
-                    {{ __('messages.orders') }}
-                </flux:heading>
-                <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">
-                    {{ __('messages.orders_intro') }}
-                </flux:text>
-            </div>
+    <section class="space-y-6">
+        <div class="space-y-1">
+            <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
+                {{ __('messages.orders') }}
+            </flux:heading>
+            <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">
+                {{ __('messages.orders_intro') }}
+            </flux:text>
         </div>
 
-        <div class="mt-4 overflow-hidden rounded-2xl border border-zinc-100 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-            <div class="overflow-x-auto">
-                @if ($this->orders->isEmpty())
-                    <div class="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
-                        <flux:heading size="sm" class="text-zinc-900 dark:text-zinc-100">
-                            {{ __('messages.no_orders') }}
-                        </flux:heading>
-                        <flux:text class="text-zinc-600 dark:text-zinc-400">
-                            {{ __('messages.no_orders_hint') }}
-                        </flux:text>
-                    </div>
-                @else
-                    <table class="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800" data-test="orders-table">
-                        <thead class="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400">
-                            <tr>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.order_number') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.created') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.total') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.payment_status') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.fulfillment_summary') }}</th>
-                                <th class="px-5 py-3 text-end font-semibold">{{ __('messages.actions') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
-                            @foreach ($this->orders as $order)
+        @if ($this->orders->isEmpty())
+            <div class="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-zinc-200 px-6 py-16 text-center dark:border-zinc-700">
+                <div class="flex size-16 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                    <flux:icon icon="shopping-bag" class="size-8 text-zinc-400 dark:text-zinc-500" />
+                </div>
+                <div class="space-y-1">
+                    <flux:heading size="sm" class="text-zinc-900 dark:text-zinc-100">
+                        {{ __('messages.no_orders') }}
+                    </flux:heading>
+                    <flux:text class="text-zinc-600 dark:text-zinc-400">
+                        {{ __('messages.no_orders_hint') }}
+                    </flux:text>
+                </div>
+                <flux:button
+                    variant="primary"
+                    icon="home"
+                    href="{{ route('home') }}"
+                    wire:navigate
+                    class="!bg-accent !text-accent-foreground hover:!bg-accent-hover"
+                >
+                    {{ __('messages.homepage') }}
+                </flux:button>
+            </div>
+        @else
+            <div class="space-y-6" data-test="orders-list">
+                @foreach ($this->orders as $order)
+                    @php
+                        $summary = $this->fulfillmentSummary($order);
+                    @endphp
+                    <article
+                        wire:key="order-{{ $order->id }}"
+                        class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition hover:shadow-md dark:border-zinc-700 dark:bg-zinc-900"
+                    >
+                        {{-- Order header --}}
+                        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-800/30 sm:px-5">
+                            <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                                <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $order->order_number }}</span>
+                                <span class="text-xs text-zinc-500 dark:text-zinc-400">
+                                    {{ $order->created_at?->format('M d, Y H:i') ?? '—' }}
+                                </span>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <flux:badge color="{{ $this->orderStatusColor($order->status) }}">
+                                    {{ $this->orderStatusLabel($order->status) }}
+                                </flux:badge>
+                                <flux:badge color="{{ $summary['color'] }}">
+                                    {{ $summary['label'] }}
+                                </flux:badge>
+                                <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
+                                    {{ $order->total }} {{ $order->currency }}
+                                </span>
+                            </div>
+                        </div>
+
+                        {{-- Order items (units when quantity > 1) --}}
+                        <div class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            @foreach ($order->items as $item)
                                 @php
-                                    $summary = $this->fulfillmentSummary($order);
+                                    $fulfillments = $item->fulfillments->sortBy('id')->values();
+                                    $itemStatus = $item->aggregateFulfillmentStatus($fulfillments);
+                                    $itemStatusColor = $itemStatus === \App\Enums\FulfillmentStatus::Completed ? 'green' : ($itemStatus === \App\Enums\FulfillmentStatus::Failed ? 'red' : ($itemStatus === \App\Enums\FulfillmentStatus::Processing ? 'amber' : 'gray'));
+                                    $statusLabel = match ($itemStatus) {
+                                        \App\Enums\FulfillmentStatus::Completed => __('messages.delivery_completed'),
+                                        \App\Enums\FulfillmentStatus::Failed => __('messages.delivery_failed'),
+                                        \App\Enums\FulfillmentStatus::Processing, \App\Enums\FulfillmentStatus::Queued => __('messages.delivery_preparing'),
+                                        default => __('messages.delivery_preparing'),
+                                    };
                                 @endphp
-                                <tr class="transition hover:bg-zinc-50 dark:hover:bg-zinc-800/60" wire:key="order-{{ $order->id }}">
-                                    <td class="px-5 py-4">
-                                        <div class="font-semibold text-zinc-900 dark:text-zinc-100">
-                                            {{ $order->order_number }}
+                                @if ($item->quantity > 1 && $fulfillments->isNotEmpty())
+                                    @foreach ($fulfillments as $index => $fulfillment)
+                                        @php
+                                            $unitStatus = $fulfillment->status;
+                                            $unitStatusColor = $unitStatus === \App\Enums\FulfillmentStatus::Completed ? 'green' : ($unitStatus === \App\Enums\FulfillmentStatus::Failed ? 'red' : 'amber');
+                                            $unitStatusLabel = match ($unitStatus) {
+                                                \App\Enums\FulfillmentStatus::Completed => __('messages.delivery_completed'),
+                                                \App\Enums\FulfillmentStatus::Failed => __('messages.delivery_failed'),
+                                                \App\Enums\FulfillmentStatus::Processing, \App\Enums\FulfillmentStatus::Queued => __('messages.delivery_preparing'),
+                                                default => __('messages.delivery_preparing'),
+                                            };
+                                        @endphp
+                                        <div class="flex items-center gap-4 px-4 py-3 sm:px-5 sm:py-4">
+                                            <div class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800">
+                                                @if ($item->package?->image)
+                                                    <img
+                                                        src="{{ asset($item->package->image) }}"
+                                                        alt="{{ $item->package->name }}"
+                                                        class="h-full w-full object-contain"
+                                                        loading="lazy"
+                                                    />
+                                                @else
+                                                    <flux:icon icon="cube" class="size-6 text-zinc-400 dark:text-zinc-500" />
+                                                @endif
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <div class="font-medium text-zinc-900 dark:text-zinc-100">
+                                                    {{ $item->product?->name ?? $item->name }}
+                                                </div>
+                                                @if ($item->package?->name)
+                                                    <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                                                        {{ $item->package->name }}
+                                                    </div>
+                                                @endif
+                                                <div class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                    #{{ $item->id }}U{{ $index + 1 }} · {{ __('messages.unit') }} {{ $index + 1 }} {{ __('messages.of') }} {{ $item->quantity }} · {{ $item->unit_price }} {{ $order->currency }}
+                                                </div>
+                                            </div>
+                                            <div class="flex shrink-0 flex-col items-end gap-1">
+                                                <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
+                                                    {{ $item->unit_price }} {{ $order->currency }}
+                                                </span>
+                                                <flux:badge color="{{ $unitStatusColor }}" class="text-xs">
+                                                    {{ $unitStatusLabel }}
+                                                </flux:badge>
+                                            </div>
                                         </div>
-                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">
-                                            #{{ $order->id }}
+                                    @endforeach
+                                @else
+                                    <div class="flex items-center gap-4 px-4 py-3 sm:px-5 sm:py-4">
+                                        <div class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800">
+                                            @if ($item->package?->image)
+                                                <img
+                                                    src="{{ asset($item->package->image) }}"
+                                                    alt="{{ $item->package->name }}"
+                                                    class="h-full w-full object-contain"
+                                                    loading="lazy"
+                                                />
+                                            @else
+                                                <flux:icon icon="cube" class="size-6 text-zinc-400 dark:text-zinc-500" />
+                                            @endif
                                         </div>
-                                    </td>
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
-                                        {{ $order->created_at?->format('M d, Y H:i') ?? '—' }}
-                                    </td>
-                                    <td class="px-5 py-4 text-zinc-700 dark:text-zinc-200" dir="ltr">
-                                        {{ $order->total }} {{ $order->currency }}
-                                    </td>
-                                    <td class="px-5 py-4">
-                                        <flux:badge color="{{ $this->orderStatusColor($order->status) }}">
-                                            {{ $this->orderStatusLabel($order->status) }}
-                                        </flux:badge>
-                                    </td>
-                                    <td class="px-5 py-4">
-                                        <flux:badge color="{{ $summary['color'] }}">
-                                            {{ $summary['label'] }}
-                                        </flux:badge>
-                                    </td>
-                                    <td class="px-5 py-4 text-end">
-                                        <a
-                                            href="{{ route('orders.show', $order->order_number) }}"
-                                            wire:navigate
-                                            class="text-sm font-semibold text-zinc-900 hover:underline dark:text-zinc-100"
-                                        >
-                                            {{ __('messages.view_order') }}
-                                        </a>
-                                    </td>
-                                </tr>
+                                        <div class="min-w-0 flex-1">
+                                            <div class="font-medium text-zinc-900 dark:text-zinc-100">
+                                                {{ $item->product?->name ?? $item->name }}
+                                            </div>
+                                            @if ($item->package?->name)
+                                                <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                                                    {{ $item->package->name }}
+                                                </div>
+                                            @endif
+                                            <div class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                #{{ $item->id }} · {{ __('messages.quantity') }}: {{ $item->quantity }} × {{ $item->unit_price }} {{ $order->currency }}
+                                            </div>
+                                        </div>
+                                        <div class="flex shrink-0 flex-col items-end gap-1">
+                                            <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
+                                                {{ $item->line_total }} {{ $order->currency }}
+                                            </span>
+                                            <flux:badge color="{{ $itemStatusColor }}" class="text-xs">
+                                                {{ $statusLabel }}
+                                            </flux:badge>
+                                        </div>
+                                    </div>
+                                @endif
                             @endforeach
-                        </tbody>
-                    </table>
-                @endif
-            </div>
-        </div>
+                        </div>
 
-        <div class="mt-4 border-t border-zinc-100 px-5 py-4 dark:border-zinc-800">
-            {{ $this->orders->links() }}
-        </div>
+                    </article>
+                @endforeach
+            </div>
+
+            <div class="pt-2">
+                {{ $this->orders->links() }}
+            </div>
+        @endif
     </section>
 </div>

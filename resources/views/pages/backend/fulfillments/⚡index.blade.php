@@ -150,6 +150,8 @@ new class extends Component
         $refunded = false;
 
         if ($this->refundAfterFail) {
+            $this->authorize('process_refunds');
+
             $fulfillment->loadMissing('orderItem');
 
             if ($fulfillment->orderItem) {
@@ -710,6 +712,7 @@ new class extends Component
             @error('failureReason')
                 <flux:text color="red">{{ $message }}</flux:text>
             @enderror
+            @can('process_refunds')
             <div class="rounded-xl border border-zinc-100 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-800/60">
                 <div class="flex items-center justify-between gap-3">
                     <div class="space-y-1">
@@ -726,6 +729,7 @@ new class extends Component
                     />
                 </div>
             </div>
+            @endcan
 
             <div class="flex flex-wrap items-center gap-2">
                 <flux:spacer />

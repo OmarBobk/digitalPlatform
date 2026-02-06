@@ -372,6 +372,83 @@ class UserModals extends Component
         return Permission::query()->orderBy('name')->pluck('name');
     }
 
+    /**
+     * Permissions grouped by domain for a cleaner UI.
+     *
+     * @return array<string, array{label: string, icon: string, permissions: array<string>}>
+     */
+    public function getGroupedPermissionsProperty(): array
+    {
+        $all = $this->allPermissions->all();
+
+        $groups = [
+            'users' => [
+                'label' => __('messages.permission_group_users'),
+                'icon' => 'users',
+                'permissions' => ['manage_users'],
+            ],
+            'catalog' => [
+                'label' => __('messages.permission_group_catalog'),
+                'icon' => 'squares-2x2',
+                'permissions' => ['manage_sections', 'manage_products', 'manage_topups'],
+            ],
+            'orders' => [
+                'label' => __('messages.permission_group_orders'),
+                'icon' => 'shopping-cart',
+                'permissions' => ['view_sales', 'view_orders', 'create_orders', 'edit_orders', 'delete_orders'],
+            ],
+            'fulfillments' => [
+                'label' => __('messages.permission_group_fulfillments'),
+                'icon' => 'truck',
+                'permissions' => ['view_fulfillments', 'manage_fulfillments'],
+            ],
+            'refunds' => [
+                'label' => __('messages.permission_group_refunds'),
+                'icon' => 'arrow-uturn-left',
+                'permissions' => ['view_refunds', 'process_refunds'],
+            ],
+            'activities' => [
+                'label' => __('messages.permission_group_activities'),
+                'icon' => 'chart-bar',
+                'permissions' => ['view_activities'],
+            ],
+            'profile' => [
+                'label' => __('messages.permission_group_profile'),
+                'icon' => 'user-circle',
+                'permissions' => ['customer_profile'],
+            ],
+        ];
+
+        $result = [];
+        foreach ($groups as $key => $config) {
+            $perms = array_intersect($config['permissions'], $all);
+            if ($perms !== []) {
+                $result[$key] = [
+                    'label' => $config['label'],
+                    'icon' => $config['icon'],
+                    'permissions' => array_values($perms),
+                ];
+            }
+        }
+
+        $assigned = collect($result)->pluck('permissions')->flatten()->all();
+        $other = array_diff($all, $assigned);
+        if ($other !== []) {
+            $result['other'] = [
+                'label' => __('messages.permission_group_other'),
+                'icon' => 'ellipsis-horizontal-circle',
+                'permissions' => array_values($other),
+            ];
+        }
+
+        return $result;
+    }
+
+    public function humanizePermission(string $name): string
+    {
+        return str_replace('_', ' ', ucwords($name, '_'));
+    }
+
     public function render()
     {
         return view('livewire.users.user-modals');
