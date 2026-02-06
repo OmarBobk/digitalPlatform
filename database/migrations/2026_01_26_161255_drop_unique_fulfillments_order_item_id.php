@@ -14,8 +14,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('fulfillments', function (Blueprint $table) {
+            $table->dropForeign(['order_item_id']);
             $table->dropUnique(['order_item_id']);
             $table->index('order_item_id');
+            $table->foreign('order_item_id')
+                ->references('id')
+                ->on('order_items')
+                ->cascadeOnDelete();
         });
     }
 
