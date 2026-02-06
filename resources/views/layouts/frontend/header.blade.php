@@ -15,7 +15,7 @@
     <head>
         @include('partials.frontend.head')
     </head>
-    <body class="min-h-screen bg-white dark:bg-zinc-900">
+    <body class="min-h-screen bg-white dark:bg-zinc-900" style="--bg-pattern: url('{{ asset('images/background-pattern.jpg') }}'); --bg-pattern-dark: url('{{ asset('images/background-pattern-dark.jpg') }}');">
         <flux:header
             sticky class="!block !px-3 !py-3 border-b border-zinc-200  dark:border-zinc-700 dark:!bg-zinc-900 "
             x-data="{ isScrolled: false }"
