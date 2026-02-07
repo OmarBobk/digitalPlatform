@@ -28,7 +28,7 @@ function makeOrderItem(User $user, FulfillmentStatus $status): array
     $package = Package::factory()->create();
     $product = Product::factory()->create([
         'package_id' => $package->id,
-        'retail_price' => 20,
+        'entry_price' => 20,
     ]);
 
     $order = Order::create([

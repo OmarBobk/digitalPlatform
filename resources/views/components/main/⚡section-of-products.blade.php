@@ -16,7 +16,7 @@ new class extends Component
         $resolver = app(ResolvePackageRequirements::class);
 
         $this->products = Product::query()
-            ->select(['id', 'package_id', 'name', 'slug', 'retail_price', 'order'])
+            ->select(['id', 'package_id', 'name', 'slug', 'entry_price', 'retail_price', 'order'])
             ->with([
                 'package:id,name,image,is_active',
                 'package.requirements:id,package_id,key,label,type,is_required,validation_rules,order',
@@ -91,8 +91,8 @@ new class extends Component
                                 {{ $product['name'] }}
                             </button>
                             <div class="flex items-center justify-between gap-2">
-                                <span class="text-sm font-semibold text-(--color-accent)" dir="ltr">
-                                    ₺{{ number_format($product['price'], 0, ',', '.') }}
+                                <span class="tabular-nums text-sm font-semibold text-(--color-accent)" dir="ltr">
+                                    ${{ number_format((float) $product['price'], 2) }}
                                 </span>
                                 <div class="flex items-center gap-2">
                                     <flux:button

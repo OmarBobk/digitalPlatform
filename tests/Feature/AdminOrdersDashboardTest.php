@@ -27,7 +27,7 @@ function makeAdminOrder(User $user): Order
     $package = Package::factory()->create();
     $product = Product::factory()->create([
         'package_id' => $package->id,
-        'retail_price' => 50,
+        'entry_price' => 50,
     ]);
 
     $order = Order::create([

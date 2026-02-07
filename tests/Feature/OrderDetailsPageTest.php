@@ -21,7 +21,7 @@ function makeCompletedOrder(User $user, array $payload): array
     $package = Package::factory()->create();
     $product = Product::factory()->create([
         'package_id' => $package->id,
-        'retail_price' => 25,
+        'entry_price' => 25,
     ]);
 
     $order = Order::create([
@@ -67,7 +67,7 @@ function makeOrderWithItem(User $user, FulfillmentStatus $status): Order
     $package = Package::factory()->create();
     $product = Product::factory()->create([
         'package_id' => $package->id,
-        'retail_price' => 10,
+        'entry_price' => 10,
     ]);
 
     $order = Order::create([

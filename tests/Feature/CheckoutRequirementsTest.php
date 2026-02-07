@@ -20,7 +20,7 @@ function makeProductWithRequirement(): array
     $package = Package::factory()->create();
     $product = Product::factory()->create([
         'package_id' => $package->id,
-        'retail_price' => 15,
+        'entry_price' => 15,
     ]);
 
     PackageRequirement::factory()->create([
@@ -108,7 +108,7 @@ test('number requirements enforce numeric min value', function () {
     $package = Package::factory()->create();
     $product = Product::factory()->create([
         'package_id' => $package->id,
-        'retail_price' => 15,
+        'entry_price' => 15,
     ]);
 
     PackageRequirement::factory()->create([

@@ -28,9 +28,9 @@
 - ###DONE fulfillments: fulfillment details there is no need to display the quantity and the total price
 - ###DONE when a customer is incrementing the products that are in the shopping cart, the dropdown not the page the dropdown will immediately closed
 - Backend:
-  - Users Manager
+  - ###DONE Users Manager
   - Notifications with Laravel Verb
 - Frontend:
   - wallet transaction in /wallets should be more described
   - Wallet /wallet Request topups form borders remove the ring
-  - /orders Redesign
+  - ###DONE /orders Redesign

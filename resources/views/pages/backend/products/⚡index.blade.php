@@ -7,6 +7,7 @@ use App\Actions\Products\GetProducts;
 use App\Actions\Products\ToggleProductStatus;
 use App\Actions\Products\UpsertProduct;
 use App\Models\Product;
+use App\Services\PriceCalculator;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -28,8 +29,7 @@ new class extends Component
     public ?int $productPackageId = null;
     public ?string $productSerial = null;
     public string $productName = '';
-    public ?string $productRetailPrice = null;
-    public ?string $productWholesalePrice = null;
+    public ?string $productEntryPrice = null;
     public ?int $productOrder = null;
     public bool $productIsActive = true;
 
@@ -67,8 +67,7 @@ new class extends Component
                 Rule::unique('products', 'serial')->ignore($this->editingProductId),
             ],
             'productName' => ['required', 'string', 'max:255'],
-            'productRetailPrice' => ['required', 'numeric', 'min:0'],
-            'productWholesalePrice' => ['required', 'numeric', 'min:0'],
+            'productEntryPrice' => ['required', 'numeric', 'min:0'],
             'productOrder' => [
                 'required',
                 'integer',
@@ -89,8 +88,7 @@ new class extends Component
                 'package_id' => $validated['productPackageId'],
                 'serial' => $validated['productSerial'],
                 'name' => $validated['productName'],
-                'retail_price' => $validated['productRetailPrice'],
-                'wholesale_price' => $validated['productWholesalePrice'],
+                'entry_price' => $validated['productEntryPrice'],
                 'is_active' => $validated['productIsActive'],
                 'order' => $validated['productOrder'],
             ]
@@ -113,8 +111,7 @@ new class extends Component
         $this->productPackageId = $product->package_id;
         $this->productSerial = $product->serial;
         $this->productName = $product->name;
-        $this->productRetailPrice = (string) $product->retail_price;
-        $this->productWholesalePrice = (string) $product->wholesale_price;
+        $this->productEntryPrice = $product->entry_price !== null ? (string) $product->entry_price : null;
         $this->productOrder = $product->order;
         $this->productIsActive = $product->is_active;
 
@@ -165,8 +162,7 @@ new class extends Component
             'productPackageId',
             'productSerial',
             'productName',
-            'productRetailPrice',
-            'productWholesalePrice',
+            'productEntryPrice',
             'productOrder',
             'productIsActive',
         ]);
@@ -187,6 +183,40 @@ new class extends Component
     public function getPackagesProperty(): Collection
     {
         return app(GetProductPackages::class)->handle();
+    }
+
+    /**
+     * Live preview: derived retail price for current productEntryPrice (backend source of truth).
+     */
+    public function getComputedRetailPriceProperty(): ?float
+    {
+        $entry = $this->productEntryPrice;
+        if ($entry === null || $entry === '' || ! is_numeric($entry) || (float) $entry < 0) {
+            return null;
+        }
+
+        try {
+            return app(PriceCalculator::class)->calculate((float) $entry)['retail_price'];
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Live preview: derived wholesale price for current productEntryPrice (backend source of truth).
+     */
+    public function getComputedWholesalePriceProperty(): ?float
+    {
+        $entry = $this->productEntryPrice;
+        if ($entry === null || $entry === '' || ! is_numeric($entry) || (float) $entry < 0) {
+            return null;
+        }
+
+        try {
+            return app(PriceCalculator::class)->calculate((float) $entry)['wholesale_price'];
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**
@@ -270,6 +300,8 @@ new class extends Component
                     icon="plus"
                     class="!bg-accent !text-accent-foreground hover:!bg-accent-hover"
                     x-on:click="toggleProductForm()"
+                    x-bind:aria-expanded="showProductForm"
+                    aria-controls="product-form-section"
                 >
                     {{ __('messages.new_product') }}
                 </flux:button>
@@ -278,6 +310,8 @@ new class extends Component
                     variant="ghost"
                     icon="adjustments-horizontal"
                     x-on:click="showFilters = !showFilters"
+                    x-bind:aria-expanded="showFilters"
+                    aria-controls="products-filters"
                 >
                     {{ __('messages.filters') }}
                 </flux:button>
@@ -294,11 +328,14 @@ new class extends Component
         </div>
 
         <form
+            id="products-filters"
             class="grid gap-4 pt-4"
             wire:submit.prevent="applyFilters"
             x-show="showFilters"
             x-cloak
             data-test="products-filters"
+            role="search"
+            aria-label="{{ __('messages.filters') }}"
         >
             <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <div class="grid gap-2">
@@ -315,7 +352,7 @@ new class extends Component
                                  name="sortBy" label="{{ __('messages.sort_by') }}" wire:model.defer="sortBy">
                         <flux:select.option value="order">{{ __('messages.order') }}</flux:select.option>
                         <flux:select.option value="name">{{ __('messages.name') }}</flux:select.option>
-                        <flux:select.option value="retail_price">{{ __('messages.retail_price') }}</flux:select.option>
+                        <flux:select.option value="entry_price">{{ __('messages.entry_price') }}</flux:select.option>
                         <flux:select.option value="created_at">{{ __('messages.created') }}</flux:select.option>
                     </flux:select>
                 </div>
@@ -335,7 +372,7 @@ new class extends Component
                     </flux:select>
                 </div>
             </div>
-            <div class="flex flex-wrap justify-between sm:justify-start gap-0 sm:gap-3">
+            <div class="flex flex-wrap justify-between gap-2 sm:justify-start sm:gap-3">
                 <flux:select
                     class="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
                     name="statusFilter"
@@ -359,13 +396,16 @@ new class extends Component
     </section>
 
     <section
+        id="product-form-section"
         class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
         x-show="showProductForm"
         x-cloak
+        role="region"
+        aria-labelledby="product-form-heading"
     >
         <form class="grid gap-5" wire:submit.prevent="saveProduct">
             <div class="flex flex-col gap-1">
-                <flux:heading size="sm" class="text-zinc-900 dark:text-zinc-100">
+                <flux:heading id="product-form-heading" size="sm" class="text-zinc-900 dark:text-zinc-100">
                     {{ $editingProductId ? __('messages.edit_product') : __('messages.create_product') }}
                 </flux:heading>
                 <flux:text class="text-zinc-600 dark:text-zinc-400">
@@ -433,32 +473,34 @@ new class extends Component
                 <div class="grid gap-2">
                     <flux:input
                         class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
-                        name="productRetailPrice"
-                        label="{{ __('messages.retail_price') }}"
+                        name="productEntryPrice"
+                        label="{{ __('messages.entry_price') }}"
                         type="number"
                         min="0"
                         step="0.01"
-                        placeholder="{{ __('messages.retail_price_placeholder') }}"
-                        wire:model.defer="productRetailPrice"
+                        placeholder="{{ __('messages.entry_price_placeholder') }}"
+                        wire:model.live="productEntryPrice"
                     />
-                    @error('productRetailPrice')
+                    @error('productEntryPrice')
                         <flux:text color="red">{{ $message }}</flux:text>
                     @enderror
                 </div>
-                <div class="grid gap-2">
-                    <flux:input
-                        class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
-                        name="productWholesalePrice"
-                        label="{{ __('messages.wholesale_price') }}"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="{{ __('messages.wholesale_price_placeholder') }}"
-                        wire:model.defer="productWholesalePrice"
-                    />
-                    @error('productWholesalePrice')
-                        <flux:text color="red">{{ $message }}</flux:text>
-                    @enderror
+                <div class="grid gap-2 md:col-span-2">
+                    <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ __('messages.derived_prices') }}</span>
+                    <div class="flex flex-wrap gap-6 rounded-lg border border-zinc-200 bg-zinc-50/50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800/50">
+                        <div class="flex flex-col gap-0.5">
+                            <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.retail_price') }}</span>
+                            <span class="tabular-nums font-mono text-base text-zinc-900 dark:text-zinc-100">
+                                {{ $this->computedRetailPrice !== null ? number_format($this->computedRetailPrice, 2) : '—' }}
+                            </span>
+                        </div>
+                        <div class="flex flex-col gap-0.5">
+                            <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.wholesale_price') }}</span>
+                            <span class="tabular-nums font-mono text-base text-zinc-900 dark:text-zinc-100">
+                                {{ $this->computedWholesalePrice !== null ? number_format($this->computedWholesalePrice, 2) : '—' }}
+                            </span>
+                        </div>
+                    </div>
                 </div>
                 <div class="flex items-center gap-3">
                     <flux:label>{{ __('messages.active') }}:</flux:label>
@@ -484,9 +526,9 @@ new class extends Component
         </form>
     </section>
 
-    <section class="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+    <section class="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900" aria-labelledby="products-table-heading">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
-            <flux:heading size="sm" class="text-zinc-900 dark:text-zinc-100">
+            <flux:heading id="products-table-heading" size="sm" class="text-zinc-900 dark:text-zinc-100">
                 {{ __('messages.products') }}
             </flux:heading>
             <div class="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
@@ -518,8 +560,8 @@ new class extends Component
             </div>
             <div wire:loading.delay.remove wire:target="applyFilters,resetFilters,$refresh,nextPage,previousPage,gotoPage">
                 @if ($this->products->count() === 0)
-                    <div class="flex flex-col items-center gap-3 p-10 text-center">
-                        <div class="flex size-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-300">
+                    <div class="flex flex-col items-center gap-3 p-10 text-center" role="status" aria-live="polite">
+                        <div class="flex size-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-300" aria-hidden="true">
                             <flux:icon icon="shopping-cart" class="size-5" />
                         </div>
                         <div class="flex flex-col gap-1">
@@ -544,13 +586,13 @@ new class extends Component
                     <table class="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800" data-test="products-table">
                         <thead class="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400">
                             <tr>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.product') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold hidden sm:table-cell">{{ __('messages.package') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.retail_price') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold hidden lg:table-cell">{{ __('messages.wholesale_price') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold hidden xl:table-cell">{{ __('messages.order') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.status') }}</th>
-                                <th class="px-5 py-3 text-end font-semibold">{{ __('messages.actions') }}</th>
+                                <th scope="col" class="px-5 py-3 text-start font-semibold">{{ __('messages.product') }}</th>
+                                <th scope="col" class="px-5 py-3 text-start font-semibold hidden sm:table-cell">{{ __('messages.package') }}</th>
+                                <th scope="col" class="px-5 py-3 text-start font-semibold">{{ __('messages.retail_price') }}</th>
+                                <th scope="col" class="px-5 py-3 text-start font-semibold hidden lg:table-cell">{{ __('messages.wholesale_price') }}</th>
+                                <th scope="col" class="px-5 py-3 text-start font-semibold hidden xl:table-cell">{{ __('messages.order') }}</th>
+                                <th scope="col" class="px-5 py-3 text-start font-semibold">{{ __('messages.status') }}</th>
+                                <th scope="col" class="px-5 py-3 text-end font-semibold">{{ __('messages.actions') }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -588,14 +630,14 @@ new class extends Component
                                     <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300 hidden sm:table-cell">
                                         {{ $product->package?->name ?? __('messages.no_package') }}
                                     </td>
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
-                                        {{ $product->retail_price }}
-                                        <div class="text-xs text-zinc-500 dark:text-zinc-400 lg:hidden">
-                                            {{ __('messages.wholesale_price') }}: {{ $product->wholesale_price }}
+                                    <td class="px-5 py-4 text-end tabular-nums text-zinc-900 dark:text-zinc-100">
+                                        {{ number_format($product->retail_price, 2) }}
+                                        <div class="mt-0.5 text-left text-xs text-zinc-500 dark:text-zinc-400 lg:hidden">
+                                            {{ __('messages.wholesale_price') }} {{ number_format($product->wholesale_price, 2) }}
                                         </div>
                                     </td>
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300 hidden lg:table-cell">
-                                        {{ $product->wholesale_price }}
+                                    <td class="px-5 py-4 text-end tabular-nums text-zinc-900 dark:text-zinc-100 hidden lg:table-cell">
+                                        {{ number_format($product->wholesale_price, 2) }}
                                     </td>
                                     <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300 hidden xl:table-cell">
                                         {{ $product->order ?? '—' }}
@@ -664,7 +706,7 @@ new class extends Component
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
-                <flux:spacer />
+                <div class="grow" aria-hidden="true"></div>
                 <flux:button variant="ghost" wire:click="cancelDeleteProduct">
                     {{ __('messages.cancel') }}
                 </flux:button>

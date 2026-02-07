@@ -18,7 +18,7 @@ function makeOrderForUser(User $user, FulfillmentStatus $status): Order
     $package = Package::factory()->create();
     $product = Product::factory()->create([
         'package_id' => $package->id,
-        'retail_price' => 40,
+        'entry_price' => 40,
     ]);
 
     $order = Order::create([

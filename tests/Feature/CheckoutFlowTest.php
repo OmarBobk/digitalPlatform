@@ -29,7 +29,7 @@ test('checkout creates paid order and fulfillments from cart payload', function 
     $product = Product::factory()->create([
         'package_id' => $package->id,
         'name' => 'Google Play 100$',
-        'retail_price' => 120,
+        'entry_price' => 120,
     ]);
 
     $payload = [
@@ -84,7 +84,7 @@ test('checkout fails when wallet balance is insufficient', function () {
     $package = Package::factory()->create();
     $product = Product::factory()->create([
         'package_id' => $package->id,
-        'retail_price' => 50,
+        'entry_price' => 50,
     ]);
 
     $payload = [

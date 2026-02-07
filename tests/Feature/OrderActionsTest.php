@@ -25,7 +25,7 @@ test('creates order snapshot from cart payload using server prices', function ()
     $product = Product::factory()->create([
         'package_id' => $package->id,
         'name' => 'Google Play 100$',
-        'retail_price' => 100,
+        'entry_price' => 100,
     ]);
 
     config()->set('billing.checkout_fee_fixed', 5);
@@ -62,7 +62,7 @@ test('pays order with wallet once', function () {
     $package = Package::factory()->create();
     $product = Product::factory()->create([
         'package_id' => $package->id,
-        'retail_price' => 100,
+        'entry_price' => 100,
     ]);
     $wallet = Wallet::create([
         'user_id' => $user->id,

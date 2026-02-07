@@ -40,7 +40,7 @@ function makeRefundableItem(User $user): array
     $package = Package::factory()->create();
     $product = Product::factory()->create([
         'package_id' => $package->id,
-        'retail_price' => 30,
+        'entry_price' => 30,
     ]);
 
     $order = Order::create([

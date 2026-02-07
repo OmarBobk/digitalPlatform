@@ -51,7 +51,7 @@ test('order belongs to user and has items', function () {
     $package = Package::factory()->create();
     $product = Product::factory()->create([
         'package_id' => $package->id,
-        'retail_price' => 50,
+        'entry_price' => 50,
     ]);
 
     $order = Order::create([
@@ -84,7 +84,7 @@ test('order item belongs to order', function () {
     $package = Package::factory()->create();
     $product = Product::factory()->create([
         'package_id' => $package->id,
-        'retail_price' => 30,
+        'entry_price' => 30,
     ]);
 
     $order = Order::create([

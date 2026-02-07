@@ -118,14 +118,14 @@ new class extends Component
         }
 
         if ($this->buyNowProductId === null) {
-            $this->buyNowError = 'Product is missing.';
+            $this->buyNowError = __('messages.product_missing');
             return;
         }
 
         $product = $this->loadProductForBuyNow($this->buyNowProductId);
 
         if ($product === null) {
-            $this->buyNowError = 'Product is missing.';
+            $this->buyNowError = __('messages.product_missing');
             return;
         }
 
@@ -148,19 +148,19 @@ new class extends Component
             );
 
             if (! $order->exists || $order->status !== OrderStatus::Paid) {
-                $this->buyNowError = 'Checkout could not be completed.';
+                $this->buyNowError = __('messages.checkout_could_not_complete');
                 return;
             }
 
-            $message = 'Payment successful. Order '.$order->order_number.' is processing.';
+            $message = __('messages.payment_successful_order_processing', ['order_number' => $order->order_number]);
             $this->dispatch('cart-toast', message: $message);
             $this->closeBuyNow();
         } catch (ValidationException $exception) {
             $this->buyNowError = collect($exception->errors())->flatten()->first()
-                ?? 'Checkout validation failed.';
+                ?? __('messages.checkout_validation_failed');
         } catch (\Throwable $e) {
             report($e);
-            $this->buyNowError = 'Something went wrong while processing your checkout.';
+            $this->buyNowError = __('messages.something_went_wrong_checkout');
         }
     }
 
@@ -173,7 +173,7 @@ new class extends Component
         $package = Package::query()
             ->select(['id', 'name'])
             ->with(['products' => function ($query): void {
-                $query->select(['id', 'package_id', 'name', 'slug', 'retail_price', 'order', 'is_active'])
+                $query->select(['id', 'package_id', 'name', 'slug', 'entry_price', 'retail_price', 'order', 'is_active'])
                     ->with([
                         'package:id,name,image,is_active',
                         'package.requirements:id,package_id,key,label,type,is_required,validation_rules,order',
@@ -320,7 +320,7 @@ new class extends Component
     private function loadProductForBuyNow(int $productId): ?array
     {
         $product = Product::query()
-            ->select(['id', 'package_id', 'name', 'slug', 'retail_price', 'order', 'is_active'])
+            ->select(['id', 'package_id', 'name', 'slug', 'entry_price', 'retail_price', 'order', 'is_active'])
             ->with([
                 'package:id,name,image,is_active',
                 'package.requirements:id,package_id,key,label,type,is_required,validation_rules,order',
@@ -454,8 +454,8 @@ new class extends Component
                                 <div class="font-semibold">
                                     {{ $product['name'] }}
                                 </div>
-                                <div class="text-sm font-semibold text-(--color-accent)" dir="ltr">
-                                    ₺{{ number_format($product['price'], 0, ',', '.') }}
+                                <div class="tabular-nums text-sm font-semibold text-(--color-accent)" dir="ltr">
+                                    ${{ number_format((float) $product['price'], 2) }}
                                 </div>
                             </div>
 
@@ -465,7 +465,7 @@ new class extends Component
                                         type="button"
                                         class="size-7 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
                                         x-on:click="qty = Math.max(1, qty - 1)"
-                                        aria-label="Azalt"
+                                        aria-label="{{ __('main.decrease') }}"
                                     >
                                         <flux:icon icon="minus" class="size-3" />
                                     </button>
@@ -474,7 +474,7 @@ new class extends Component
                                         type="button"
                                         class="size-7 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
                                         x-on:click="qty += 1"
-                                        aria-label="Artır"
+                                        aria-label="{{ __('main.increase') }}"
                                     >
                                         <flux:icon icon="plus" class="size-3" />
                                     </button>

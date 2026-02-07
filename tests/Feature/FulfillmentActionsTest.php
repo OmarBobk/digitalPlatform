@@ -38,7 +38,7 @@ function makeFulfillment(): Fulfillment
 {
     $user = User::factory()->create();
     $package = Package::factory()->create();
-    $product = Product::factory()->create(['package_id' => $package->id, 'retail_price' => 20]);
+    $product = Product::factory()->create(['package_id' => $package->id, 'entry_price' => 20]);
 
     $order = Order::create([
         'user_id' => $user->id,
@@ -73,7 +73,7 @@ function makeFulfillment(): Fulfillment
 test('create fulfillments action is idempotent and logs queued', function () {
     $user = User::factory()->create();
     $package = Package::factory()->create();
-    $product = Product::factory()->create(['package_id' => $package->id, 'retail_price' => 20]);
+    $product = Product::factory()->create(['package_id' => $package->id, 'entry_price' => 20]);
 
     $order = Order::create([
         'user_id' => $user->id,
@@ -126,7 +126,7 @@ test('create fulfillments action is idempotent and logs queued', function () {
 test('create fulfillments generates one per quantity', function () {
     $user = User::factory()->create();
     $package = Package::factory()->create();
-    $product = Product::factory()->create(['package_id' => $package->id, 'retail_price' => 15]);
+    $product = Product::factory()->create(['package_id' => $package->id, 'entry_price' => 15]);
 
     $order = Order::create([
         'user_id' => $user->id,
@@ -163,7 +163,7 @@ test('create fulfillments generates one per quantity', function () {
 test('create fulfillments stores requirements payload in meta', function () {
     $user = User::factory()->create();
     $package = Package::factory()->create();
-    $product = Product::factory()->create(['package_id' => $package->id, 'retail_price' => 20]);
+    $product = Product::factory()->create(['package_id' => $package->id, 'entry_price' => 20]);
 
     $order = Order::create([
         'user_id' => $user->id,
@@ -198,7 +198,7 @@ test('create fulfillments stores requirements payload in meta', function () {
 test('process fulfillments includes requirements payload in delivered payload', function () {
     $user = User::factory()->create();
     $package = Package::factory()->create();
-    $product = Product::factory()->create(['package_id' => $package->id, 'retail_price' => 20]);
+    $product = Product::factory()->create(['package_id' => $package->id, 'entry_price' => 20]);
 
     $order = Order::create([
         'user_id' => $user->id,

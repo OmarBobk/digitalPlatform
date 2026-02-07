@@ -23,13 +23,14 @@ class ProductFactory extends Factory
             ? fake()->unique()->bothify('SER-#####')
             : null;
 
+        $entryPrice = fake()->randomFloat(2, 5, 500);
+
         return [
             'package_id' => Package::factory(),
             'serial' => $serial,
             'name' => $name,
             'slug' => Str::slug($name),
-            'retail_price' => fake()->randomFloat(2, 5, 500),
-            'wholesale_price' => fake()->randomFloat(2, 3, 400),
+            'entry_price' => $entryPrice,
             'is_active' => fake()->boolean(80),
             'order' => fake()->unique()->numberBetween(1, 100),
         ];

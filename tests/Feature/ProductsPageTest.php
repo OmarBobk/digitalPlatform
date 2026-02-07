@@ -52,8 +52,7 @@ test('product can be created from manager form', function () {
         ->set('productPackageId', $package->id)
         ->set('productSerial', 'SER-10001')
         ->set('productName', 'Starter Product')
-        ->set('productRetailPrice', '10.50')
-        ->set('productWholesalePrice', '7.25')
+        ->set('productEntryPrice', '10.50')
         ->set('productOrder', 1)
         ->set('productIsActive', true)
         ->call('saveProduct')
@@ -63,5 +62,6 @@ test('product can be created from manager form', function () {
         'name' => 'Starter Product',
         'slug' => 'starter-product',
         'serial' => 'SER-10001',
+        'entry_price' => 10.50,
     ]);
 });

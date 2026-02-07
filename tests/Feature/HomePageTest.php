@@ -16,7 +16,7 @@ test('homepage renders main sections and gift cards', function () {
 
     Product::factory()->for($package)->create([
         'name' => 'Kablosuz Kulaklık',
-        'retail_price' => 1299,
+        'entry_price' => 1299,
         'is_active' => true,
         'order' => 1,
     ]);

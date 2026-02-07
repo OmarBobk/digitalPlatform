@@ -24,6 +24,7 @@ class GetProducts
                 'serial',
                 'name',
                 'slug',
+                'entry_price',
                 'retail_price',
                 'wholesale_price',
                 'is_active',
@@ -52,7 +53,7 @@ class GetProducts
         $sortColumn = match ($sortBy) {
             'name' => 'name',
             'created_at' => 'created_at',
-            'retail_price' => 'retail_price',
+            'entry_price' => 'entry_price',
             default => 'order',
         };
 

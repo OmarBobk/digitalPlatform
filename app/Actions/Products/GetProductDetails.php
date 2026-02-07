@@ -19,6 +19,7 @@ class GetProductDetails
                 'serial',
                 'name',
                 'slug',
+                'entry_price',
                 'retail_price',
                 'wholesale_price',
                 'is_active',

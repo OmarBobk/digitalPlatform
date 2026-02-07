@@ -18,7 +18,7 @@
                 </flux:sidebar.group>
 
                 @if (auth()->user()?->can('manage_products') || auth()->user()?->can('manage_sections'))
-                <flux:sidebar.group expandable :expanded="(request()->routeIs('categories')) or (request()->routeIs('packages')) or (request()->routeIs('products'))" :heading="__('messages.nav_content_management')" class="grid">
+                <flux:sidebar.group expandable :expanded="(request()->routeIs('categories')) or (request()->routeIs('packages')) or (request()->routeIs('products')) or (request()->routeIs('pricing-rules'))" :heading="__('messages.nav_content_management')" class="grid">
                     @can('manage_sections')
                     <flux:sidebar.item icon="tag" :href="route('categories')" :current="(request()->routeIs('categories'))" wire:navigate>
                         {{ __('messages.categories') }}
@@ -30,6 +30,9 @@
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="shopping-cart" :href="route('products')" :current="(request()->routeIs('products'))" wire:navigate>
                         {{ __('messages.products') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="currency-dollar" :href="route('pricing-rules')" :current="(request()->routeIs('pricing-rules'))" wire:navigate>
+                        {{ __('messages.pricing_rules') }}
                     </flux:sidebar.item>
                     @endcan
                 </flux:sidebar.group>

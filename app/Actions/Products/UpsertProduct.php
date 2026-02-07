@@ -11,8 +11,7 @@ class UpsertProduct
      *     package_id:int,
      *     serial:?string,
      *     name:string,
-     *     retail_price:float|string,
-     *     wholesale_price:float|string,
+     *     entry_price:float|string|null,
      *     is_active:bool,
      *     order:int
      * }  $data
@@ -29,8 +28,9 @@ class UpsertProduct
             'package_id' => $data['package_id'],
             'serial' => $serial,
             'name' => trim($data['name']),
-            'retail_price' => $data['retail_price'],
-            'wholesale_price' => $data['wholesale_price'],
+            'entry_price' => $data['entry_price'] ?? null,
+            'retail_price' => 0,
+            'wholesale_price' => 0,
             'is_active' => $data['is_active'],
             'order' => $data['order'],
         ]);
