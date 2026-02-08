@@ -257,22 +257,22 @@ new class extends Component
     <flux:modal
         wire:model.self="showDetailModal"
         variant="floating"
-        class="max-w-2xl pt-14"
+        class="w-[calc(100%-2rem)] max-w-2xl p-4 sm:p-6 sm:pt-14"
         @close="closeDetailModal"
         @cancel="closeDetailModal"
     >
         @if ($this->selectedWallet)
             <div class="space-y-4">
-                <div class="flex items-start justify-between gap-4">
-                    <div>
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0">
                         <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
                             {{ $this->selectedWallet->user?->name ?? __('messages.unknown') }}
                         </flux:heading>
-                        <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">
+                        <flux:text class="mt-1 truncate block text-sm text-zinc-600 dark:text-zinc-400">
                             {{ $this->selectedWallet->user?->email ?? '—' }}
                         </flux:text>
                     </div>
-                    <div class="shrink-0 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 dark:border-emerald-800/60 dark:bg-emerald-950/30">
+                    <div class="shrink-0 self-start rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 dark:border-emerald-800/60 dark:bg-emerald-950/30">
                         <flux:text class="text-xs font-medium text-emerald-700 dark:text-emerald-300">
                             {{ __('messages.balance') }}
                         </flux:text>
@@ -293,7 +293,36 @@ new class extends Component
                         </flux:text>
                     </div>
                 @else
-                    <div class="max-h-[50vh] overflow-auto rounded-xl border border-zinc-200 dark:border-zinc-700">
+                    {{-- Mobile: card list --}}
+                    <div class="max-h-[50vh] overflow-auto sm:hidden">
+                        <div class="flex flex-col gap-3" role="list" aria-label="{{ __('messages.balance_details') }}">
+                            @foreach ($this->balanceBreakdown as $row)
+                                <article
+                                    wire:key="breakdown-mob-{{ $row['type']->value }}"
+                                    class="flex flex-col gap-2 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900"
+                                    role="listitem"
+                                >
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ $row['typeLabel'] }}</span>
+                                        <span class="shrink-0 font-semibold tabular-nums {{ $row['net'] >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300' }}" dir="ltr">
+                                            {{ $row['net'] >= 0 ? '+' : '-' }}{{ config('billing.currency_symbol', '$') }}{{ number_format(abs($row['net']), 2) }}
+                                        </span>
+                                    </div>
+                                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                        @if ($row['credits'] > 0)
+                                            <span dir="ltr">{{ __('messages.credits') }}: {{ config('billing.currency_symbol', '$') }}{{ number_format($row['credits'], 2) }}</span>
+                                        @endif
+                                        @if ($row['debits'] > 0)
+                                            <span dir="ltr">{{ __('messages.debits') }}: {{ config('billing.currency_symbol', '$') }}{{ number_format($row['debits'], 2) }}</span>
+                                        @endif
+                                    </div>
+                                </article>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    {{-- Desktop: table --}}
+                    <div class="hidden max-h-[50vh] overflow-auto rounded-xl border border-zinc-200 dark:border-zinc-700 sm:block">
                         <table class="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
                             <thead class="sticky top-0 z-10 bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400">
                                 <tr>
