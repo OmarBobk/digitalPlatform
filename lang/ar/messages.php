@@ -310,7 +310,7 @@ return [
     'credit' => 'دائن',
     'debit' => 'مدين',
     'type' => 'النوع',
-    'posted' => 'تم الترحيل',
+    'posted' => 'تم التصدير',
     'reference' => 'المرجع',
     'log_name' => 'السجل',
     'log_name_payments' => 'المدفوعات',

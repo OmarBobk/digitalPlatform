@@ -450,16 +450,16 @@ new class extends Component
                             class="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-3 text-sm text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 sm:flex-row sm:items-center sm:justify-between"
                             wire:key="package-product-{{ $product['id'] }}"
                         >
-                            <div class="flex-1 space-y-1 text-start">
+                            <div class="flex justify-between flex-1 space-y-1 text-start">
                                 <div class="font-semibold">
                                     {{ $product['name'] }}
                                 </div>
-                                <div class="tabular-nums text-sm font-semibold text-(--color-accent)" dir="ltr">
+                                <div class="tabular-nums text-lg font-semibold text-(--color-accent)" dir="ltr">
                                     ${{ number_format((float) $product['price'], 2) }}
                                 </div>
                             </div>
 
-                            <div class="flex items-center gap-3">
+                            <div class="flex items-center gap-3 justify-between">
                                 <div class="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-1 py-0.5 text-xs font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
                                     <button
                                         type="button"

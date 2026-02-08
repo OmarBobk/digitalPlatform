@@ -90,15 +90,20 @@ new class extends Component
                             >
                                 {{ $product['name'] }}
                             </button>
-                            <div class="flex items-center justify-between gap-2">
-                                <span class="tabular-nums text-sm font-semibold text-(--color-accent)" dir="ltr">
+                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                                <span
+                                    class="shrink-0 tabular-nums text-base font-bold text-(--color-accent)"
+                                    dir="ltr"
+                                    aria-label="{{ __('messages.amount') }}: ${{ number_format((float) $product['price'], 2) }}"
+                                >
                                     ${{ number_format((float) $product['price'], 2) }}
                                 </span>
-                                <div class="flex items-center gap-2">
+                                <div class="flex items-center justify-between gap-1.5 shrink-0 sm:gap-2">
                                     <flux:button
                                         type="button"
                                         variant="outline"
                                         size="xs"
+                                        class="touch-manipulation sm:min-h-0 sm:min-w-0"
                                         x-on:click="$dispatch('open-buy-now', { productId: {{ $product['id'] }} })"
                                     >
                                         {{ __('main.buy_now') }}
@@ -107,8 +112,7 @@ new class extends Component
                                         type="button"
                                         variant="ghost"
                                         icon="shopping-cart"
-                                        class="!h-8 !w-8 !p-0 [&>div>svg]:size-4 !text-zinc-700 dark:!text-zinc-300
-                                        hover:!bg-zinc-100 dark:hover:!bg-zinc-700/60 rounded-md"
+                                        class="!h-9 !min-h-9 !w-9 !min-w-9 !p-0 touch-manipulation [&>div>svg]:size-4 !text-zinc-700 dark:!text-zinc-300 hover:!bg-zinc-100 dark:hover:!bg-zinc-700/60 rounded-md sm:!h-8 sm:!min-h-0 sm:!w-8 sm:!min-w-0"
                                         x-on:click="$store.cart.add(product)"
                                         data-test="cart-add"
                                         aria-label="{{ __('main.add_to_cart_for', ['name' => $product['name']]) }}"
