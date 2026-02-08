@@ -8,6 +8,7 @@ enum WalletTransactionType: string
     case Purchase = 'purchase';
     case Refund = 'refund';
     case Adjustment = 'adjustment';
+    case Settlement = 'settlement';
 
     /**
      * Get all enum values as an array.

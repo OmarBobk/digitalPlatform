@@ -241,7 +241,7 @@ new #[Layout('layouts::frontend')] class extends Component
                                                     </div>
                                                 @endif
                                                 <div class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                    #{{ $item->id }}U{{ $index + 1 }} · {{ __('messages.unit') }} {{ $index + 1 }} {{ __('messages.of') }} {{ $item->quantity }} · {{ $item->unit_price }} {{ $order->currency }}
+                                                    {{__('messages.order_id')}}: #{{ $item->id }}U{{ $index + 1 }} · {{ __('messages.unit') }} {{ $index + 1 }} {{ __('messages.of') }} {{ $item->quantity }} · {{ $item->unit_price }} {{ $order->currency }}
                                                 </div>
                                             </div>
                                             <div class="flex shrink-0 flex-col items-end gap-1">
@@ -278,7 +278,7 @@ new #[Layout('layouts::frontend')] class extends Component
                                                 </div>
                                             @endif
                                             <div class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                #{{ $item->id }} · {{ __('messages.quantity') }}: {{ $item->quantity }} × {{ $item->unit_price }} {{ $order->currency }}
+                                                {{__('messages.order_id')}}: #{{ $item->id }} · {{ __('messages.quantity') }}: {{ $item->quantity }} × {{ $item->unit_price }} {{ $order->currency }}
                                             </div>
                                         </div>
                                         <div class="flex shrink-0 flex-col items-end gap-1">

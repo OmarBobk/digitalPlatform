@@ -8,8 +8,23 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
+
+test('admin can access wallet page and sees customer wallet', function () {
+    $permission = Permission::firstOrCreate(['name' => 'manage_products']);
+    $role = Role::firstOrCreate(['name' => 'admin']);
+    $role->givePermissionTo($permission);
+
+    $admin = User::factory()->create();
+    $admin->assignRole($role);
+
+    $this->actingAs($admin)
+        ->get(route('wallet'))
+        ->assertOk();
+});
 
 test('wallet shows recent orders with link', function () {
     $user = User::factory()->create();

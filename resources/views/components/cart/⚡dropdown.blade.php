@@ -85,7 +85,7 @@ new class extends Component
                                     <div class="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-1 py-0.5 text-xs font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
                                         <button
                                             type="button"
-                                            class="size-6 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                            class="size-6 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 p-[.35rem]"
                                             x-on:click.stop="$store.cart.decrement(item.id)"
                                             aria-label="{{ __('main.decrease') }}"
                                         >
@@ -94,7 +94,7 @@ new class extends Component
                                         <span class="min-w-5 text-center" x-text="item.quantity"></span>
                                         <button
                                             type="button"
-                                            class="size-6 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                            class="size-6 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 p-[.35rem]"
                                             x-on:click.stop="$store.cart.increment(item.id)"
                                             aria-label="{{ __('main.increase') }}"
                                         >

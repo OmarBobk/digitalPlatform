@@ -8,6 +8,8 @@ use App\Enums\WalletTransactionType;
 use App\Models\TopupProof;
 use App\Models\TopupRequest;
 use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Fulfillment;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Support\Collection;
@@ -129,12 +131,64 @@ new #[Layout('layouts::frontend')] class extends Component
      */
     public function getWalletTransactionsProperty(): Collection
     {
-        return WalletTransaction::query()
+        $transactions = WalletTransaction::query()
             ->where('wallet_id', $this->wallet->id)
             ->with('reference')
             ->latest('created_at')
             ->limit(100)
             ->get();
+
+        // Eager load order items for Purchase (Order) and Refund (Fulfillment) transactions
+        $orderIds = $transactions
+            ->filter(fn ($t) => $t->reference_type === Order::class)
+            ->pluck('reference_id')
+            ->unique()
+            ->values()
+            ->all();
+
+        $fulfillmentIds = $transactions
+            ->filter(fn ($t) => $t->reference_type === Fulfillment::class)
+            ->pluck('reference_id')
+            ->unique()
+            ->values()
+            ->all();
+
+        if (! empty($orderIds)) {
+            $orders = Order::with('items')->whereIn('id', $orderIds)->get()->keyBy('id');
+            foreach ($transactions as $t) {
+                if ($t->reference_type === Order::class && isset($orders[$t->reference_id])) {
+                    $t->setRelation('reference', $orders[$t->reference_id]);
+                }
+            }
+        }
+
+        if (! empty($fulfillmentIds)) {
+            $fulfillments = Fulfillment::with('orderItem.order')->whereIn('id', $fulfillmentIds)->get()->keyBy('id');
+            foreach ($transactions as $t) {
+                if ($t->reference_type === Fulfillment::class && isset($fulfillments[$t->reference_id])) {
+                    $t->setRelation('reference', $fulfillments[$t->reference_id]);
+                }
+            }
+        }
+
+        // Eager load OrderItem references for Refund transactions
+        $orderItemIds = $transactions
+            ->filter(fn ($t) => $t->reference_type === OrderItem::class)
+            ->pluck('reference_id')
+            ->unique()
+            ->values()
+            ->all();
+
+        if (! empty($orderItemIds)) {
+            $orderItems = OrderItem::with('order')->whereIn('id', $orderItemIds)->get()->keyBy('id');
+            foreach ($transactions as $t) {
+                if ($t->reference_type === OrderItem::class && isset($orderItems[$t->reference_id])) {
+                    $t->setRelation('reference', $orderItems[$t->reference_id]);
+                }
+            }
+        }
+
+        return $transactions;
     }
 
     /**
@@ -147,18 +201,6 @@ new #[Layout('layouts::frontend')] class extends Component
             ->with('proofs')
             ->latest('created_at')
             ->limit(10)
-            ->get();
-    }
-
-    /**
-     * @return Collection<int, Order>
-     */
-    public function getRecentOrdersProperty(): Collection
-    {
-        return Order::query()
-            ->where('user_id', auth()->id())
-            ->latest('created_at')
-            ->limit(5)
             ->get();
     }
 
@@ -202,28 +244,31 @@ new #[Layout('layouts::frontend')] class extends Component
      */
     protected function transactionDetails(WalletTransaction $transaction): array
     {
-        if ($transaction->reference_type === Order::class) {
-            $orderNumber = data_get($transaction->meta, 'order_number');
-
-            if ($orderNumber === null && $transaction->reference instanceof Order) {
-                $orderNumber = $transaction->reference->order_number;
-            }
-
-            if ($orderNumber !== null) {
-                return [
-                    'label' => __('messages.order_number').': '.$orderNumber,
-                    'url' => route('orders.show', $orderNumber),
-                ];
-            }
+        if ($transaction->reference_type === Order::class && $transaction->reference instanceof Order) {
+            $order = $transaction->reference;
+            $itemsLabel = $this->formatOrderItemsLabel($order->items);
+            $orderUrl = route('orders.show', $order->order_number);
 
             return [
-                'label' => __('messages.order').' #'.$transaction->reference_id,
-                'url' => null,
+                'label' => $itemsLabel ?: __('messages.order_number').': '.$order->order_number,
+                'url' => $orderUrl,
             ];
         }
 
         if ($transaction->type === WalletTransactionType::Refund) {
+            $orderItem = $this->resolveRefundOrderItem($transaction);
             $orderNumber = data_get($transaction->meta, 'order_number');
+
+            if ($orderItem !== null) {
+                $itemLabel = $orderItem->name.($orderItem->quantity > 1 ? ' (×'.$orderItem->quantity.')' : '');
+                $order = $orderItem->order;
+                $orderNumber = $orderNumber ?? ($order?->order_number);
+
+                return [
+                    'label' => $itemLabel,
+                    'url' => $orderNumber ? route('orders.show', $orderNumber) : null,
+                ];
+            }
 
             if ($orderNumber !== null) {
                 return [
@@ -262,6 +307,31 @@ new #[Layout('layouts::frontend')] class extends Component
         ];
     }
 
+    /**
+     * @param  \Illuminate\Support\Collection<int, OrderItem>  $items
+     */
+    protected function formatOrderItemsLabel($items): string
+    {
+        if ($items === null || $items->isEmpty()) {
+            return '';
+        }
+
+        return $items->map(fn (OrderItem $item) => $item->name.($item->quantity > 1 ? ' (×'.$item->quantity.')' : ''))->join(', ');
+    }
+
+    protected function resolveRefundOrderItem(WalletTransaction $transaction): ?OrderItem
+    {
+        if ($transaction->reference_type === OrderItem::class && $transaction->reference instanceof OrderItem) {
+            return $transaction->reference;
+        }
+
+        if ($transaction->reference_type === Fulfillment::class && $transaction->reference instanceof Fulfillment) {
+            return $transaction->reference->orderItem;
+        }
+
+        return null;
+    }
+
     public function render(): View
     {
         return $this->view()->title(__('messages.wallet'));
@@ -282,7 +352,7 @@ new #[Layout('layouts::frontend')] class extends Component
                     </flux:heading>
                 </div>
                 <div class="mt-4 text-3xl font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
-                    {{ $this->wallet->balance }} {{ $this->wallet->currency }}
+                    ${{ number_format((float) $this->wallet->balance, 2) }}
                 </div>
                 <flux:text class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
                     {{ __('messages.wallet_balance_hint') }}
@@ -307,7 +377,7 @@ new #[Layout('layouts::frontend')] class extends Component
                             </flux:text>
                         </div>
                     @else
-                        <div class="grid gap-3 sm:hidden">
+                        <div class="grid gap-3 sm:hidden" role="list" aria-label="{{ __('messages.wallet_transactions') }}">
                             @foreach ($this->walletTransactions as $transaction)
                                 @php
                                     $typeLabel = match ($transaction->type) {
@@ -315,6 +385,8 @@ new #[Layout('layouts::frontend')] class extends Component
                                         WalletTransactionType::Purchase => __('messages.wallet_transaction_type_purchase'),
                                         WalletTransactionType::Refund => __('messages.wallet_transaction_type_refund'),
                                         WalletTransactionType::Adjustment => __('messages.wallet_transaction_type_adjustment'),
+                                        WalletTransactionType::Settlement => __('messages.wallet_transaction_type_settlement'),
+                                        default => $transaction->type->value,
                                     };
                                     $directionLabel = $transaction->direction === WalletTransactionDirection::Credit
                                         ? __('messages.credit')
@@ -327,44 +399,59 @@ new #[Layout('layouts::frontend')] class extends Component
                                         WalletTransaction::STATUS_REJECTED => 'red',
                                         default => 'amber',
                                     };
+                                    $borderColor = $transaction->direction === WalletTransactionDirection::Credit
+                                        ? 'border-s-emerald-500 dark:border-s-emerald-600'
+                                        : 'border-s-red-700 dark:border-s-red-800';
+                                    $amountColor = $transaction->direction === WalletTransactionDirection::Credit
+                                        ? 'text-emerald-600 dark:text-emerald-400'
+                                        : 'text-red-700 dark:text-red-400';
                                 @endphp
-                                <div class="grid gap-2 rounded-xl border border-zinc-100 bg-white p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
-                                    <div class="flex items-start justify-between gap-2">
-                                        <div class="font-semibold text-zinc-900 dark:text-zinc-100">
-                                            {{ $typeLabel }}
-                                        </div>
-                                        <flux:badge color="{{ $statusColor }}">
-                                            {{ __('messages.'.$transaction->status) }}
-                                        </flux:badge>
-                                    </div>
-                                    <div class="flex flex-wrap items-center gap-2">
-                                        <flux:badge color="{{ $directionColor }}">{{ $directionLabel }}</flux:badge>
-                                        <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
-                                            {{ $transaction->amount }} {{ $this->wallet->currency }}
+                                <article
+                                    class="relative flex flex-col gap-3 rounded-xl border border-zinc-200 border-s-4 {{ $borderColor }} bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900"
+                                    role="listitem"
+                                >
+                                    {{-- Primary: amount + direction --}}
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-xl font-bold tabular-nums {{ $amountColor }}" dir="ltr">
+                                            {{ $transaction->direction === WalletTransactionDirection::Credit ? '+' : '−' }}${{ number_format((float) $transaction->amount, 2) }}
                                         </span>
+                                        <div class="flex items-center gap-2 shrink-0">
+                                            <flux:badge color="{{ $directionColor }}" class="text-xs">{{ $directionLabel }}</flux:badge>
+                                            <span class="rounded-md bg-zinc-100 px-1.5 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">{{ __('messages.'.$transaction->status) }}</span>
+                                        </div>
                                     </div>
-                                    <div class="text-xs text-zinc-500 dark:text-zinc-400">
+
+                                    {{-- Type --}}
+                                    <div class="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                        {{ $typeLabel }}
+                                    </div>
+
+                                    {{-- Details (what) --}}
+                                    <div>
+                                        <span class="sr-only">{{ __('messages.details') }}: </span>
                                         @if ($details['url'])
                                             <a
                                                 href="{{ $details['url'] }}"
                                                 wire:navigate
-                                                class="font-semibold text-zinc-900 hover:underline dark:text-zinc-100"
+                                                class="inline-flex items-center gap-1 text-sm font-medium text-(--color-accent) hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
                                             >
                                                 {{ $details['label'] }}
+                                                <flux:icon icon="chevron-right" class="size-3.5 shrink-0 rtl:rotate-180" />
                                             </a>
                                         @else
-                                            <span>{{ $details['label'] }}</span>
+                                            <span class="text-sm text-zinc-600 dark:text-zinc-400">{{ $details['label'] }}</span>
                                         @endif
                                     </div>
+
                                     @if ($note)
-                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">
-                                            {{ $note }}
-                                        </div>
+                                        <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ $note }}</p>
                                     @endif
-                                    <div class="text-xs text-zinc-500 dark:text-zinc-400">
-                                        {{ $transaction->created_at?->format('M d, Y') ?? '—' }}
-                                    </div>
-                                </div>
+
+                                    {{-- Date --}}
+                                    <time class="text-xs text-zinc-500 dark:text-zinc-400" datetime="{{ $transaction->created_at?->toIso8601String() ?? '' }}">
+                                        {{ $transaction->created_at?->format('M d, Y H:i') ?? '—' }}
+                                    </time>
+                                </article>
                             @endforeach
                         </div>
 
@@ -390,6 +477,8 @@ new #[Layout('layouts::frontend')] class extends Component
                                                 WalletTransactionType::Purchase => __('messages.wallet_transaction_type_purchase'),
                                                 WalletTransactionType::Refund => __('messages.wallet_transaction_type_refund'),
                                                 WalletTransactionType::Adjustment => __('messages.wallet_transaction_type_adjustment'),
+                                                WalletTransactionType::Settlement => __('messages.wallet_transaction_type_settlement'),
+                                                default => $transaction->type->value,
                                             };
                                             $directionLabel = $transaction->direction === WalletTransactionDirection::Credit
                                                 ? __('messages.credit')
@@ -411,7 +500,7 @@ new #[Layout('layouts::frontend')] class extends Component
                                                 <flux:badge color="{{ $directionColor }}">{{ $directionLabel }}</flux:badge>
                                             </td>
                                             <td class="px-5 py-4 text-zinc-700 dark:text-zinc-200" dir="ltr">
-                                                {{ $transaction->amount }} {{ $this->wallet->currency }}
+                                                ${{ number_format((float) $transaction->amount, 2) }}
                                             </td>
                                             <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
                                                 <flux:badge color="{{ $statusColor }}">
@@ -435,7 +524,7 @@ new #[Layout('layouts::frontend')] class extends Component
                                                 {{ $note ?: '—' }}
                                             </td>
                                             <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
-                                                {{ $transaction->created_at?->format('M d, Y') ?? '—' }}
+                                                {{ $transaction->created_at?->format('M d, Y H:i') ?? '—' }}
                                             </td>
                                         </tr>
                                     @endforeach
@@ -443,52 +532,6 @@ new #[Layout('layouts::frontend')] class extends Component
                             </table>
                             </div>
                         </div>
-                    @endif
-                </div>
-            </section>
-
-            <section class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:p-6">
-                <div class="flex items-center justify-between gap-3">
-                    <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
-                        {{ __('messages.orders') }}
-                    </flux:heading>
-                </div>
-
-                <div class="mt-4 space-y-3">
-                    @if ($this->recentOrders->isEmpty())
-                        <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">
-                            {{ __('messages.no_orders_yet') }}
-                        </flux:text>
-                    @else
-                        @foreach ($this->recentOrders as $order)
-                            <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-800/60">
-                                <div>
-                                    <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                                        {{ $order->order_number }}
-                                    </div>
-                                    <div class="text-xs text-zinc-500 dark:text-zinc-400">
-                                        {{ $order->created_at?->format('M d, Y') ?? '—' }}
-                                    </div>
-                                    <div class="text-xs text-zinc-500 dark:text-zinc-400" dir="ltr">
-                                        {{ $order->total }} {{ $order->currency }}
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <flux:badge color="{{ $this->orderStatusColor($order->status) }}">
-                                        {{ $this->orderStatusLabel($order->status) }}
-                                    </flux:badge>
-                                    <flux:button
-                                        as="a"
-                                        href="{{ route('orders.show', $order->order_number) }}"
-                                        wire:navigate
-                                        variant="ghost"
-                                        size="sm"
-                                    >
-                                        {{ __('messages.view') }}
-                                    </flux:button>
-                                </div>
-                            </div>
-                        @endforeach
                     @endif
                 </div>
             </section>
@@ -511,19 +554,18 @@ new #[Layout('layouts::frontend')] class extends Component
                 <form class="mt-4 space-y-4" wire:submit.prevent="submitTopup">
                     <div class="grid gap-2">
                         <flux:input
+                            class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
                             name="topupAmount"
                             label="{{ __('messages.amount') }}"
                             wire:model.defer="topupAmount"
                             placeholder="0.00"
                         />
-                        @error('topupAmount')
-                            <flux:text class="text-xs text-red-600">{{ $message }}</flux:text>
-                        @enderror
                     </div>
 
                     <div class="grid gap-2">
                         <flux:select
                             name="topupMethod"
+                            class="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
                             label="{{ __('messages.method') }}"
                             wire:model.defer="topupMethod"
                         >
@@ -586,7 +628,7 @@ new #[Layout('layouts::frontend')] class extends Component
                             <div class="flex items-center justify-between gap-3 rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-800/60">
                                 <div>
                                     <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                                        {{ $topupRequest->amount }} {{ $topupRequest->currency }}
+                                        ${{ number_format((float) $topupRequest->amount, 2) }}
                                     </div>
                                     <div class="text-xs text-zinc-500 dark:text-zinc-400">
                                         {{ $topupRequest->created_at?->format('M d, Y') ?? '—' }}

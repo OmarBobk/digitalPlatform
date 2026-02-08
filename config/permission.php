@@ -219,5 +219,6 @@ return [
         'view_refunds',
         'process_refunds',
         'view_activities',
+        'manage_settlements',
     ],
 ];

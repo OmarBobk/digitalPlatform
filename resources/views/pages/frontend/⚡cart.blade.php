@@ -22,7 +22,7 @@ new #[Layout('layouts::frontend')] class extends Component {
         $this->reset('checkoutError', 'checkoutSuccess', 'lastOrderNumber');
 
         if (! auth()->check()) {
-            $this->checkoutError = 'Please sign in to complete checkout.';
+            $this->checkoutError = __('messages.sign_in_to_checkout');
             return;
         }
 
@@ -43,18 +43,18 @@ new #[Layout('layouts::frontend')] class extends Component {
             );
 
             if (! $order->exists || $order->status !== OrderStatus::Paid) {
-                $this->checkoutError = 'Checkout could not be completed.';
+                $this->checkoutError = __('messages.checkout_could_not_complete');
                 return;
             }
 
-            $this->checkoutSuccess = 'Payment successful. Order '.$order->order_number.' is processing.';
+            $this->checkoutSuccess = __('messages.payment_successful_order_processing', ['order_number' => $order->order_number]);
             $this->lastOrderNumber = $order->order_number;
             $this->dispatch('checkout-success', orderNumber: $order->order_number);
         } catch (ValidationException $exception) {
             $this->checkoutError = collect($exception->errors())->flatten()->first()
-                ?? 'Checkout validation failed.';
+                ?? __('messages.checkout_validation_failed');
         } catch (\Throwable) {
-            $this->checkoutError = 'Something went wrong while processing your checkout.';
+            $this->checkoutError = __('messages.something_went_wrong_checkout');
         }
     }
 
@@ -138,7 +138,7 @@ new #[Layout('layouts::frontend')] class extends Component {
         } catch (ValidationException $exception) {
             $this->dispatchCartRequirementErrors($exception->errors());
             $this->checkoutError = collect($exception->errors())->flatten()->first()
-                ?? 'Checkout validation failed.';
+                ?? __('messages.checkout_validation_failed');
 
             return false;
         }
@@ -276,7 +276,7 @@ new #[Layout('layouts::frontend')] class extends Component {
 
 <div
     class="mx-auto w-full max-w-7xl px-3 py-6 sm:px-0 sm:py-10"
-    x-data
+    x-data="{ itemsLabel: @js(__('messages.items')) }"
     x-init="
         $store.cart.init();
         $store.cart.setValidationMessages({
@@ -310,11 +310,11 @@ new #[Layout('layouts::frontend')] class extends Component {
             <div class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 sm:p-6">
                 <div class="flex items-center justify-between gap-3">
                     <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
-                        Sepetim
+                        {{ __('main.my_cart') }}
                     </flux:heading>
                     <span
                         class="text-sm text-zinc-500 dark:text-zinc-400"
-                        x-text="$store.cart.count + ' ürün'"
+                        x-text="$store.cart.count + ' ' + itemsLabel"
                     ></span>
                 </div>
 
@@ -325,14 +325,14 @@ new #[Layout('layouts::frontend')] class extends Component {
                                 <flux:icon icon="shopping-cart" class="size-5" />
                             </div>
                             <div class="text-sm text-zinc-600 dark:text-zinc-300">
-                                Sepetiniz şu an boş.
+                                {{ __('main.cart_empty') }}
                             </div>
                             <a
                                 href="{{ route('home') }}"
                                 wire:navigate
                                 class="inline-flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
                             >
-                                Alışverişe devam et
+                                {{ __('main.continue_shopping') }}
                             </a>
                         </li>
                     </template>
@@ -392,7 +392,7 @@ new #[Layout('layouts::frontend')] class extends Component {
                                                             'border-red-500 focus:border-red-500': $store.cart.getRequirementError(item, requirement)
                                                         }"
                                                         :type="requirement.type === 'number' ? 'number' : 'text'"
-                                                        :placeholder="requirement.key"
+                                                        :placeholder="requirement.label || requirement.key"
                                                         x-on:input="$store.cart.updateRequirement(item.id, requirement.key, $event.target.value)"
                                                         x-on:blur="$wire.validateCartRequirement(item.id, requirement.key, $event.target.value)"
                                                         :value="item.requirements?.[requirement.key] ?? ''"
@@ -413,18 +413,18 @@ new #[Layout('layouts::frontend')] class extends Component {
                                 <div class="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-1 py-0.5 text-xs font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
                                     <button
                                         type="button"
-                                        class="size-7 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                        class="size-7 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 p-[.45rem]"
                                         x-on:click.stop="$store.cart.decrement(item.id)"
-                                        aria-label="Azalt"
+                                        aria-label="{{ __('main.decrease') }}"
                                     >
                                         <flux:icon icon="minus" class="size-3" />
                                     </button>
                                     <span class="min-w-6 text-center text-sm" x-text="item.quantity"></span>
                                     <button
                                         type="button"
-                                        class="size-7 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                        class="size-7 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 p-[.45rem]"
                                         x-on:click.stop="$store.cart.increment(item.id)"
-                                        aria-label="Artır"
+                                        aria-label="{{ __('main.increase') }}"
                                     >
                                         <flux:icon icon="plus" class="size-3" />
                                     </button>
@@ -436,7 +436,7 @@ new #[Layout('layouts::frontend')] class extends Component {
                                     type="button"
                                     class="rounded-md p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                                     x-on:click.stop="$store.cart.remove(item.id)"
-                                    aria-label="Ürünü kaldır"
+                                    aria-label="{{ __('main.remove_item') }}"
                                 >
                                     <flux:icon icon="x-mark" class="size-4" />
                                 </button>
@@ -450,7 +450,7 @@ new #[Layout('layouts::frontend')] class extends Component {
         <aside class="w-full lg:w-80 lg:sticky lg:top-24">
             <div class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 sm:p-6">
                 <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
-                    Sipariş Özeti
+                    {{ __('main.order_summary') }}
                 </flux:heading>
 
                 @if ($checkoutError)
@@ -482,17 +482,17 @@ new #[Layout('layouts::frontend')] class extends Component {
 
                 <div class="mt-4 space-y-3 text-sm">
                     <div class="flex items-center justify-between text-zinc-600 dark:text-zinc-300">
-                        <span>Ara toplam</span>
+                        <span>{{ __('messages.subtotal') }}</span>
                         <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr" x-text="$store.cart.format($store.cart.subtotal)"></span>
                     </div>
                     <div class="flex items-center justify-between text-zinc-600 dark:text-zinc-300">
-                        <span>Kargo</span>
-                        <span class="font-semibold text-zinc-900 dark:text-zinc-100">Ücretsiz</span>
+                        <span>{{ __('main.shipping') }}</span>
+                        <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ __('main.free_shipping') }}</span>
                     </div>
                 </div>
 
                 <div class="mt-4 flex items-center justify-between border-t border-zinc-100 pt-4 text-base font-semibold dark:border-zinc-700">
-                    <span class="text-zinc-900 dark:text-zinc-100">Toplam</span>
+                    <span class="text-zinc-900 dark:text-zinc-100">{{ __('messages.total') }}</span>
                     <span class="text-(--color-accent)" dir="ltr" x-text="$store.cart.format($store.cart.subtotal)"></span>
                 </div>
 
@@ -506,7 +506,7 @@ new #[Layout('layouts::frontend')] class extends Component {
                         wire:target="checkout"
                         data-test="cart-checkout"
                     >
-                        Ödemeye geç
+                        {{ __('main.proceed_to_checkout') }}
                     </flux:button>
                     <p
                         class="text-xs text-zinc-500 dark:text-zinc-400"
@@ -521,7 +521,7 @@ new #[Layout('layouts::frontend')] class extends Component {
                         x-on:click="$store.cart.clear()"
                         data-test="cart-clear"
                     >
-                        Sepeti temizle
+                        {{ __('main.clear_cart') }}
                     </button>
                 </div>
             </div>

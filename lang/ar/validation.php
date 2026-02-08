@@ -231,6 +231,9 @@ return [
         'productIsActive' => 'الحالة',
         'deliveredPayloadInput' => 'بيانات التسليم',
         'failureReason' => 'سبب الفشل',
+        'proofFile' => 'إثبات الدفع',
+        'topupAmount' => 'المبلغ',
+        'topupMethod' => 'الطريقة',
     ],
 
 ];

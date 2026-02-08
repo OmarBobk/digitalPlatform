@@ -54,11 +54,18 @@
                     @endcan
                 </flux:sidebar.group>
 
-                @if (auth()->user()?->can('manage_topups'))
-                    <flux:sidebar.group expandable :expanded="request()->routeIs('topups')" :heading="__('messages.nav_financials')" class="grid">
+                @if (auth()->user()?->can('manage_topups') || auth()->user()?->can('manage_settlements'))
+                    <flux:sidebar.group expandable :expanded="request()->routeIs('topups') || request()->routeIs('settlements')" :heading="__('messages.nav_financials')" class="grid">
+                        @can('manage_topups')
                         <flux:sidebar.item icon="wallet" :href="route('topups')" :current="request()->routeIs('topups')" wire:navigate>
                             {{ __('messages.topups') }}
                         </flux:sidebar.item>
+                        @endcan
+                        @can('manage_settlements')
+                        <flux:sidebar.item icon="currency-dollar" :href="route('settlements')" :current="request()->routeIs('settlements')" wire:navigate>
+                            {{ __('messages.settlements') }}
+                        </flux:sidebar.item>
+                        @endcan
                     </flux:sidebar.group>
                 @endif
 

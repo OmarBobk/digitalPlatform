@@ -4,6 +4,7 @@ use App\Enums\FulfillmentStatus;
 use App\Enums\OrderStatus;
 use App\Enums\WalletTransactionDirection;
 use App\Enums\WalletTransactionType;
+use App\Enums\WalletType;
 use App\Models\Fulfillment;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -21,6 +22,7 @@ test('checkout creates paid order and fulfillments from cart payload', function 
     $user = User::factory()->create();
     $wallet = Wallet::create([
         'user_id' => $user->id,
+        'type' => WalletType::Customer,
         'balance' => 300,
         'currency' => 'USD',
     ]);
@@ -99,7 +101,7 @@ test('checkout fails when wallet balance is insufficient', function () {
         ->call('checkout', $payload)
         ->assertSet('checkoutError', 'Insufficient wallet balance.');
 
-    expect(Wallet::count())->toBe(1);
+    expect(Wallet::where('type', WalletType::Customer)->count())->toBe(1);
     expect(Order::count())->toBe(0);
     expect(WalletTransaction::count())->toBe(0);
 });

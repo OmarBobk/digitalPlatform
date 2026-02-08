@@ -231,6 +231,9 @@ return [
         'productIsActive' => 'status',
         'deliveredPayloadInput' => 'delivery payload',
         'failureReason' => 'failure reason',
+        'proofFile' => 'proof of payment',
+        'topupAmount' => 'amount',
+        'topupMethod' => 'method',
     ],
 
 ];

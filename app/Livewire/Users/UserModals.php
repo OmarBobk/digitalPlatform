@@ -390,7 +390,7 @@ class UserModals extends Component
             'catalog' => [
                 'label' => __('messages.permission_group_catalog'),
                 'icon' => 'squares-2x2',
-                'permissions' => ['manage_sections', 'manage_products', 'manage_topups'],
+                'permissions' => ['manage_sections', 'manage_products', 'manage_topups', 'manage_settlements'],
             ],
             'orders' => [
                 'label' => __('messages.permission_group_orders'),

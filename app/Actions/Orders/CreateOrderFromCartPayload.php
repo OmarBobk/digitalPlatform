@@ -96,12 +96,14 @@ class CreateOrderFromCartPayload
 
                 $unitPrice = (float) $product->retail_price;
                 $lineTotal = round($unitPrice * $item['quantity'], 2);
+                $entryPrice = $product->entry_price !== null ? (float) $product->entry_price : null;
 
                 $lineItems[] = [
                     'product_id' => $product->id,
                     'package_id' => $product->package_id,
                     'name' => $product->name,
                     'unit_price' => $unitPrice,
+                    'entry_price' => $entryPrice,
                     'quantity' => $item['quantity'],
                     'line_total' => $lineTotal,
                     'requirements_payload' => $requirements,

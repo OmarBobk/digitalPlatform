@@ -6,9 +6,9 @@
     $walletCurrency = config('billing.currency', 'USD');
 
     if (auth()->check()) {
-        $wallet = auth()->user()->wallet;
-        $walletBalance = $wallet?->balance ?? 0;
-        $walletCurrency = $wallet?->currency ?? $walletCurrency;
+        $wallet = \App\Models\Wallet::forUser(auth()->user());
+        $walletBalance = $wallet->balance ?? 0;
+        $walletCurrency = $wallet->currency ?? $walletCurrency;
     }
 @endphp
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ $direction }}" class="dark">
@@ -197,7 +197,8 @@
                                                       data-nav-active="{{ request()->routeIs('wallet') ? 'true' : 'false' }}"
                                                       href="{{route('wallet')}}"
                                                       badge="{{ number_format((float) $walletBalance, 2) }} {{ $walletCurrency }}"
-                                                      badge:color="sky" badge:class="ms-3 whitespace-nowrap px-2"
+                                                      badge:color="{{request()->routeIs('wallet') ? 'green' : 'sky'}}"
+                                                      badge:class="ms-3 whitespace-nowrap px-2 {{request()->routeIs('wallet') ? 'dark:!text-green-800' : ''}}"
                                                       icon="plus">{{__('main.add_sufficient')}}</flux:navbar.item>
                                     <flux:navbar.item class="border !border-accent after:!h-0" href="#" >{{__('main.contact_us')}}</flux:navbar.item>
 

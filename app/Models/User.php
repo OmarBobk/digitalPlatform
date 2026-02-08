@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\Timezone;
+use App\Enums\WalletType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -101,8 +102,12 @@ class User extends Authenticatable
         return $this->isActive() && ! $this->isBlocked();
     }
 
+    /**
+     * Customer wallet for this user (for balance display, topups, checkout).
+     * Scoped to Customer type so platform wallet is never returned.
+     */
     public function wallet(): HasOne
     {
-        return $this->hasOne(Wallet::class);
+        return $this->hasOne(Wallet::class)->where('type', WalletType::Customer);
     }
 }

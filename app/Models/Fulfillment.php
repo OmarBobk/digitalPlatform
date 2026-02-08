@@ -8,6 +8,7 @@ use App\Enums\FulfillmentStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -66,5 +67,11 @@ class Fulfillment extends Model
     public function logs(): HasMany
     {
         return $this->hasMany(FulfillmentLog::class);
+    }
+
+    public function settlements(): BelongsToMany
+    {
+        return $this->belongsToMany(Settlement::class, 'settlement_fulfillments')
+            ->withTimestamps();
     }
 }

@@ -32,6 +32,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'view_refunds',
             'process_refunds',
             'view_activities',
+            'manage_settlements',
         ];
 
         // Create permissions
