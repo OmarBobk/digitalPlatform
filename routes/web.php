@@ -44,6 +44,7 @@ Route::middleware(['auth', 'verified', 'backend'])->group(function () {
     Route::livewire('/fulfillments', 'pages::backend.fulfillments.index')->name('fulfillments');
     Route::livewire('/refunds', 'pages::backend.refunds.index')->name('refunds');
     Route::livewire('/topups', 'pages::backend.topups.index')->name('topups');
+    Route::livewire('/customer-funds', 'pages::backend.customer-funds.index')->name('customer-funds');
     Route::livewire('/settlements', 'pages::backend.settlements.index')->name('settlements');
 });
 

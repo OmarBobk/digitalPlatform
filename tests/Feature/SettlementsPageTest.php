@@ -54,8 +54,8 @@ test('settlements page shows platform wallet balance and settlements list', func
 
     Livewire::actingAs($admin)
         ->test('pages::backend.settlements.index')
-        ->assertSee((string) $platformWallet->balance)
-        ->assertSee($platformWallet->currency);
+        ->assertSee(number_format((float) $platformWallet->balance, 2))
+        ->assertSee('$');
 });
 
 test('settle now button runs settlement and credits platform wallet', function () {

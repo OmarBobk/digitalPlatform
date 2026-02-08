@@ -31,6 +31,6 @@
   - ###DONE Users Manager
   - Notifications with Laravel Verb
 - Frontend:
-  - wallet transaction in /wallets should be more described
-  - Wallet /wallet Request topups form borders remove the ring
+  - ###DONE wallet transaction in /wallets should be more described
+  - ###DONE Wallet /wallet Request topups form borders remove the ring
   - ###DONE /orders Redesign

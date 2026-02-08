@@ -55,10 +55,15 @@
                 </flux:sidebar.group>
 
                 @if (auth()->user()?->can('manage_topups') || auth()->user()?->can('manage_settlements'))
-                    <flux:sidebar.group expandable :expanded="request()->routeIs('topups') || request()->routeIs('settlements')" :heading="__('messages.nav_financials')" class="grid">
+                    <flux:sidebar.group expandable :expanded="request()->routeIs('topups') || request()->routeIs('settlements') || request()->routeIs('customer-funds')" :heading="__('messages.nav_financials')" class="grid">
                         @can('manage_topups')
                         <flux:sidebar.item icon="wallet" :href="route('topups')" :current="request()->routeIs('topups')" wire:navigate>
                             {{ __('messages.topups') }}
+                        </flux:sidebar.item>
+                        @endcan
+                        @can('manage_topups')
+                        <flux:sidebar.item icon="banknotes" :href="route('customer-funds')" :current="request()->routeIs('customer-funds')" wire:navigate>
+                            {{ __('messages.customer_funds') }}
                         </flux:sidebar.item>
                         @endcan
                         @can('manage_settlements')
@@ -99,6 +104,7 @@
 
             <flux:sidebar.nav>
                 <livewire:language-switcher />
+                <flux:button x-data x-on:click="$flux.dark = ! $flux.dark" icon="moon" variant="subtle" aria-label="Toggle dark mode" />
             </flux:sidebar.nav>
 
             <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />

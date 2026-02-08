@@ -141,7 +141,7 @@
                             >
                                 <flux:icon icon="wallet" class="size-4 text-zinc-500 dark:text-zinc-300" />
                                 <span class="text-zinc-900 dark:text-zinc-100" dir="ltr">
-                                    {{ number_format((float) $walletBalance, 2) }} {{ $walletCurrency }}
+                                    {{ config('billing.currency_symbol', '$') }}{{ number_format((float) $walletBalance, 2) }}
                                 </span>
                             </a>
                         @endauth
@@ -196,7 +196,7 @@
                                     <flux:navbar.item class="border !border-accent after:!h-0 {{request()->routeIs('wallet') ? '!bg-accent hover:!bg-accent-hover !text-accent-foreground' : ''}}"
                                                       data-nav-active="{{ request()->routeIs('wallet') ? 'true' : 'false' }}"
                                                       href="{{route('wallet')}}"
-                                                      badge="{{ number_format((float) $walletBalance, 2) }} {{ $walletCurrency }}"
+                                                      badge="{{ config('billing.currency_symbol', '$') }}{{ number_format((float) $walletBalance, 2) }}"
                                                       badge:color="{{request()->routeIs('wallet') ? 'green' : 'sky'}}"
                                                       badge:class="ms-3 whitespace-nowrap px-2 {{request()->routeIs('wallet') ? 'dark:!text-green-800' : ''}}"
                                                       icon="plus">{{__('main.add_sufficient')}}</flux:navbar.item>

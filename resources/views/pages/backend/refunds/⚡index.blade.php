@@ -152,7 +152,7 @@ new class extends Component
                                         </div>
                                     </td>
                                     <td class="px-5 py-4 text-zinc-700 dark:text-zinc-200" dir="ltr">
-                                        {{ $transaction->amount }} {{ $order?->currency ?? 'USD' }}
+                                        {{ config('billing.currency_symbol', '$') }}{{ number_format((float) $transaction->amount, 2) }}
                                     </td>
                                     <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
                                         {{ $displayFulfillment?->last_error ?? '—' }}
