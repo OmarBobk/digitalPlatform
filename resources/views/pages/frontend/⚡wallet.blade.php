@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Loyalty\EvaluateLoyaltyForUserAction;
 use App\Enums\OrderStatus;
 use App\Enums\TopupMethod;
 use App\Enums\TopupRequestStatus;
@@ -10,9 +11,13 @@ use App\Models\TopupRequest;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Fulfillment;
+use App\Models\LoyaltySetting;
+use App\Models\LoyaltyTierConfig;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Services\LoyaltySpendService;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -34,9 +39,13 @@ new #[Layout('layouts::frontend')] class extends Component
     public ?string $noticeMessage = null;
     public ?string $noticeVariant = null;
 
-    public function mount(): void
+    public function mount(EvaluateLoyaltyForUserAction $evaluateLoyalty): void
     {
         abort_unless(auth()->check(), 403);
+        $user = auth()->user();
+        if ($user?->loyaltyRole() !== null) {
+            $evaluateLoyalty->handle($user);
+        }
     }
 
     /**
@@ -124,6 +133,70 @@ new #[Layout('layouts::frontend')] class extends Component
     public function getWalletProperty(): Wallet
     {
         return Wallet::forUser(auth()->user());
+    }
+
+    #[Computed]
+    public function loyaltyRollingSpend(): float
+    {
+        $windowDays = LoyaltySetting::getRollingWindowDays();
+
+        return app(LoyaltySpendService::class)->computeRollingSpend(auth()->user(), $windowDays);
+    }
+
+    #[Computed]
+    public function loyaltyCurrentTierConfig(): ?LoyaltyTierConfig
+    {
+        $user = auth()->user();
+        $role = $user?->loyaltyRole();
+        if ($role === null) {
+            return null;
+        }
+        $tierName = $user->loyalty_tier?->value ?? 'bronze';
+
+        return LoyaltyTierConfig::query()->forRole($role)->where('name', $tierName)->first();
+    }
+
+    #[Computed]
+    public function loyaltyNextTier(): ?LoyaltyTierConfig
+    {
+        $user = auth()->user();
+        $role = $user?->loyaltyRole();
+        if ($role === null) {
+            return null;
+        }
+        $spend = $this->loyaltyRollingSpend;
+
+        return LoyaltyTierConfig::query()
+            ->forRole($role)
+            ->where('min_spend', '>', $spend)
+            ->orderBy('min_spend')
+            ->first();
+    }
+
+    #[Computed]
+    public function loyaltyProgressPercent(): ?float
+    {
+        $next = $this->loyaltyNextTier;
+        if ($next === null) {
+            return null;
+        }
+        $threshold = (float) $next->min_spend;
+        if ($threshold <= 0) {
+            return 100.0;
+        }
+
+        return min(100.0, round(($this->loyaltyRollingSpend / $threshold) * 100, 1));
+    }
+
+    #[Computed]
+    public function loyaltyAmountToNextTier(): ?float
+    {
+        $next = $this->loyaltyNextTier;
+        if ($next === null) {
+            return null;
+        }
+
+        return max(0.0, (float) $next->min_spend - $this->loyaltyRollingSpend);
     }
 
     /**
@@ -345,6 +418,22 @@ new #[Layout('layouts::frontend')] class extends Component
     </div>
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="lg:col-span-2 space-y-6">
+            @if ($this->loyaltyCurrentTierConfig !== null)
+                <section>
+                    <x-loyalty.tier-card
+                        :current-tier-name="auth()->user()?->loyalty_tier?->value ?? 'bronze'"
+                        :discount-percent="(float) $this->loyaltyCurrentTierConfig->discount_percentage"
+                        :rolling-spend="$this->loyaltyRollingSpend"
+                        :next-tier-name="$this->loyaltyNextTier?->name"
+                        :next-tier-min-spend="$this->loyaltyNextTier ? (float) $this->loyaltyNextTier->min_spend : null"
+                        :amount-to-next="$this->loyaltyAmountToNextTier"
+                        :progress-percent="$this->loyaltyProgressPercent"
+                        :window-days="\App\Models\LoyaltySetting::getRollingWindowDays()"
+                        layout="full"
+                    />
+                </section>
+            @endif
+
             <section class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:p-6">
                 <div class="flex items-center justify-between gap-3">
                     <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">

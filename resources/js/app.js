@@ -72,6 +72,8 @@ document.addEventListener('alpine:init', () => {
                     id: product.id,
                     name: product.name,
                     price: Number(product.price ?? 0),
+                    discount_amount: Number(product.discount_amount ?? 0),
+                    tier_name: product.tier_name ?? null,
                     image: product.image,
                     href: product.href,
                     quantity: normalizedQuantity,
@@ -458,6 +460,13 @@ document.addEventListener('alpine:init', () => {
         },
         get subtotal() {
             return this.items.reduce((total, item) => total + (item.price * item.quantity), 0);
+        },
+        get loyaltyDiscount() {
+            return this.items.reduce((total, item) => total + (Number(item.discount_amount ?? 0) * item.quantity), 0);
+        },
+        get loyaltyTierName() {
+            const withTier = this.items.find((item) => item.tier_name);
+            return withTier ? withTier.tier_name : null;
         },
         get hasMissingRequirements() {
             return this.items.some((item) => {

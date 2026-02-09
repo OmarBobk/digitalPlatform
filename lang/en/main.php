@@ -30,6 +30,7 @@ return [
     'logout' => 'Logout',
     'wallet' => 'Wallet',
     'my_orders' => 'My orders',
+    'loyalty' => 'Loyalty',
     'profile' => 'Profile',
     'shopping_cart' => 'Shopping Cart',
     'cart_aria_label' => 'Cart',

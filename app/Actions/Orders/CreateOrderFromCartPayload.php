@@ -10,6 +10,7 @@ use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\CustomerPriceService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -94,7 +95,7 @@ class CreateOrderFromCartPayload
                 $requirements = $item['requirements'] ?? [];
                 $this->validateRequirements($product->package?->requirements ?? collect(), $requirements, $index);
 
-                $unitPrice = (float) $product->retail_price;
+                $unitPrice = app(CustomerPriceService::class)->finalPrice($product, $user);
                 $lineTotal = round($unitPrice * $item['quantity'], 2);
                 $entryPrice = $product->entry_price !== null ? (float) $product->entry_price : null;
 

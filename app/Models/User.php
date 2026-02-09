@@ -3,9 +3,11 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\LoyaltyTier;
 use App\Enums\Timezone;
 use App\Enums\WalletType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -35,6 +37,10 @@ class User extends Authenticatable
         'profile_photo',
         'blocked_at',
         'last_login_at',
+        'loyalty_tier',
+        'loyalty_evaluated_at',
+        'loyalty_locked_until',
+        'loyalty_override_by',
     ];
 
     /**
@@ -63,6 +69,9 @@ class User extends Authenticatable
             'timezone' => Timezone::class,
             'blocked_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'loyalty_tier' => LoyaltyTier::class,
+            'loyalty_evaluated_at' => 'datetime',
+            'loyalty_locked_until' => 'datetime',
         ];
     }
 
@@ -109,5 +118,37 @@ class User extends Authenticatable
     public function wallet(): HasOne
     {
         return $this->hasOne(Wallet::class)->where('type', WalletType::Customer);
+    }
+
+    /**
+     * Admin who set a loyalty override (lock) on this user.
+     */
+    public function loyaltyOverrideBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'loyalty_override_by');
+    }
+
+    /**
+     * Whether the user's loyalty tier is currently locked (override active).
+     */
+    public function isLoyaltyLocked(): bool
+    {
+        return $this->loyalty_locked_until !== null
+            && $this->loyalty_locked_until->isFuture();
+    }
+
+    /**
+     * Role used for loyalty tier ladder and evaluation. Customer vs salesperson get different thresholds.
+     */
+    public function loyaltyRole(): ?string
+    {
+        if ($this->hasRole('customer')) {
+            return 'customer';
+        }
+        if ($this->hasRole('salesperson') || $this->hasRole('supervisor')) {
+            return 'salesperson';
+        }
+
+        return null;
     }
 }

@@ -59,7 +59,6 @@
                         <livewire:cart.dropdown />
 
 
-
                         <!-- User Profile Icon -->
                         <flux:dropdown position="bottom" align="end">
                             <flux:button
@@ -87,6 +86,15 @@
                                     >
                                         {{ __('main.my_orders') }}
                                     </flux:navmenu.item>
+                                    @if (auth()->user()?->loyaltyRole() !== null)
+                                        <flux:navmenu.item
+                                            icon="sparkles"
+                                            href="{{ route('loyalty') }}"
+                                            class="rounded-lg !text-zinc-700 hover:!bg-zinc-100 focus-visible:!bg-zinc-100 dark:!text-zinc-200 dark:hover:!bg-zinc-800 dark:focus-visible:!bg-zinc-800"
+                                        >
+                                            {{ __('main.loyalty') }}
+                                        </flux:navmenu.item>
+                                    @endif
                                     @role('admin|supervisor')
                                         <flux:navmenu.item
                                             icon="home"
@@ -135,17 +143,18 @@
                             <a
                                 href="{{ route('wallet') }}"
                                 wire:navigate
-                                class="inline-flex items-center gap-2 border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                                class="inline-flex items-center gap-2 border-zinc-200 bg-white px-1 sm:px-3 py-2 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
                                 aria-label="{{ __('main.wallet') }}"
                                 data-test="wallet-balance"
                             >
                                 <flux:icon icon="wallet" class="size-4 text-zinc-500 dark:text-zinc-300" />
-                                <span class="text-zinc-900 dark:text-zinc-100" dir="ltr">
+                                <span class="text-zinc-900 dark:text-zinc-100 hidden sm:block" dir="ltr">
                                     {{ config('billing.currency_symbol', '$') }}{{ number_format((float) $walletBalance, 2) }}
                                 </span>
                             </a>
                         @endauth
 
+                        <flux:button x-data x-on:click="$flux.dark = ! $flux.dark" icon="moon" variant="subtle" aria-label="Toggle dark mode" />
                     </div>
                 </div>
                 <flux:separator class="my-3 sm:block hidden" />
@@ -200,6 +209,13 @@
                                                       badge:color="{{request()->routeIs('wallet') ? 'green' : 'sky'}}"
                                                       badge:class="ms-3 whitespace-nowrap px-2 {{request()->routeIs('wallet') ? 'dark:!text-green-800' : ''}}"
                                                       icon="plus">{{__('main.add_sufficient')}}</flux:navbar.item>
+                                    @if (auth()->user()?->loyaltyRole() !== null)
+                                        <flux:navbar.item class="border !border-accent after:!h-0 {{ request()->routeIs('loyalty') ? '!bg-accent hover:!bg-accent-hover !text-accent-foreground' : '' }}"
+                                                          data-nav-active="{{ request()->routeIs('loyalty') ? 'true' : 'false' }}"
+                                                          href="{{ route('loyalty') }}"
+                                                          wire:navigate
+                                                          icon="sparkles">{{ __('main.loyalty') }}</flux:navbar.item>
+                                    @endif
                                     <flux:navbar.item class="border !border-accent after:!h-0" href="#" >{{__('main.contact_us')}}</flux:navbar.item>
 
                                     <flux:dropdown class="border !border-accent rounded-lg">

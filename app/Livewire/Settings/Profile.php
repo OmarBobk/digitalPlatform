@@ -3,6 +3,9 @@
 namespace App\Livewire\Settings;
 
 use App\Concerns\ProfileValidationRules;
+use App\Models\LoyaltySetting;
+use App\Models\LoyaltyTierConfig;
+use App\Services\LoyaltySpendService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -78,6 +81,77 @@ class Profile extends Component
     {
         return ! Auth::user() instanceof MustVerifyEmail
             || (Auth::user() instanceof MustVerifyEmail && Auth::user()->hasVerifiedEmail());
+    }
+
+    #[Computed]
+    public function loyaltyRollingSpend(): float
+    {
+        $windowDays = LoyaltySetting::getRollingWindowDays();
+
+        return app(LoyaltySpendService::class)->computeRollingSpend(Auth::user(), $windowDays);
+    }
+
+    #[Computed]
+    public function loyaltyCurrentTierConfig(): ?LoyaltyTierConfig
+    {
+        $user = Auth::user();
+        $role = $user->loyaltyRole();
+        if ($role === null) {
+            return null;
+        }
+        $tierName = $user->loyalty_tier?->value ?? 'bronze';
+
+        return LoyaltyTierConfig::query()->forRole($role)->where('name', $tierName)->first();
+    }
+
+    #[Computed]
+    public function loyaltyNextTier(): ?LoyaltyTierConfig
+    {
+        $user = Auth::user();
+        $role = $user->loyaltyRole();
+        if ($role === null) {
+            return null;
+        }
+        $spend = $this->loyaltyRollingSpend;
+
+        return LoyaltyTierConfig::query()
+            ->forRole($role)
+            ->where('min_spend', '>', $spend)
+            ->orderBy('min_spend')
+            ->first();
+    }
+
+    /**
+     * Progress (0–100) toward the next tier threshold. Null if at top tier.
+     */
+    #[Computed]
+    public function loyaltyProgressPercent(): ?float
+    {
+        $next = $this->loyaltyNextTier;
+        if ($next === null) {
+            return null;
+        }
+        $spend = $this->loyaltyRollingSpend;
+        $threshold = (float) $next->min_spend;
+        if ($threshold <= 0) {
+            return 100.0;
+        }
+
+        return min(100.0, round(($spend / $threshold) * 100, 1));
+    }
+
+    /**
+     * Amount ($) left to spend to reach the next tier. Null if at top tier.
+     */
+    #[Computed]
+    public function loyaltyAmountToNextTier(): ?float
+    {
+        $next = $this->loyaltyNextTier;
+        if ($next === null) {
+            return null;
+        }
+
+        return max(0.0, (float) $next->min_spend - $this->loyaltyRollingSpend);
     }
 
     public function render()

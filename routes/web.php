@@ -26,6 +26,7 @@ Route::livewire('/cart', 'pages::frontend.cart')->name('cart');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('/wallet', 'pages::frontend.wallet')->name('wallet');
+    Route::livewire('/loyalty', 'pages::frontend.loyalty')->name('loyalty');
     Route::livewire('/orders', 'pages::frontend.orders')->name('orders.index');
     Route::livewire('/orders/{order:order_number}', 'pages::frontend.order-details')->name('orders.show');
     Route::get('/topup-proofs/{proof}', [TopupProofController::class, 'show'])->name('topup-proofs.show');
@@ -37,10 +38,12 @@ Route::middleware(['auth', 'verified', 'backend'])->group(function () {
     Route::livewire('/packages', 'pages::backend.packages.index')->name('packages');
     Route::livewire('/products', 'pages::backend.products.index')->name('products');
     Route::livewire('/pricing-rules', 'pages::backend.pricing-rules.index')->name('pricing-rules');
+    Route::livewire('/loyalty-tiers', 'pages::backend.loyalty-tiers.index')->name('loyalty-tiers');
     Route::livewire('/admin/orders', 'pages::backend.orders.index')->name('admin.orders.index');
     Route::livewire('/admin/orders/{order}', 'pages::backend.orders.show')->name('admin.orders.show');
     Route::livewire('/admin/activities', 'pages::backend.activities.index')->name('admin.activities.index');
     Route::livewire('/admin/users', 'pages::backend.users.index')->name('admin.users.index');
+    Route::livewire('/admin/users/{user}', 'pages::backend.users.show')->name('admin.users.show');
     Route::livewire('/fulfillments', 'pages::backend.fulfillments.index')->name('fulfillments');
     Route::livewire('/refunds', 'pages::backend.refunds.index')->name('refunds');
     Route::livewire('/topups', 'pages::backend.topups.index')->name('topups');

@@ -1,0 +1,42 @@
+@props([
+    'tiers' => [], // array of { name, min_spend, discount_percentage }
+    'currentTierName' => 'bronze',
+    'rollingSpend' => 0.0,
+    'orientation' => 'vertical', // 'vertical' | 'horizontal'
+])
+
+@php
+    $currentTierName = strtolower($currentTierName ?? 'bronze');
+    $tiersCollection = collect($tiers);
+    $nextTier = $tiersCollection->first(fn ($t) => (float) ($t['min_spend'] ?? 0) > $rollingSpend);
+@endphp
+
+<div
+    {{ $attributes->merge(['class' => 'rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:p-5']) }}
+>
+    <flux:heading size="sm" class="mb-3 text-zinc-900 dark:text-zinc-100">{{ __('messages.loyalty_benefits') }}</flux:heading>
+    <div class="{{ $orientation === 'horizontal' ? 'flex flex-wrap gap-2' : 'space-y-2' }}">
+        @foreach ($tiers as $tier)
+            @php
+                $name = strtolower($tier['name'] ?? '');
+                $minSpend = (float) ($tier['min_spend'] ?? 0);
+                $discount = (float) ($tier['discount_percentage'] ?? 0);
+                $isCurrent = $name === $currentTierName;
+                $isNext = $nextTier && ($tier['name'] ?? '') === ($nextTier['name'] ?? '');
+                $remaining = $isNext ? max(0, $minSpend - $rollingSpend) : null;
+            @endphp
+            <div
+                class="flex items-center gap-3 rounded-xl border p-3 {{ $isCurrent ? 'border-violet-400 bg-violet-50/80 dark:border-violet-500 dark:bg-violet-950/30' : 'border-zinc-200 dark:border-zinc-700' }}"
+            >
+                <flux:badge color="{{ $isCurrent ? 'violet' : 'zinc' }}" class="capitalize shrink-0">{{ ucfirst($name) }}</flux:badge>
+                <span class="tabular-nums text-sm text-zinc-600 dark:text-zinc-400" dir="ltr">${{ number_format($minSpend, 0) }}+</span>
+                <span class="text-sm font-medium text-emerald-600 dark:text-emerald-400">{{ number_format($discount, 0) }}%</span>
+                @if ($isCurrent)
+                    <flux:text class="ml-auto text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.loyalty_you_reached', ['tier' => ucfirst($name)]) }}</flux:text>
+                @elseif ($remaining !== null)
+                    <flux:text class="ml-auto text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.loyalty_remaining_spend') }}: ${{ number_format($remaining, 2) }}</flux:text>
+                @endif
+            </div>
+        @endforeach
+    </div>
+</div>

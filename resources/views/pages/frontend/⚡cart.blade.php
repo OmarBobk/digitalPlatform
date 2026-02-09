@@ -3,9 +3,13 @@
 use App\Actions\Orders\CheckoutFromPayload;
 use App\Actions\Packages\ResolvePackageRequirements;
 use App\Enums\OrderStatus;
+use App\Models\LoyaltySetting;
+use App\Models\LoyaltyTierConfig;
 use App\Models\Product;
+use App\Services\LoyaltySpendService;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -110,6 +114,68 @@ new #[Layout('layouts::frontend')] class extends Component {
             $message = collect($exception->errors())->flatten()->first();
             $this->dispatch('cart-requirement-validation', productId: $productId, key: $key, message: $message);
         }
+    }
+
+    #[Computed]
+    public function loyaltyCurrentTierConfig(): ?LoyaltyTierConfig
+    {
+        $user = auth()->user();
+        if ($user === null || $user->loyaltyRole() === null) {
+            return null;
+        }
+        $tierName = $user->loyalty_tier?->value ?? 'bronze';
+
+        return LoyaltyTierConfig::query()->forRole($user->loyaltyRole())->where('name', $tierName)->first();
+    }
+
+    #[Computed]
+    public function loyaltyRollingSpend(): float
+    {
+        $user = auth()->user();
+        if ($user === null) {
+            return 0.0;
+        }
+        $windowDays = LoyaltySetting::getRollingWindowDays();
+
+        return app(LoyaltySpendService::class)->computeRollingSpend($user, $windowDays);
+    }
+
+    #[Computed]
+    public function loyaltyNextTier(): ?LoyaltyTierConfig
+    {
+        $user = auth()->user();
+        if ($user === null || $user->loyaltyRole() === null) {
+            return null;
+        }
+        return LoyaltyTierConfig::query()
+            ->forRole($user->loyaltyRole())
+            ->where('min_spend', '>', $this->loyaltyRollingSpend)
+            ->orderBy('min_spend')
+            ->first();
+    }
+
+    #[Computed]
+    public function loyaltyProgressPercent(): ?float
+    {
+        $next = $this->loyaltyNextTier;
+        if ($next === null) {
+            return null;
+        }
+        $threshold = (float) $next->min_spend;
+        if ($threshold <= 0) {
+            return 100.0;
+        }
+        return min(100.0, round(($this->loyaltyRollingSpend / $threshold) * 100, 1));
+    }
+
+    #[Computed]
+    public function loyaltyAmountToNextTier(): ?float
+    {
+        $next = $this->loyaltyNextTier;
+        if ($next === null) {
+            return null;
+        }
+        return max(0.0, (float) $next->min_spend - $this->loyaltyRollingSpend);
     }
 
     public function render(): View
@@ -453,6 +519,22 @@ new #[Layout('layouts::frontend')] class extends Component {
                     {{ __('main.order_summary') }}
                 </flux:heading>
 
+                @if ($this->loyaltyCurrentTierConfig !== null)
+                    <div class="mt-4">
+                        <x-loyalty.tier-card
+                            :current-tier-name="auth()->user()?->loyalty_tier?->value ?? 'bronze'"
+                            :discount-percent="(float) $this->loyaltyCurrentTierConfig->discount_percentage"
+                            :rolling-spend="$this->loyaltyRollingSpend"
+                            :next-tier-name="$this->loyaltyNextTier?->name"
+                            :next-tier-min-spend="$this->loyaltyNextTier ? (float) $this->loyaltyNextTier->min_spend : null"
+                            :amount-to-next="$this->loyaltyAmountToNextTier"
+                            :progress-percent="$this->loyaltyProgressPercent"
+                            :window-days="\App\Models\LoyaltySetting::getRollingWindowDays()"
+                            layout="compact"
+                        />
+                    </div>
+                @endif
+
                 @if ($checkoutError)
                     <flux:callout variant="subtle" icon="exclamation-triangle" class="mt-4">
                         {{ $checkoutError }}
@@ -485,6 +567,10 @@ new #[Layout('layouts::frontend')] class extends Component {
                         <span>{{ __('messages.subtotal') }}</span>
                         <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr" x-text="$store.cart.format($store.cart.subtotal)"></span>
                     </div>
+                    <div class="flex items-center justify-between text-green-600 dark:text-green-400" x-show="$store.cart.loyaltyDiscount > 0" x-cloak>
+                        <span>{{ __('messages.loyalty_discount') }} <span x-show="$store.cart.loyaltyTierName" x-text="'(' + ($store.cart.loyaltyTierName ? $store.cart.loyaltyTierName.charAt(0).toUpperCase() + $store.cart.loyaltyTierName.slice(1) : '') + ')'"></span>:</span>
+                        <span class="font-semibold" dir="ltr" x-text="'-' + $store.cart.format($store.cart.loyaltyDiscount)"></span>
+                    </div>
                     <div class="flex items-center justify-between text-zinc-600 dark:text-zinc-300">
                         <span>{{ __('main.shipping') }}</span>
                         <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ __('main.free_shipping') }}</span>
@@ -493,7 +579,7 @@ new #[Layout('layouts::frontend')] class extends Component {
 
                 <div class="mt-4 flex items-center justify-between border-t border-zinc-100 pt-4 text-base font-semibold dark:border-zinc-700">
                     <span class="text-zinc-900 dark:text-zinc-100">{{ __('messages.total') }}</span>
-                    <span class="text-(--color-accent)" dir="ltr" x-text="$store.cart.format($store.cart.subtotal)"></span>
+                    <span class="text-(--color-accent)" dir="ltr" x-text="$store.cart.format($store.cart.subtotal - $store.cart.loyaltyDiscount)"></span>
                 </div>
 
                 <div class="mt-4 space-y-3">

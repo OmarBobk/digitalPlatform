@@ -6,7 +6,9 @@ namespace App\Actions\Fulfillments;
 
 use App\Enums\FulfillmentLogLevel;
 use App\Enums\FulfillmentStatus;
+use App\Jobs\EvaluateLoyaltyForUser;
 use App\Models\Fulfillment;
+use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -79,6 +81,11 @@ class CompleteFulfillment
                     'actor_id' => $actorId,
                 ], fn ($value) => $value !== null && $value !== ''))
                 ->log('Fulfillment completed');
+
+            $userId = Order::query()->where('id', $lockedFulfillment->order_id)->value('user_id');
+            if ($userId !== null) {
+                DB::afterCommit(fn () => dispatch(new EvaluateLoyaltyForUser((int) $userId)));
+            }
 
             return $lockedFulfillment->refresh();
         });

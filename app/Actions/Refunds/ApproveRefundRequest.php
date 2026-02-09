@@ -10,6 +10,7 @@ use App\Enums\FulfillmentStatus;
 use App\Enums\OrderStatus;
 use App\Enums\WalletTransactionDirection;
 use App\Enums\WalletTransactionType;
+use App\Jobs\EvaluateLoyaltyForUser;
 use App\Models\Fulfillment;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -287,6 +288,9 @@ class ApproveRefundRequest
                         ], fn ($value) => $value !== null && $value !== ''))
                         ->log('Order refunded');
                 }
+
+                $userId = $order->user_id;
+                DB::afterCommit(fn () => dispatch(new EvaluateLoyaltyForUser((int) $userId)));
 
                 return $transaction;
             });

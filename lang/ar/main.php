@@ -29,6 +29,7 @@ return [
     'logout' => 'تسجيل الخروج',
     'wallet' => 'المحفظة',
     'my_orders' => 'طلباتي',
+    'loyalty' => 'الولاء',
     'shopping_cart' => 'سلة التسوق',
     'cart_aria_label' => 'السلة',
     'my_cart' => 'سلتي',

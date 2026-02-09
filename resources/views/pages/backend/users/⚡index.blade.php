@@ -284,6 +284,9 @@ new class extends Component
                                         <flux:dropdown position="bottom" align="end">
                                             <flux:button variant="ghost" icon="ellipsis-vertical" />
                                             <flux:menu>
+                                                <flux:menu.item icon="eye" :href="route('admin.users.show', $u)" wire:navigate>
+                                                    {{ __('messages.view_customer') }}
+                                                </flux:menu.item>
                                                 <flux:menu.item icon="pencil" wire:click="$dispatch('open-edit-modal', { userId: {{ $u->id }} })">
                                                     {{ __('messages.edit') }}
                                                 </flux:menu.item>

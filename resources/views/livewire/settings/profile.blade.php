@@ -42,6 +42,22 @@
             </div>
         </form>
 
+        @if ($this->loyaltyCurrentTierConfig !== null)
+            <div class="my-6">
+                <x-loyalty.tier-card
+                    :current-tier-name="auth()->user()?->loyalty_tier?->value ?? 'bronze'"
+                    :discount-percent="(float) $this->loyaltyCurrentTierConfig->discount_percentage"
+                    :rolling-spend="$this->loyaltyRollingSpend"
+                    :next-tier-name="$this->loyaltyNextTier?->name"
+                    :next-tier-min-spend="$this->loyaltyNextTier ? (float) $this->loyaltyNextTier->min_spend : null"
+                    :amount-to-next="$this->loyaltyAmountToNextTier"
+                    :progress-percent="$this->loyaltyProgressPercent"
+                    :window-days="\App\Models\LoyaltySetting::getRollingWindowDays()"
+                    layout="full"
+                />
+            </div>
+        @endif
+
         @if ($this->showDeleteUser)
             <livewire:settings.delete-user-form />
         @endif

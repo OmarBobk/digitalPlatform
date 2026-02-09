@@ -7,6 +7,7 @@ use App\Actions\Packages\ResolvePackageRequirements;
 use App\Enums\OrderStatus;
 use App\Models\Package;
 use App\Models\Product;
+use App\Services\CustomerPriceService;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
@@ -192,9 +193,11 @@ new class extends Component
 
         $placeholderImage = asset('images/promotions/promo-placeholder.svg');
         $resolver = app(ResolvePackageRequirements::class);
+        $priceService = app(CustomerPriceService::class);
+        $user = auth()->user();
 
         $this->packageProducts = $package->products
-            ->map(fn (Product $product): array => $this->mapProduct($product, $resolver, $placeholderImage))
+            ->map(fn (Product $product): array => $this->mapProduct($product, $resolver, $priceService, $user, $placeholderImage))
             ->all();
         $this->selectedPackageId = $package->id;
         $this->selectedPackageName = $package->name;
@@ -335,20 +338,26 @@ new class extends Component
 
         $placeholderImage = asset('images/promotions/promo-placeholder.svg');
         $resolver = app(ResolvePackageRequirements::class);
+        $priceService = app(CustomerPriceService::class);
+        $user = auth()->user();
 
-        return $this->mapProduct($product, $resolver, $placeholderImage);
+        return $this->mapProduct($product, $resolver, $priceService, $user, $placeholderImage);
     }
 
-    private function mapProduct(Product $product, ResolvePackageRequirements $resolver, string $placeholderImage): array
+    private function mapProduct(Product $product, ResolvePackageRequirements $resolver, CustomerPriceService $priceService, ?\App\Models\User $user, string $placeholderImage): array
     {
         $resolved = $resolver->handle($product->package?->requirements ?? collect());
+        $prices = $priceService->priceFor($product, $user);
 
         return [
             'id' => $product->id,
             'package_id' => $product->package_id,
             'package_name' => $product->package?->name,
             'name' => $product->name,
-            'price' => $product->retail_price,
+            'price' => $prices['final_price'],
+            'base_price' => $prices['base_price'],
+            'discount_amount' => $prices['discount_amount'],
+            'tier_name' => $prices['tier_name'],
             'href' => '#',
             'image' => filled($product->package?->image)
                 ? asset($product->package->image)

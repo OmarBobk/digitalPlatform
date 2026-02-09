@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Packages\ResolvePackageRequirements;
 use App\Models\Product;
+use App\Services\CustomerPriceService;
 use Livewire\Component;
 
 new class extends Component
@@ -14,6 +15,8 @@ new class extends Component
     {
         $placeholderImage = asset('images/promotions/promo-placeholder.svg');
         $resolver = app(ResolvePackageRequirements::class);
+        $priceService = app(CustomerPriceService::class);
+        $user = auth()->user();
 
         $this->products = Product::query()
             ->select(['id', 'package_id', 'name', 'slug', 'entry_price', 'retail_price', 'order'])
@@ -27,20 +30,24 @@ new class extends Component
             ->orderBy('name')
             ->limit(8)
             ->get()
-            ->map(fn (Product $product): array => $this->mapProduct($product, $resolver, $placeholderImage))
+            ->map(fn (Product $product): array => $this->mapProduct($product, $resolver, $priceService, $user, $placeholderImage))
             ->all();
     }
 
-    private function mapProduct(Product $product, ResolvePackageRequirements $resolver, string $placeholderImage): array
+    private function mapProduct(Product $product, ResolvePackageRequirements $resolver, CustomerPriceService $priceService, ?\App\Models\User $user, string $placeholderImage): array
     {
         $resolved = $resolver->handle($product->package?->requirements ?? collect());
+        $prices = $priceService->priceFor($product, $user);
 
         return [
             'id' => $product->id,
             'package_id' => $product->package_id,
             'package_name' => $product->package?->name,
             'name' => $product->name,
-            'price' => $product->retail_price,
+            'price' => $prices['final_price'],
+            'base_price' => $prices['base_price'],
+            'discount_amount' => $prices['discount_amount'],
+            'tier_name' => $prices['tier_name'],
             'href' => '#',
             'image' => filled($product->package?->image)
                 ? asset($product->package->image)
@@ -91,13 +98,21 @@ new class extends Component
                                 {{ $product['name'] }}
                             </button>
                             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-                                <span
-                                    class="shrink-0 tabular-nums text-base font-bold text-(--color-accent)"
-                                    dir="ltr"
-                                    aria-label="{{ __('messages.amount') }}: ${{ number_format((float) $product['price'], 2) }}"
-                                >
-                                    ${{ number_format((float) $product['price'], 2) }}
-                                </span>
+                                <div class="flex flex-wrap items-center gap-1.5 shrink-0">
+                                    @if (!empty($product['tier_name']) && (float) ($product['discount_amount'] ?? 0) > 0)
+                                        <flux:badge size="sm" color="zinc">{{ ucfirst($product['tier_name']) }} {{ __('messages.loyalty_price') }}</flux:badge>
+                                        @if ((float) ($product['base_price'] ?? 0) > (float) ($product['price'] ?? 0))
+                                            <span class="tabular-nums text-sm text-zinc-500 line-through dark:text-zinc-400" dir="ltr">${{ number_format((float) $product['base_price'], 2) }}</span>
+                                        @endif
+                                    @endif
+                                    <span
+                                        class="tabular-nums text-base font-bold text-(--color-accent)"
+                                        dir="ltr"
+                                        aria-label="{{ __('messages.amount') }}: ${{ number_format((float) $product['price'], 2) }}"
+                                    >
+                                        ${{ number_format((float) $product['price'], 2) }}
+                                    </span>
+                                </div>
                                 <div class="flex items-center justify-between gap-1.5 shrink-0 sm:gap-2">
                                     <flux:button
                                         type="button"

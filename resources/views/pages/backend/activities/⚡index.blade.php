@@ -118,6 +118,7 @@ new class extends Component
             'payments' => __('messages.log_name_payments'),
             'orders' => __('messages.log_name_orders'),
             'fulfillment' => __('messages.log_name_fulfillment'),
+            'loyalty' => __('messages.log_name_loyalty'),
             'admin' => __('messages.log_name_admin'),
             'system' => __('messages.log_name_system'),
         ];
