@@ -13,6 +13,7 @@ use App\Models\WalletTransaction;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\View\View;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Spatie\Activitylog\Models\Activity;
@@ -58,6 +59,13 @@ new class extends Component
     public function closeDetails(): void
     {
         $this->reset(['showDetailsModal', 'selectedActivityId']);
+    }
+
+    #[On('activity-list-updated')]
+    public function refreshActivities(): void
+    {
+        $this->resetPage();
+        $this->dispatch('$refresh');
     }
 
     public function getSelectedActivityProperty(): ?Activity

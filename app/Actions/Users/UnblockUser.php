@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\Users;
 
 use App\Models\User;
+use App\Notifications\UserUnblockedNotification;
+use Illuminate\Support\Facades\DB;
 
 class UnblockUser
 {
@@ -23,5 +25,13 @@ class UnblockUser
                 'email' => $user->email,
             ])
             ->log('User unblocked');
+
+        $unblockedUserId = $user->id;
+        DB::afterCommit(function () use ($unblockedUserId): void {
+            $u = User::query()->find($unblockedUserId);
+            if ($u !== null) {
+                $u->notify(UserUnblockedNotification::fromUser($u));
+            }
+        });
     }
 }

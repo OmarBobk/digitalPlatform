@@ -58,6 +58,10 @@
                         <!-- Shopping Cart Icon with Badge -->
                         <livewire:cart.dropdown />
 
+                        @auth
+                        <!-- Notifications Bell -->
+                        <livewire:notification-bell-dropdown />
+                        @endauth
 
                         <!-- User Profile Icon -->
                         <flux:dropdown position="bottom" align="end">
@@ -72,6 +76,13 @@
                             />
                             <flux:navmenu class="min-w-48 rounded-xl border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
                                 @auth
+                                    <flux:navmenu.item
+                                        icon="bell"
+                                        href="{{ route('notifications.index') }}"
+                                        class="rounded-lg !text-zinc-700 hover:!bg-zinc-100 focus-visible:!bg-zinc-100 dark:!text-zinc-200 dark:hover:!bg-zinc-800 dark:focus-visible:!bg-zinc-800"
+                                    >
+                                        {{ __('messages.notifications') }}
+                                    </flux:navmenu.item>
                                     <flux:navmenu.item
                                         icon="wallet"
                                         href="{{ route('wallet') }}"

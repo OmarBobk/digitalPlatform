@@ -585,4 +585,17 @@ return [
     'permission_group_other' => 'Other',
     'delete_user_title' => 'Delete user?',
     'delete_user_body' => 'You are about to permanently delete ":name". This action cannot be undone.',
+
+    'new' => 'New',
+    'notifications' => 'Notifications',
+    'notifications_intro' => 'Your notification feed. Click through to the source when available.',
+    'all_types' => 'All types',
+    'all' => 'All',
+    'unread' => 'Unread',
+    'mark_all_read' => 'Mark all as read',
+    'mark_selected_read' => 'Mark selected as read',
+    'no_notifications' => 'No notifications',
+    'title' => 'Title',
+    'message' => 'Message',
+    'mark_read' => 'Mark as read',
 ];

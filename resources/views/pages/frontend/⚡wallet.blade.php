@@ -6,6 +6,7 @@ use App\Enums\TopupMethod;
 use App\Enums\TopupRequestStatus;
 use App\Enums\WalletTransactionDirection;
 use App\Enums\WalletTransactionType;
+use App\Events\TopupRequestsChanged;
 use App\Models\TopupProof;
 use App\Models\TopupRequest;
 use App\Models\Order;
@@ -15,7 +16,9 @@ use App\Models\LoyaltySetting;
 use App\Models\LoyaltyTierConfig;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Notifications\TopupRequestedNotification;
 use App\Services\LoyaltySpendService;
+use App\Services\NotificationRecipientService;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
@@ -121,6 +124,19 @@ new #[Layout('layouts::frontend')] class extends Component
                     'method' => $topupRequest->method->value,
                 ])
                 ->log('Topup requested');
+
+            $topupRequestId = $topupRequest->id;
+            DB::afterCommit(function () use ($topupRequestId): void {
+                $request = TopupRequest::query()->find($topupRequestId);
+                if ($request === null) {
+                    return;
+                }
+
+                event(new TopupRequestsChanged($request->id, 'created'));
+
+                $notification = TopupRequestedNotification::fromTopupRequest($request);
+                app(NotificationRecipientService::class)->adminUsers()->each(fn ($admin) => $admin->notify($notification));
+            });
         });
 
         $this->reset('topupAmount', 'proofFile');

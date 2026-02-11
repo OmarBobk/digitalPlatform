@@ -8,6 +8,7 @@ use App\Enums\FulfillmentLogLevel;
 use App\Enums\FulfillmentStatus;
 use App\Enums\OrderStatus;
 use App\Enums\WalletTransactionType;
+use App\Events\FulfillmentListChanged;
 use App\Models\Fulfillment;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -110,6 +111,11 @@ class RetryFulfillment
                     'actor_id' => $actorId,
                 ], fn ($value) => $value !== null && $value !== ''))
                 ->log('Fulfillment retry requested');
+
+            $fulfillmentId = $lockedFulfillment->id;
+            DB::afterCommit(static function () use ($fulfillmentId): void {
+                event(new FulfillmentListChanged($fulfillmentId, 'status-updated'));
+            });
 
             return $lockedFulfillment->refresh();
         });

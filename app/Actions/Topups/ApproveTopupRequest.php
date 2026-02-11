@@ -6,10 +6,12 @@ namespace App\Actions\Topups;
 
 use App\Enums\TopupRequestStatus;
 use App\Enums\WalletTransactionDirection;
+use App\Events\TopupRequestsChanged;
 use App\Models\TopupRequest;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Notifications\TopupApprovedNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -123,6 +125,21 @@ class ApproveTopupRequest
                     ])
                     ->log('Wallet credited');
             }
+
+            $approvedRequestId = $request->id;
+            DB::afterCommit(function () use ($approvedRequestId): void {
+                $approvedRequest = TopupRequest::query()->find($approvedRequestId);
+                if ($approvedRequest === null) {
+                    return;
+                }
+
+                event(new TopupRequestsChanged($approvedRequest->id, 'status-updated'));
+
+                $owner = $approvedRequest->user;
+                if ($owner !== null) {
+                    $owner->notify(TopupApprovedNotification::fromTopupRequest($approvedRequest));
+                }
+            });
 
             return $request;
         });

@@ -17,6 +17,7 @@ use App\Models\OrderItem;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Notifications\RefundApprovedNotification;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -290,7 +291,17 @@ class ApproveRefundRequest
                 }
 
                 $userId = $order->user_id;
-                DB::afterCommit(fn () => dispatch(new EvaluateLoyaltyForUser((int) $userId)));
+                $approvedTransactionId = $transaction->id;
+                DB::afterCommit(function () use ($userId, $approvedTransactionId): void {
+                    dispatch(new EvaluateLoyaltyForUser((int) $userId));
+                    $tx = WalletTransaction::query()->find($approvedTransactionId);
+                    if ($tx !== null) {
+                        $owner = User::query()->find($userId);
+                        if ($owner !== null) {
+                            $owner->notify(RefundApprovedNotification::fromRefundTransaction($tx));
+                        }
+                    }
+                });
 
                 return $transaction;
             });

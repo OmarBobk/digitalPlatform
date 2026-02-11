@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Actions\Topups;
 
 use App\Enums\TopupRequestStatus;
+use App\Events\TopupRequestsChanged;
 use App\Models\TopupRequest;
 use App\Models\User;
 use App\Models\WalletTransaction;
+use App\Notifications\TopupRejectedNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -76,6 +78,22 @@ class RejectTopupRequest
                     ->withProperties($properties)
                     ->log('Topup rejected');
             }
+
+            $rejectedRequestId = $request->id;
+            $rejectionReason = $reason;
+            DB::afterCommit(function () use ($rejectedRequestId, $rejectionReason): void {
+                $rejectedRequest = TopupRequest::query()->find($rejectedRequestId);
+                if ($rejectedRequest === null) {
+                    return;
+                }
+
+                event(new TopupRequestsChanged($rejectedRequest->id, 'status-updated'));
+
+                $owner = $rejectedRequest->user;
+                if ($owner !== null) {
+                    $owner->notify(TopupRejectedNotification::fromTopupRequest($rejectedRequest, $rejectionReason));
+                }
+            });
 
             return $request;
         });

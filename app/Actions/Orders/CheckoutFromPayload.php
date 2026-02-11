@@ -8,7 +8,9 @@ use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Notifications\PaymentFailedNotification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class CheckoutFromPayload
@@ -60,9 +62,26 @@ class CheckoutFromPayload
             return app(PayOrderWithWallet::class)->handle($order, $lockedWallet, false);
         };
 
-        return $useTransaction
-            ? DB::transaction($operation)
-            : $operation();
+        try {
+            return $useTransaction
+                ? DB::transaction($operation)
+                : $operation();
+        } catch (ValidationException $e) {
+            if (Schema::hasTable('activity_log')) {
+                activity()
+                    ->inLog('orders')
+                    ->event('payment.failed')
+                    ->performedOn($user)
+                    ->causedBy($user)
+                    ->withProperties([
+                        'user_id' => $user->id,
+                        'reason' => $e->getMessage(),
+                    ])
+                    ->log('Payment failed');
+            }
+            $user->notify(PaymentFailedNotification::forUser($user, $e->getMessage(), null));
+            throw $e;
+        }
     }
 
     /**

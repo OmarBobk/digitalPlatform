@@ -11,6 +11,8 @@ use App\Models\Fulfillment;
 use App\Models\Settlement;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Notifications\SettlementCreatedNotification;
+use App\Services\NotificationRecipientService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -100,6 +102,19 @@ class ProfitSettleCommand extends Command
             ]);
 
             $platformWallet->increment('balance', $totalAmount);
+
+            $settlementId = $settlement->id;
+            $notifySettlement = config('notifications.settlement_created_enabled', false);
+            DB::afterCommit(function () use ($settlementId, $notifySettlement): void {
+                if (! $notifySettlement) {
+                    return;
+                }
+                $settlement = Settlement::query()->find($settlementId);
+                if ($settlement !== null) {
+                    $notification = SettlementCreatedNotification::fromSettlement($settlement);
+                    app(NotificationRecipientService::class)->adminUsers()->each(fn ($admin) => $admin->notify($notification));
+                }
+            });
 
             $this->info(sprintf(
                 'Settled %d fulfillment(s), total %.2f, settlement #%d',

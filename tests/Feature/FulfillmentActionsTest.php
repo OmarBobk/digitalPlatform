@@ -10,6 +10,7 @@ use App\Enums\FulfillmentLogLevel;
 use App\Enums\FulfillmentStatus;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
+use App\Events\FulfillmentListChanged;
 use App\Models\Fulfillment;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -19,6 +20,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -195,6 +197,41 @@ test('create fulfillments stores requirements payload in meta', function () {
     expect(data_get($fulfillment->meta, 'requirements_payload'))->toBe(['player_id' => '12345']);
 });
 
+test('create fulfillments dispatches list changed event', function () {
+    Event::fake([FulfillmentListChanged::class]);
+
+    $user = User::factory()->create();
+    $package = Package::factory()->create();
+    $product = Product::factory()->create(['package_id' => $package->id, 'entry_price' => 30]);
+
+    $order = Order::create([
+        'user_id' => $user->id,
+        'order_number' => Order::temporaryOrderNumber(),
+        'currency' => 'USD',
+        'subtotal' => 30,
+        'fee' => 0,
+        'total' => 30,
+        'status' => OrderStatus::Paid,
+    ]);
+
+    OrderItem::create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'package_id' => $package->id,
+        'name' => $product->name,
+        'unit_price' => 30,
+        'quantity' => 1,
+        'line_total' => 30,
+        'status' => OrderItemStatus::Pending,
+    ]);
+
+    (new CreateFulfillmentsForOrder)->handle($order);
+
+    Event::assertDispatched(FulfillmentListChanged::class, function (FulfillmentListChanged $event): bool {
+        return $event->reason === 'created' && is_int($event->fulfillmentId);
+    });
+});
+
 test('process fulfillments includes requirements payload in delivered payload', function () {
     $user = User::factory()->create();
     $package = Package::factory()->create();
@@ -295,6 +332,20 @@ test('queued to processing to completed writes logs and completed_at', function 
 
     $logMessages = $fulfillment->logs()->pluck('message')->all();
     expect($logMessages)->toContain('Fulfillment started', 'Fulfillment completed');
+});
+
+test('fulfillment lifecycle dispatches list changed events', function () {
+    Event::fake([FulfillmentListChanged::class]);
+
+    $fulfillment = makeFulfillment();
+
+    (new StartFulfillment)->handle($fulfillment, 'system');
+    (new CompleteFulfillment)->handle($fulfillment, ['code' => 'BROADCAST'], 'system');
+
+    Event::assertDispatchedTimes(FulfillmentListChanged::class, 2);
+    Event::assertDispatched(FulfillmentListChanged::class, function (FulfillmentListChanged $event): bool {
+        return $event->reason === 'status-updated' && is_int($event->fulfillmentId);
+    });
 });
 
 test('completing twice does not double log', function () {

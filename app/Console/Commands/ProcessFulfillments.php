@@ -9,6 +9,8 @@ use App\Actions\Fulfillments\FailFulfillment;
 use App\Actions\Fulfillments\StartFulfillment;
 use App\Enums\FulfillmentStatus;
 use App\Models\Fulfillment;
+use App\Notifications\FulfillmentProcessFailedNotification;
+use App\Services\NotificationRecipientService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -114,6 +116,11 @@ class ProcessFulfillments extends Command
                         'error' => $exception->getMessage(),
                     ])
                     ->log('Fulfillment processing failed');
+
+                $failedFulfillment = $fulfillment->refresh();
+                $errorMessage = $exception->getMessage();
+                $notification = FulfillmentProcessFailedNotification::fromFulfillment($failedFulfillment, $errorMessage);
+                app(NotificationRecipientService::class)->adminUsers()->each(fn ($admin) => $admin->notify($notification));
             }
         }
 

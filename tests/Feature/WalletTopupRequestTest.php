@@ -2,16 +2,23 @@
 
 use App\Enums\TopupMethod;
 use App\Enums\TopupRequestStatus;
+use App\Events\TopupRequestsChanged;
 use App\Models\TopupProof;
 use App\Models\TopupRequest;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+});
 
 test('user can create a topup request with proof from wallet page', function () {
     Storage::fake('local');
@@ -41,6 +48,29 @@ test('user can create a topup request with proof from wallet page', function () 
 
     expect($transaction)->not->toBeNull();
     expect($transaction->status)->toBe(WalletTransaction::STATUS_PENDING);
+});
+
+test('creating a topup request broadcasts change event', function () {
+    Storage::fake('local');
+    Event::fake([TopupRequestsChanged::class]);
+
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('pages::frontend.wallet')
+        ->set('topupAmount', '40')
+        ->set('topupMethod', TopupMethod::ShamCash->value)
+        ->set('proofFile', UploadedFile::fake()->image('proof.jpg'))
+        ->call('submitTopup');
+
+    $request = TopupRequest::query()->first();
+
+    expect($request)->not->toBeNull();
+
+    Event::assertDispatched(TopupRequestsChanged::class, function (TopupRequestsChanged $event) use ($request): bool {
+        return $event->reason === 'created'
+            && $event->topupRequestId === $request->id;
+    });
 });
 
 test('user cannot create a second pending topup request', function () {

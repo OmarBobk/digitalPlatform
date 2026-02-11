@@ -4,11 +4,13 @@ use App\Actions\Topups\ApproveTopupRequest;
 use App\Actions\Topups\RejectTopupRequest;
 use App\Enums\TopupMethod;
 use App\Enums\TopupRequestStatus;
+use App\Events\TopupRequestsChanged;
 use App\Models\TopupRequest;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Spatie\Activitylog\Models\Activity;
 
 uses(RefreshDatabase::class);
@@ -57,6 +59,34 @@ test('approving a topup posts ledger and increments balance once', function () {
     )->toBeTrue();
 });
 
+test('approving a topup dispatches change event', function () {
+    Event::fake([TopupRequestsChanged::class]);
+
+    $user = User::factory()->create();
+    $approver = User::factory()->create();
+    $wallet = Wallet::create([
+        'user_id' => $user->id,
+        'balance' => 0,
+        'currency' => 'USD',
+    ]);
+
+    $request = TopupRequest::create([
+        'user_id' => $user->id,
+        'wallet_id' => $wallet->id,
+        'method' => TopupMethod::ShamCash,
+        'amount' => 60,
+        'currency' => 'USD',
+        'status' => TopupRequestStatus::Pending,
+    ]);
+
+    (new ApproveTopupRequest)->handle($request, $approver->id);
+
+    Event::assertDispatched(TopupRequestsChanged::class, function (TopupRequestsChanged $event) use ($request): bool {
+        return $event->reason === 'status-updated'
+            && $event->topupRequestId === $request->id;
+    });
+});
+
 test('rejecting a topup does not change balance', function () {
     $user = User::factory()->create();
     $approver = User::factory()->create();
@@ -95,4 +125,32 @@ test('rejecting a topup does not change balance', function () {
         ->where('subject_id', $request->id)
         ->exists()
     )->toBeTrue();
+});
+
+test('rejecting a topup dispatches change event', function () {
+    Event::fake([TopupRequestsChanged::class]);
+
+    $user = User::factory()->create();
+    $approver = User::factory()->create();
+    $wallet = Wallet::create([
+        'user_id' => $user->id,
+        'balance' => 0,
+        'currency' => 'USD',
+    ]);
+
+    $request = TopupRequest::create([
+        'user_id' => $user->id,
+        'wallet_id' => $wallet->id,
+        'method' => TopupMethod::EftTransfer,
+        'amount' => 45,
+        'currency' => 'USD',
+        'status' => TopupRequestStatus::Pending,
+    ]);
+
+    (new RejectTopupRequest)->handle($request, $approver->id);
+
+    Event::assertDispatched(TopupRequestsChanged::class, function (TopupRequestsChanged $event) use ($request): bool {
+        return $event->reason === 'status-updated'
+            && $event->topupRequestId === $request->id;
+    });
 });

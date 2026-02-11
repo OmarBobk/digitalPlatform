@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\Users;
 
 use App\Models\User;
+use App\Notifications\UserBlockedNotification;
+use Illuminate\Support\Facades\DB;
 
 class BlockUser
 {
@@ -23,5 +25,13 @@ class BlockUser
                 'email' => $user->email,
             ])
             ->log('User blocked');
+
+        $blockedUserId = $user->id;
+        DB::afterCommit(function () use ($blockedUserId): void {
+            $u = User::query()->find($blockedUserId);
+            if ($u !== null) {
+                $u->notify(UserBlockedNotification::fromUser($u));
+            }
+        });
     }
 }

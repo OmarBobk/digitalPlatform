@@ -9,6 +9,7 @@ use App\Models\TopupProof;
 use App\Models\TopupRequest;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -121,6 +122,13 @@ new class extends Component
         $this->closeRejectModal();
         $this->noticeVariant = 'danger';
         $this->noticeMessage = __('messages.topup_rejected');
+    }
+
+    #[On('topup-list-updated')]
+    public function refreshTopupRequests(): void
+    {
+        $this->resetPage();
+        $this->dispatch('$refresh');
     }
 
     public function getTopupRequestsProperty(): LengthAwarePaginator

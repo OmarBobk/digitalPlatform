@@ -12,6 +12,7 @@ use App\Models\Fulfillment;
 use App\Models\OrderItem;
 use App\Models\User;
 use App\Models\WalletTransaction;
+use App\Notifications\RefundRejectedNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -128,6 +129,19 @@ class RejectRefundRequest
                     'currency' => data_get($transaction->meta, 'currency', 'USD'),
                 ], fn ($value) => $value !== null && $value !== ''))
                 ->log('Refund rejected');
+
+            $rejectedTransactionId = $transaction->id;
+            $orderOwnerId = (int) data_get($transaction->meta, 'user_id', 0);
+            DB::afterCommit(function () use ($rejectedTransactionId, $orderOwnerId): void {
+                $tx = WalletTransaction::query()->find($rejectedTransactionId);
+                if ($tx === null || $orderOwnerId === 0) {
+                    return;
+                }
+                $owner = User::query()->find($orderOwnerId);
+                if ($owner !== null) {
+                    $owner->notify(RefundRejectedNotification::fromRefundTransaction($tx));
+                }
+            });
 
             return $transaction;
         });

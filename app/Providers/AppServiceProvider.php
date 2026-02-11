@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Events\ActivityLogChanged;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Date;
@@ -9,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Spatie\Activitylog\Models\Activity;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->registerAuthActivityHooks();
+        $this->registerActivityBroadcasting();
     }
 
     protected function configureDefaults(): void
@@ -84,6 +87,17 @@ class AppServiceProvider extends ServiceProvider
                     ->withProperties($properties)
                     ->log('User logout');
             }
+        });
+    }
+
+    protected function registerActivityBroadcasting(): void
+    {
+        Activity::created(function (Activity $activity): void {
+            $activityId = $activity->id;
+
+            DB::afterCommit(static function () use ($activityId): void {
+                event(new ActivityLogChanged($activityId));
+            });
         });
     }
 }

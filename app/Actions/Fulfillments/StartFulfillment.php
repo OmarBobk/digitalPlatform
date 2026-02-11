@@ -6,6 +6,7 @@ namespace App\Actions\Fulfillments;
 
 use App\Enums\FulfillmentLogLevel;
 use App\Enums\FulfillmentStatus;
+use App\Events\FulfillmentListChanged;
 use App\Models\Fulfillment;
 use App\Models\OrderItem;
 use App\Models\User;
@@ -72,6 +73,11 @@ class StartFulfillment
                     'actor_id' => $actorId,
                 ], fn ($value) => $value !== null && $value !== ''))
                 ->log('Fulfillment processing');
+
+            $fulfillmentId = $lockedFulfillment->id;
+            DB::afterCommit(static function () use ($fulfillmentId): void {
+                event(new FulfillmentListChanged($fulfillmentId, 'status-updated'));
+            });
 
             return $lockedFulfillment->refresh();
         });

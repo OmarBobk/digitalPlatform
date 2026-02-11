@@ -15,6 +15,7 @@ use App\Models\WalletTransaction;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 use Livewire\Attributes\Url;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -178,6 +179,13 @@ new class extends Component
 
         $this->noticeVariant = 'success';
         $this->noticeMessage = __('messages.fulfillment_marked_queued');
+    }
+
+    #[On('fulfillment-list-updated')]
+    public function refreshFulfillments(): void
+    {
+        $this->resetPage();
+        $this->dispatch('$refresh');
     }
 
     public function getFulfillmentsProperty(): LengthAwarePaginator

@@ -7,6 +7,8 @@ namespace App\Console\Commands;
 use App\Enums\WalletTransactionDirection;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Notifications\WalletReconciledNotification;
+use App\Services\NotificationRecipientService;
 use Illuminate\Console\Command;
 
 class WalletReconcile extends Command
@@ -98,6 +100,9 @@ class WalletReconcile extends Command
                         'diff' => $diff,
                     ])
                     ->log('Wallet reconciled');
+
+                $notification = WalletReconciledNotification::fromWallet($wallet, $stored, $expected, $diff);
+                app(NotificationRecipientService::class)->adminUsers()->each(fn ($admin) => $admin->notify($notification));
                 $updated++;
             }
         }

@@ -6,11 +6,13 @@ namespace App\Actions\Fulfillments;
 
 use App\Enums\FulfillmentLogLevel;
 use App\Enums\FulfillmentStatus;
+use App\Events\FulfillmentListChanged;
 use App\Jobs\EvaluateLoyaltyForUser;
 use App\Models\Fulfillment;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
+use App\Notifications\FulfillmentCompletedNotification;
 use Illuminate\Support\Facades\DB;
 
 class CompleteFulfillment
@@ -83,9 +85,24 @@ class CompleteFulfillment
                 ->log('Fulfillment completed');
 
             $userId = Order::query()->where('id', $lockedFulfillment->order_id)->value('user_id');
+            $completedFulfillmentId = $lockedFulfillment->id;
             if ($userId !== null) {
-                DB::afterCommit(fn () => dispatch(new EvaluateLoyaltyForUser((int) $userId)));
+                DB::afterCommit(function () use ($userId, $completedFulfillmentId): void {
+                    dispatch(new EvaluateLoyaltyForUser((int) $userId));
+                    $fulfillment = Fulfillment::query()->find($completedFulfillmentId);
+                    if ($fulfillment !== null) {
+                        $owner = User::query()->find($userId);
+                        if ($owner !== null) {
+                            $owner->notify(FulfillmentCompletedNotification::fromFulfillment($fulfillment));
+                        }
+                    }
+                });
             }
+
+            $fulfillmentId = $lockedFulfillment->id;
+            DB::afterCommit(static function () use ($fulfillmentId): void {
+                event(new FulfillmentListChanged($fulfillmentId, 'status-updated'));
+            });
 
             return $lockedFulfillment->refresh();
         });

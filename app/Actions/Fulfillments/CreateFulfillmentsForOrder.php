@@ -7,6 +7,7 @@ namespace App\Actions\Fulfillments;
 use App\Enums\FulfillmentLogLevel;
 use App\Enums\FulfillmentStatus;
 use App\Enums\OrderStatus;
+use App\Events\FulfillmentListChanged;
 use App\Models\Fulfillment;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -75,6 +76,11 @@ class CreateFulfillmentsForOrder
                     }
 
                     $appendLog->handle($fulfillment, FulfillmentLogLevel::Info, 'Fulfillment queued');
+
+                    $fulfillmentId = $fulfillment->id;
+                    DB::afterCommit(static function () use ($fulfillmentId): void {
+                        event(new FulfillmentListChanged($fulfillmentId, 'created'));
+                    });
 
                     activity()
                         ->inLog('fulfillment')

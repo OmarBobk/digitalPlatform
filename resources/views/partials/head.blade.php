@@ -10,5 +10,12 @@
 <link rel="preconnect" href="https://fonts.bunny.net">
 <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
 
+@auth
+<script>
+    window.Laravel = window.Laravel || {};
+    window.Laravel.userId = {{ auth()->id() }};
+    window.Laravel.isAdmin = @json(auth()->user()?->hasRole('admin'));
+</script>
+@endauth
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 @fluxAppearance

@@ -585,4 +585,17 @@ return [
     'permission_group_other' => 'أخرى',
     'delete_user_title' => 'حذف المستخدم؟',
     'delete_user_body' => 'أنت على وشك حذف ":name" نهائياً. لا يمكن التراجع عن هذا الإجراء.',
+
+    'new' => 'جديد',
+    'notifications' => 'الإشعارات',
+    'notifications_intro' => 'سجل إشعاراتك. انقر للانتقال إلى المصدر عند توفره.',
+    'all_types' => 'كل الأنواع',
+    'all' => 'الكل',
+    'unread' => 'غير مقروءة',
+    'mark_all_read' => 'تعليم الكل كمقروء',
+    'mark_selected_read' => 'تعليم المحدد كمقروء',
+    'no_notifications' => 'لا توجد إشعارات',
+    'title' => 'العنوان',
+    'message' => 'الرسالة',
+    'mark_read' => 'تعليم كمقروء',
 ];

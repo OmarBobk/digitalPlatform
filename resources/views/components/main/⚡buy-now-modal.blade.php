@@ -388,22 +388,22 @@ new class extends Component
             x-data="cartToastOnModal(@js(__('main.add_to_cart_for')))"
             x-on:cart-item-added.window="notify($event.detail)"
             x-on:cart-toast.window="notify($event.detail)"
-            class="pointer-events-none absolute top-3 z-10 flex w-full flex-col gap-2 px-2 sm:max-w-sm ltr:right-3 rtl:left-3 sm:px-0"
+            class="pointer-events-none sticky z-10 flex w-full max-w-full flex-col gap-2 px-2 sm:px-0"
             aria-live="polite"
         >
             <template x-for="toast in toasts" :key="toast.id">
                 <div
                     x-show="toast.visible"
                     x-transition:enter="transition ease-out duration-200"
-                    x-transition:enter-start="opacity-0 translate-y-2"
-                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:enter-start="opacity-0 translate-y-1 translate-x-2"
+                    x-transition:enter-end="opacity-100 translate-y-0 translate-x-0"
                     x-transition:leave="transition ease-in duration-150"
                     x-transition:leave-start="opacity-100 translate-y-0"
-                    x-transition:leave-end="opacity-0 translate-y-2"
-                    class="pointer-events-auto flex items-center gap-3 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-700 shadow-lg dark:border-emerald-500/30 dark:bg-zinc-900 dark:text-emerald-300"
+                    x-transition:leave-end="opacity-0 translate-y-1"
+                    class="pointer-events-auto flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-white/95 px-3 py-2 text-xs font-medium text-emerald-700 shadow-md backdrop-blur-sm dark:border-zinc-600 dark:bg-zinc-800/95 dark:text-emerald-400 dark:shadow-zinc-950/50"
                 >
-                    <flux:icon icon="check-circle" class="size-4 text-emerald-600 dark:text-emerald-300" />
-                    <span class="font-semibold" x-text="toast.message"></span>
+                    <flux:icon icon="check-circle" class="size-3.5 shrink-0 text-emerald-500 dark:text-emerald-400" />
+                    <span class="truncate" x-text="toast.message"></span>
                 </div>
             </template>
         </div>
@@ -418,11 +418,15 @@ new class extends Component
                     </flux:button>
                 </template>
             </div>
-            <div class="flex flex-col flex-1 pe-12 items-center gap-1 text-center">
+            <div class="flex flex-col flex-1 min-w-0 pe-12 items-center justify-center gap-0.5 text-center">
                 @php($packageLabel = $selectedPackageName ?? $buyNowPackageName)
                 @if ($packageLabel)
-                    <span class="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-                        {{ $packageLabel }} @if (!$showPackageProducts) -> {{ $buyNowProductName ?? __('main.buy_now') }} @endif
+                    <span class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-100/80 px-4 py-2 text-sm font-semibold text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100">
+                        <span class="truncate">{{ $packageLabel }}</span>
+                        @if (!$showPackageProducts)
+                            <span class="shrink-0 text-zinc-500 dark:text-zinc-400 rtl:rotate-180" aria-hidden="true">→</span>
+                            <span class="truncate font-medium text-zinc-700 dark:text-zinc-300">{{ $buyNowProductName ?? __('main.buy_now') }}</span>
+                        @endif
                     </span>
                 @endif
             </div>

@@ -1,9 +1,11 @@
 <?php
 
 use App\Enums\OrderStatus;
+use App\Events\ActivityLogChanged;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -55,4 +57,33 @@ test('non-admin cannot access activities page', function () {
     $this->actingAs($user)
         ->get('/admin/activities')
         ->assertNotFound();
+});
+
+test('activity creation dispatches broadcast event', function () {
+    Event::fake([ActivityLogChanged::class]);
+
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $order = Order::create([
+        'user_id' => $admin->id,
+        'order_number' => Order::temporaryOrderNumber(),
+        'currency' => 'USD',
+        'subtotal' => 12,
+        'fee' => 0,
+        'total' => 12,
+        'status' => OrderStatus::Paid,
+    ]);
+
+    $activity = activity()
+        ->inLog('orders')
+        ->event('order.paid')
+        ->performedOn($order)
+        ->causedBy($admin)
+        ->log('Order paid');
+
+    Event::assertDispatched(ActivityLogChanged::class, function (ActivityLogChanged $event) use ($activity): bool {
+        return $event->activityId === $activity->id
+            && $event->reason === 'created';
+    });
 });

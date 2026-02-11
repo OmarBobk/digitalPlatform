@@ -15,6 +15,8 @@ use App\Models\OrderItem;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Notifications\RefundRequestedNotification;
+use App\Services\NotificationRecipientService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -168,6 +170,16 @@ class RefundOrderItem
                     'note' => $note,
                 ], fn ($value) => $value !== null && $value !== '')
             );
+
+            $transactionId = $transaction->id;
+            DB::afterCommit(function () use ($transactionId): void {
+                $tx = WalletTransaction::query()->find($transactionId);
+                if ($tx === null) {
+                    return;
+                }
+                $notification = RefundRequestedNotification::fromRefundTransaction($tx);
+                app(NotificationRecipientService::class)->adminUsers()->each(fn ($admin) => $admin->notify($notification));
+            });
 
             return $transaction;
         });

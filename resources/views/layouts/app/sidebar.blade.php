@@ -1,3 +1,12 @@
+@php
+    $pendingRefundsCount = 0;
+    if (auth()->check() && auth()->user()?->can('view_refunds')) {
+        $pendingRefundsCount = \App\Models\WalletTransaction::query()
+            ->where('type', \App\Enums\WalletTransactionType::Refund)
+            ->where('status', \App\Models\WalletTransaction::STATUS_PENDING)
+            ->count();
+    }
+@endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}" class="dark">
     <head>
@@ -43,9 +52,19 @@
                 </flux:sidebar.group>
                 @endif
 
-                <flux:sidebar.group expandable :expanded="(request()->routeIs('fulfillments')) or (request()->routeIs('admin.orders.*'))" :heading="__('messages.nav_operations')" class="grid transition-all duration-300 ease">
+                <flux:sidebar.group expandable
+                                    :expanded="(request()->routeIs('fulfillments')) or (request()->routeIs('admin.orders.*')) or (request()->routeIs('admin.notifications.index'))"
+                                    :heading="__('messages.nav_operations')" class="grid transition-all duration-300 ease">
+                    <flux:sidebar.item icon="bell" :href="route('admin.notifications.index')" :current="request()->routeIs('admin.notifications.index')" wire:navigate>
+                        {{ __('messages.notifications') }}
+                    </flux:sidebar.item>
                     @can('view_fulfillments')
-                    <flux:sidebar.item icon="list-bullet" :href="route('fulfillments')" :current="request()->routeIs('fulfillments')" wire:navigate>{{ __('messages.fulfillments') }}</flux:sidebar.item>
+                    <flux:sidebar.item icon="list-bullet" :href="route('fulfillments')" :current="request()->routeIs('fulfillments')" wire:navigate>
+                        <span class="flex items-center gap-2">
+                            {{ __('messages.fulfillments') }}
+                            <livewire:sidebar.fulfillment-indicator :key="'sidebar-fulfillment-indicator'" />
+                        </span>
+                    </flux:sidebar.item>
                     @endcan
                     @can('view_orders')
                     <flux:sidebar.item icon="shopping-bag" :href="route('admin.orders.index')" :current="request()->routeIs('admin.orders.*')" wire:navigate>
@@ -54,7 +73,12 @@
                     @endcan
                     @can('view_refunds')
                     <flux:sidebar.item icon="receipt-refund" :href="route('refunds')" :current="request()->routeIs('refunds')" wire:navigate>
-                        {{ __('messages.refund_requests') }}
+                        <span class="flex items-center gap-2">
+                            {{ __('messages.refund_requests') }}
+                            @if ($pendingRefundsCount > 0)
+                                <span class="size-2 shrink-0 rounded-full bg-red-500" aria-hidden="true"></span>
+                            @endif
+                        </span>
                     </flux:sidebar.item>
                     @endcan
                 </flux:sidebar.group>
@@ -63,7 +87,10 @@
                     <flux:sidebar.group expandable :expanded="request()->routeIs('topups') || request()->routeIs('settlements') || request()->routeIs('customer-funds')" :heading="__('messages.nav_financials')" class="grid">
                         @can('manage_topups')
                         <flux:sidebar.item icon="wallet" :href="route('topups')" :current="request()->routeIs('topups')" wire:navigate>
-                            {{ __('messages.topups') }}
+                            <span class="flex items-center gap-2">
+                                {{ __('messages.topups') }}
+                                <livewire:sidebar.topup-indicator :key="'sidebar-topup-indicator'" />
+                            </span>
                         </flux:sidebar.item>
                         @endcan
                         @can('manage_topups')

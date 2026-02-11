@@ -29,7 +29,8 @@
 - ###DONE when a customer is incrementing the products that are in the shopping cart, the dropdown not the page the dropdown will immediately closed
 - Backend:
   - ###DONE Users Manager
-  - Notifications with Laravel Verb
+  - ###DOING Notifications with Laravel Verb
+  - ###DONE if admin is on the fulfillment page and a new fulfillment came, admin should refresh the page so he can see the new fulfillment now how to fix this behavior 
 - Frontend:
   - ###DONE wallet transaction in /wallets should be more described
   - ###DONE Wallet /wallet Request topups form borders remove the ring

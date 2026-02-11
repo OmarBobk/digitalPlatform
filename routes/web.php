@@ -29,6 +29,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('/loyalty', 'pages::frontend.loyalty')->name('loyalty');
     Route::livewire('/orders', 'pages::frontend.orders')->name('orders.index');
     Route::livewire('/orders/{order:order_number}', 'pages::frontend.order-details')->name('orders.show');
+    Route::livewire('/notifications', 'pages::frontend.notifications')->name('notifications.index');
     Route::get('/topup-proofs/{proof}', [TopupProofController::class, 'show'])->name('topup-proofs.show');
 });
 
@@ -49,6 +50,7 @@ Route::middleware(['auth', 'verified', 'backend'])->group(function () {
     Route::livewire('/topups', 'pages::backend.topups.index')->name('topups');
     Route::livewire('/customer-funds', 'pages::backend.customer-funds.index')->name('customer-funds');
     Route::livewire('/settlements', 'pages::backend.settlements.index')->name('settlements');
+    Route::livewire('/admin/notifications', 'pages::backend.notifications.index')->name('admin.notifications.index');
 });
 
 require __DIR__.'/settings.php';

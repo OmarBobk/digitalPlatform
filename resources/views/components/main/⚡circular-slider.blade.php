@@ -371,7 +371,8 @@ new class extends Component
                                 draggable="false"
                             />
                         </div>
-                    </a>
+                    </a
+                        href="{{ $item['href'] }}">
                 @endforeach
             </div>
         </div>

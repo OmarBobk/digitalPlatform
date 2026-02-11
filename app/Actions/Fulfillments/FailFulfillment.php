@@ -6,9 +6,12 @@ namespace App\Actions\Fulfillments;
 
 use App\Enums\FulfillmentLogLevel;
 use App\Enums\FulfillmentStatus;
+use App\Events\FulfillmentListChanged;
 use App\Models\Fulfillment;
+use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
+use App\Notifications\FulfillmentFailedNotification;
 use Illuminate\Support\Facades\DB;
 
 class FailFulfillment
@@ -79,6 +82,26 @@ class FailFulfillment
                     'actor_id' => $actorId,
                 ], fn ($value) => $value !== null && $value !== ''))
                 ->log('Fulfillment failed');
+
+            $failedFulfillmentId = $lockedFulfillment->id;
+            $failureReason = $reason;
+            $orderOwnerId = Order::query()->where('id', $lockedFulfillment->order_id)->value('user_id');
+            if ($orderOwnerId !== null) {
+                DB::afterCommit(function () use ($failedFulfillmentId, $failureReason, $orderOwnerId): void {
+                    $fulfillment = Fulfillment::query()->find($failedFulfillmentId);
+                    if ($fulfillment !== null) {
+                        $owner = User::query()->find($orderOwnerId);
+                        if ($owner !== null) {
+                            $owner->notify(FulfillmentFailedNotification::fromFulfillment($fulfillment, $failureReason));
+                        }
+                    }
+                });
+            }
+
+            $fulfillmentId = $lockedFulfillment->id;
+            DB::afterCommit(static function () use ($fulfillmentId): void {
+                event(new FulfillmentListChanged($fulfillmentId, 'status-updated'));
+            });
 
             return $lockedFulfillment->refresh();
         });
