@@ -229,6 +229,52 @@ new class extends Component
         return $this->subjectOptions[$type] ?? class_basename($type);
     }
 
+    protected function logNameColor(?string $logName): string
+    {
+        return match ($logName) {
+            'payments' => 'emerald',
+            'orders' => 'blue',
+            'fulfillment' => 'amber',
+            'admin' => 'violet',
+            'system' => 'zinc',
+            default => 'gray',
+        };
+    }
+
+    protected function eventColor(?string $event): string
+    {
+        if ($event === null) {
+            return 'gray';
+        }
+        if (str_starts_with($event, 'order.')) {
+            return 'blue';
+        }
+        if (str_starts_with($event, 'wallet.') || str_contains($event, 'payment')) {
+            return 'emerald';
+        }
+        if (str_contains($event, 'fulfillment') || str_contains($event, 'refund')) {
+            return 'amber';
+        }
+        if (str_contains($event, 'login') || str_contains($event, 'logout')) {
+            return 'violet';
+        }
+        if (str_contains($event, 'topup')) {
+            return 'sky';
+        }
+        return 'gray';
+    }
+
+    protected function causerBadgeColor($causer): string
+    {
+        if ($causer === null) {
+            return 'zinc';
+        }
+        if ($causer instanceof User && $causer->hasAnyRole(['admin', 'supervisor'])) {
+            return 'violet';
+        }
+        return 'blue';
+    }
+
     private function applyCauserFilter(Builder $query): void
     {
         if ($this->causerFilter === 'system') {
@@ -275,7 +321,11 @@ new class extends Component
 };
 ?>
 
-<div class="flex h-full w-full flex-1 flex-col gap-6">
+<div
+    class="flex h-full w-full flex-1 flex-col gap-6"
+    x-data="{ showFilters: false }"
+    data-test="activities-page"
+>
     <section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="space-y-1">
@@ -286,11 +336,38 @@ new class extends Component
                     {{ __('messages.activities_intro') }}
                 </flux:text>
             </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <flux:button
+                    type="button"
+                    variant="outline"
+                    icon="adjustments-horizontal"
+                    x-on:click="showFilters = !showFilters"
+                    x-bind:aria-expanded="showFilters"
+                    aria-controls="activities-filters"
+                >
+                    {{ __('messages.filters') }}
+                </flux:button>
+                <flux:button
+                    type="button"
+                    variant="ghost"
+                    icon="arrow-path"
+                    wire:click="$refresh"
+                    wire:loading.attr="disabled"
+                >
+                    {{ __('messages.refresh') }}
+                </flux:button>
+            </div>
         </div>
 
         <form
+            id="activities-filters"
             class="mt-4 rounded-xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-800/60"
             wire:submit.prevent="applyFilters"
+            x-show="showFilters"
+            x-cloak
+            data-test="activities-filters"
+            role="search"
+            aria-label="{{ __('messages.filters') }}"
         >
             <div class="grid gap-4 lg:grid-cols-6">
                 <flux:input
@@ -374,7 +451,7 @@ new class extends Component
                     </div>
                 @else
                     <table class="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800" data-test="activities-table">
-                        <thead class="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400">
+                        <thead class="bg-zinc-100 text-xs uppercase tracking-wide text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                             <tr>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.created') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.log_name') }}</th>
@@ -387,79 +464,86 @@ new class extends Component
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
-                            @foreach ($this->activities as $activity)
+                            @foreach ($this->activities as $index => $activity)
                                 @php
                                     $summary = $this->summaryProperties($activity->properties);
                                     $causer = $activity->causer instanceof User ? $activity->causer : null;
+                                    $rowBg = $index % 2 === 0 ? 'bg-white dark:bg-zinc-900' : 'bg-zinc-50/50 dark:bg-zinc-800/30';
                                 @endphp
-                                <tr class="transition hover:bg-zinc-50 dark:hover:bg-zinc-800/60" wire:key="activity-{{ $activity->id }}">
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
+                                <tr class="transition {{ $rowBg }} hover:bg-sky-50/50 dark:hover:bg-sky-950/20" wire:key="activity-{{ $activity->id }}">
+                                    <td class="px-5 py-4 text-sm font-medium text-zinc-700 dark:text-zinc-300 tabular-nums">
                                         {{ $activity->created_at?->format('M d, Y H:i') ?? '—' }}
                                     </td>
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
-                                        {{ $activity->log_name ?? '—' }}
+                                    <td class="px-5 py-4">
+                                        <flux:badge color="{{ $this->logNameColor($activity->log_name) }}" size="sm">
+                                            {{ $activity->log_name ?? '—' }}
+                                        </flux:badge>
                                     </td>
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
-                                        {{ $activity->event ?? '—' }}
+                                    <td class="px-5 py-4">
+                                        <flux:badge color="{{ $this->eventColor($activity->event) }}" size="sm" variant="subtle">
+                                            {{ $activity->event ?? '—' }}
+                                        </flux:badge>
                                     </td>
-                                    <td class="px-5 py-4 text-zinc-700 dark:text-zinc-200">
-                                        {{ $activity->description }}
+                                    <td class="px-5 py-4">
+                                        <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ $activity->description }}</span>
                                     </td>
                                     <td class="px-5 py-4">
                                         @if ($causer)
-                                            <div class="truncate font-semibold text-zinc-900 dark:text-zinc-100">
+                                            <flux:badge color="{{ $this->causerBadgeColor($causer) }}" size="sm">
                                                 {{ $causer->name ?? __('messages.unknown_user') }}
-                                            </div>
-                                            <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                                            </flux:badge>
+                                            <div class="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
                                                 {{ $causer->email ?? '—' }}
                                             </div>
                                         @else
-                                            <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.causer_system') }}</span>
+                                            <flux:badge color="zinc" size="sm" variant="subtle">{{ __('messages.causer_system') }}</flux:badge>
                                         @endif
                                     </td>
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
-                                        <div class="font-semibold text-zinc-900 dark:text-zinc-100">
-                                            {{ $this->subjectTypeLabel($activity->subject_type) }}
-                                        </div>
-                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">
-                                            #{{ $activity->subject_id ?? '—' }}
-                                        </div>
+                                    <td class="px-5 py-4">
+                                        <span class="font-semibold text-zinc-800 dark:text-zinc-200">{{ $this->subjectTypeLabel($activity->subject_type) }}</span>
+                                        <span class="ml-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">#{{ $activity->subject_id ?? '—' }}</span>
                                     </td>
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
+                                    <td class="px-5 py-4">
                                         @if ($summary !== [])
                                             @php
                                                 $summaryCount = count($summary);
                                             @endphp
-                                            <div class="space-y-1 text-xs" x-data="{ expanded: false }">
-
+                                            <div class="space-y-0.5 text-xs" x-data="{ expanded: false }">
+                                                @foreach ($summary as $idx => $line)
+                                                    @if ($idx < 2)
+                                                        <div class="font-medium text-zinc-700 dark:text-zinc-300">
+                                                            <span class="text-zinc-500 dark:text-zinc-400">{{ explode(':', $line, 2)[0] ?? '' }}:</span>
+                                                            {{ explode(':', $line, 2)[1] ?? $line }}
+                                                        </div>
+                                                    @endif
+                                                @endforeach
                                                 @if ($summaryCount > 2)
+                                                    <div x-show="expanded" x-collapse class="space-y-0.5">
+                                                        @foreach ($summary as $idx => $line)
+                                                            @if ($idx >= 2)
+                                                                <div class="text-zinc-700 dark:text-zinc-300">
+                                                                    <span class="text-zinc-500 dark:text-zinc-400">{{ explode(':', $line, 2)[0] ?? '' }}:</span>
+                                                                    {{ explode(':', $line, 2)[1] ?? $line }}
+                                                                </div>
+                                                            @endif
+                                                        @endforeach
+                                                    </div>
                                                     <button
                                                         type="button"
-                                                        class="text-left cursor-pointer text-xs text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                                                        class="text-left font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
                                                         x-on:click="expanded = !expanded"
                                                         :aria-expanded="expanded"
                                                     >
-                                                        @foreach ($summary as $index => $line)
-                                                            @if ($index < 2)
-                                                                <div>{{ $line }}</div>
-                                                            @endif
-                                                        @endforeach
-                                                        <div x-show="expanded" x-transition.opacity.duration.200ms class="space-y-1">
-                                                            @foreach ($summary as $index => $line)
-                                                                @if ($index >= 2)
-                                                                    <div>{{ $line }}</div>
-                                                                @endif
-                                                            @endforeach
-                                                        </div>  ...
+                                                        <span x-text="expanded ? '{{ __('messages.show_less') }}' : '+{{ $summaryCount - 2 }} {{ __('messages.more') }}'"></span>
                                                     </button>
                                                 @endif
                                             </div>
                                         @else
-                                            —
+                                            <span class="text-zinc-400 dark:text-zinc-500">—</span>
                                         @endif
                                     </td>
                                     <td class="px-5 py-4 text-end">
-                                        <flux:button size="sm" variant="ghost" wire:click="openDetails({{ $activity->id }})">
+                                        <flux:button size="sm" variant="outline" wire:click="openDetails({{ $activity->id }})">
                                             {{ __('messages.view_details') }}
                                         </flux:button>
                                     </td>

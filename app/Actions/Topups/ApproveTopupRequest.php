@@ -12,6 +12,8 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Notifications\TopupApprovedNotification;
+use App\Services\OperationalIntelligenceService;
+use App\Services\SystemEventService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -92,9 +94,20 @@ class ApproveTopupRequest
                 'approved_at' => now(),
             ])->save();
 
-            if (Schema::hasTable('activity_log')) {
-                $admin = User::query()->find($approvedById);
+            $admin = User::query()->find($approvedById);
+            app(SystemEventService::class)->record(
+                'wallet.topup.posted',
+                $request,
+                $admin,
+                [
+                    'amount' => (float) $request->amount,
+                    'wallet_id' => $wallet->id,
+                ],
+                'info',
+                true,
+            );
 
+            if (Schema::hasTable('activity_log')) {
                 activity()
                     ->inLog('payments')
                     ->event('topup.approved')
@@ -127,7 +140,13 @@ class ApproveTopupRequest
             }
 
             $approvedRequestId = $request->id;
-            DB::afterCommit(function () use ($approvedRequestId): void {
+            $postedTxId = $transaction->id;
+            DB::afterCommit(function () use ($approvedRequestId, $postedTxId): void {
+                $tx = WalletTransaction::query()->find($postedTxId);
+                if ($tx !== null) {
+                    app(OperationalIntelligenceService::class)->detectWalletVelocity($tx);
+                }
+
                 $approvedRequest = TopupRequest::query()->find($approvedRequestId);
                 if ($approvedRequest === null) {
                     return;

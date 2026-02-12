@@ -12,6 +12,7 @@ use App\Models\Fulfillment;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
+use App\Services\SystemEventService;
 use Illuminate\Support\Facades\DB;
 
 class CreateFulfillmentsForOrder
@@ -78,8 +79,26 @@ class CreateFulfillmentsForOrder
                     $appendLog->handle($fulfillment, FulfillmentLogLevel::Info, 'Fulfillment queued');
 
                     $fulfillmentId = $fulfillment->id;
-                    DB::afterCommit(static function () use ($fulfillmentId): void {
+                    $orderId = $order->id;
+                    DB::afterCommit(static function () use ($fulfillmentId, $orderId): void {
                         event(new FulfillmentListChanged($fulfillmentId, 'created'));
+                        $fulfillment = Fulfillment::query()->find($fulfillmentId);
+                        $order = Order::query()->find($orderId);
+                        if ($fulfillment !== null && $order !== null) {
+                            $orderUser = User::query()->find($order->user_id);
+                            app(SystemEventService::class)->record(
+                                'fulfillment.created',
+                                $fulfillment,
+                                $orderUser,
+                                [
+                                    'order_id' => $order->id,
+                                    'order_item_id' => $fulfillment->order_item_id,
+                                    'provider' => $fulfillment->provider,
+                                ],
+                                'info',
+                                false,
+                            );
+                        }
                     });
 
                     activity()

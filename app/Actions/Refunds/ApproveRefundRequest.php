@@ -18,6 +18,8 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Notifications\RefundApprovedNotification;
+use App\Services\OperationalIntelligenceService;
+use App\Services\SystemEventService;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -175,6 +177,34 @@ class ApproveRefundRequest
                     ]);
                 }
 
+                $existingPostedRefund = WalletTransaction::query()
+                    ->where('id', '!=', $transaction->id)
+                    ->where('type', WalletTransactionType::Refund)
+                    ->where('status', WalletTransaction::STATUS_POSTED)
+                    ->where(function ($query) use ($fulfillment, $orderItem, $order): void {
+                        if ($fulfillment !== null) {
+                            $query->orWhere(function ($q) use ($fulfillment): void {
+                                $q->where('reference_type', Fulfillment::class)
+                                    ->where('reference_id', $fulfillment->id);
+                            });
+                        }
+                        if ($orderItem !== null) {
+                            $query->orWhere(function ($q) use ($orderItem): void {
+                                $q->where('reference_type', OrderItem::class)
+                                    ->where('reference_id', $orderItem->id);
+                            });
+                        }
+                        $query->orWhere(function ($q) use ($order): void {
+                            $q->where('reference_type', Order::class)
+                                ->where('reference_id', $order->id);
+                        });
+                    })
+                    ->first();
+
+                if ($existingPostedRefund !== null) {
+                    return $existingPostedRefund;
+                }
+
                 $idempotencyKey = $fulfillment !== null
                     ? 'refund:fulfillment:'.$fulfillment->id
                     : ($orderItem !== null ? 'refund:order_item:'.$orderItem->id : 'refund:order:'.$order->id);
@@ -272,6 +302,18 @@ class ApproveRefundRequest
                     ])
                     ->log('Wallet credited');
 
+                app(SystemEventService::class)->record(
+                    'wallet.refund.credited',
+                    $transaction,
+                    $admin,
+                    [
+                        'amount' => (float) $transaction->amount,
+                        'order_id' => $order->id,
+                    ],
+                    'info',
+                    true,
+                );
+
                 if ($orderRefunded) {
                     activity()
                         ->inLog('orders')
@@ -292,15 +334,30 @@ class ApproveRefundRequest
 
                 $userId = $order->user_id;
                 $approvedTransactionId = $transaction->id;
-                DB::afterCommit(function () use ($userId, $approvedTransactionId): void {
-                    dispatch(new EvaluateLoyaltyForUser((int) $userId));
+                $adminIdForEvent = $adminId;
+                DB::afterCommit(function () use ($userId, $approvedTransactionId, $adminIdForEvent): void {
                     $tx = WalletTransaction::query()->find($approvedTransactionId);
                     if ($tx !== null) {
+                        $admin = User::query()->find($adminIdForEvent);
+                        app(SystemEventService::class)->record(
+                            'refund.approved',
+                            $tx,
+                            $admin,
+                            [
+                                'order_id' => data_get($tx->meta, 'order_id'),
+                                'amount' => (float) $tx->amount,
+                            ],
+                            'info',
+                            false,
+                        );
+                        app(OperationalIntelligenceService::class)->detectWalletVelocity($tx);
+                        app(OperationalIntelligenceService::class)->detectRefundAbuse((int) $userId);
                         $owner = User::query()->find($userId);
                         if ($owner !== null) {
                             $owner->notify(RefundApprovedNotification::fromRefundTransaction($tx));
                         }
                     }
+                    dispatch(new EvaluateLoyaltyForUser((int) $userId));
                 });
 
                 return $transaction;

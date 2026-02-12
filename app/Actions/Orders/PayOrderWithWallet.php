@@ -12,6 +12,8 @@ use App\Models\Order;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Services\OperationalIntelligenceService;
+use App\Services\SystemEventService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -47,11 +49,19 @@ class PayOrderWithWallet
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            $idempotencyKey = 'purchase:order:'.$lockedOrder->id;
             $existingTransaction = WalletTransaction::query()
-                ->where('reference_type', Order::class)
-                ->where('reference_id', $lockedOrder->id)
+                ->where('idempotency_key', $idempotencyKey)
                 ->lockForUpdate()
                 ->first();
+
+            if ($existingTransaction === null) {
+                $existingTransaction = WalletTransaction::query()
+                    ->where('reference_type', Order::class)
+                    ->where('reference_id', $lockedOrder->id)
+                    ->lockForUpdate()
+                    ->first();
+            }
 
             if ($existingTransaction !== null && $existingTransaction->status === WalletTransaction::STATUS_POSTED) {
                 $lockedOrder->fill([
@@ -81,12 +91,14 @@ class PayOrderWithWallet
                     'status' => WalletTransaction::STATUS_POSTED,
                     'reference_type' => Order::class,
                     'reference_id' => $lockedOrder->id,
+                    'idempotency_key' => $idempotencyKey,
                     'meta' => [
                         'order_number' => $lockedOrder->order_number,
                     ],
                 ]);
             } elseif ($existingTransaction->status === WalletTransaction::STATUS_PENDING) {
                 $existingTransaction->status = WalletTransaction::STATUS_POSTED;
+                $existingTransaction->idempotency_key = $idempotencyKey;
                 $existingTransaction->save();
             }
 
@@ -100,6 +112,28 @@ class PayOrderWithWallet
             (new CreateFulfillmentsForOrder)->handle($lockedOrder);
 
             $this->logOrderPaid($lockedOrder, $lockedWallet, $existingTransaction);
+
+            $orderUser = User::query()->find($lockedOrder->user_id);
+            app(SystemEventService::class)->record(
+                'wallet.purchase.debited',
+                $lockedOrder,
+                $orderUser,
+                [
+                    'amount' => (float) $lockedOrder->total,
+                    'wallet_id' => $lockedWallet->id,
+                    'transaction_id' => $existingTransaction->id,
+                ],
+                'info',
+                true,
+            );
+
+            $postedTxId = $existingTransaction->id;
+            DB::afterCommit(function () use ($postedTxId): void {
+                $tx = WalletTransaction::query()->find($postedTxId);
+                if ($tx !== null) {
+                    app(OperationalIntelligenceService::class)->detectWalletVelocity($tx);
+                }
+            });
 
             return $lockedOrder;
         };

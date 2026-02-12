@@ -6,8 +6,6 @@ namespace App\Models;
 
 use App\Enums\TopupMethod;
 use App\Enums\TopupRequestStatus;
-use App\Enums\WalletTransactionDirection;
-use App\Enums\WalletTransactionType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -69,24 +67,6 @@ class TopupRequest extends Model
             }
 
             $topupRequest->wallet_id = Wallet::forUser($user)->id;
-        });
-
-        static::created(function (self $topupRequest): void {
-            if ($topupRequest->walletTransaction()->exists()) {
-                return;
-            }
-
-            $topupRequest->walletTransaction()->create([
-                'wallet_id' => $topupRequest->wallet_id,
-                'type' => WalletTransactionType::Topup,
-                'direction' => WalletTransactionDirection::Credit,
-                'amount' => $topupRequest->amount,
-                'status' => WalletTransaction::STATUS_PENDING,
-                'meta' => [
-                    'method' => $topupRequest->method->value,
-                    'note' => $topupRequest->note,
-                ],
-            ]);
         });
     }
 

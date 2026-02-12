@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Loyalty\EvaluateLoyaltyForUserAction;
+use App\Actions\Topups\CreateTopupRequestAction;
 use App\Enums\OrderStatus;
 use App\Enums\TopupMethod;
 use App\Enums\TopupRequestStatus;
@@ -84,7 +85,7 @@ new #[Layout('layouts::frontend')] class extends Component
         }
 
         DB::transaction(function () use ($user, $wallet, $validated): void {
-            $topupRequest = TopupRequest::create([
+            $topupRequest = app(CreateTopupRequestAction::class)->handle([
                 'user_id' => $user->id,
                 'wallet_id' => $wallet->id,
                 'method' => TopupMethod::from($validated['topupMethod']),
@@ -640,6 +641,8 @@ new #[Layout('layouts::frontend')] class extends Component
                     @endif
                 </div>
             </section>
+
+            <x-timeline :entity="$this->wallet" />
         </div>
 
         <aside class="space-y-6">

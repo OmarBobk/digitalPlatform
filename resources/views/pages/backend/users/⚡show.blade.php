@@ -195,9 +195,16 @@ new class extends Component
 
     <section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
         <flux:heading size="sm" class="mb-3 text-zinc-900 dark:text-zinc-100">{{ __('messages.audit_log') }}</flux:heading>
-        <flux:button variant="ghost" size="sm" :href="route('admin.activities.index')" wire:navigate>
-            {{ __('messages.view_activity_for_user') }}
-        </flux:button>
+        <div class="flex flex-wrap gap-2">
+            <flux:button variant="ghost" size="sm" :href="route('admin.users.audit', $user)" wire:navigate>
+                {{ __('messages.audit_timeline') }}
+            </flux:button>
+            <flux:button variant="ghost" size="sm" :href="route('admin.activities.index')" wire:navigate>
+                {{ __('messages.view_activity_for_user') }}
+            </flux:button>
+        </div>
         <flux:text class="mt-2 block text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.loyalty_audit_hint') }}</flux:text>
     </section>
+
+    <x-timeline :entity="$user" />
 </div>

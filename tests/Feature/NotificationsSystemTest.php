@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Topups\ApproveTopupRequest;
+use App\Actions\Topups\CreateTopupRequestAction;
 use App\Enums\TopupMethod;
 use App\Enums\TopupRequestStatus;
 use App\Models\TopupRequest;
@@ -29,7 +30,7 @@ it('sends topup requested notification to admins after commit', function () {
     $wallet = Wallet::forUser($this->customer);
 
     DB::transaction(function () use ($wallet) {
-        $request = TopupRequest::create([
+        $request = app(CreateTopupRequestAction::class)->handle([
             'user_id' => $this->customer->id,
             'wallet_id' => $wallet->id,
             'method' => TopupMethod::ShamCash,
@@ -62,7 +63,7 @@ it('does not send notification when transaction rolls back', function () {
 
     try {
         DB::transaction(function () use ($wallet) {
-            $request = TopupRequest::create([
+            $request = app(CreateTopupRequestAction::class)->handle([
                 'user_id' => $this->customer->id,
                 'wallet_id' => $wallet->id,
                 'method' => TopupMethod::ShamCash,
@@ -88,7 +89,7 @@ it('does not send notification when transaction rolls back', function () {
 
 it('does not duplicate topup approved notification on idempotent re-call', function () {
     $wallet = Wallet::forUser($this->customer);
-    $topupRequest = TopupRequest::create([
+    $topupRequest = app(CreateTopupRequestAction::class)->handle([
         'user_id' => $this->customer->id,
         'wallet_id' => $wallet->id,
         'method' => TopupMethod::ShamCash,

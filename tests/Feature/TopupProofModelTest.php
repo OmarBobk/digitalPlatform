@@ -1,9 +1,9 @@
 <?php
 
+use App\Actions\Topups\CreateTopupRequestAction;
 use App\Enums\TopupMethod;
 use App\Enums\TopupRequestStatus;
 use App\Models\TopupProof;
-use App\Models\TopupRequest;
 use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -31,7 +31,7 @@ test('topup proof belongs to topup request', function () {
         'currency' => 'USD',
     ]);
 
-    $request = TopupRequest::create([
+    $request = app(CreateTopupRequestAction::class)->handle([
         'user_id' => $user->id,
         'wallet_id' => $wallet->id,
         'method' => TopupMethod::EftTransfer,

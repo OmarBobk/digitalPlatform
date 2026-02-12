@@ -7,8 +7,13 @@ use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+});
 
 test('wallet reconcile reports drift in dry run', function () {
     $user = User::factory()->create();

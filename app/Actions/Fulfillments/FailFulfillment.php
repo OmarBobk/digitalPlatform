@@ -12,6 +12,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
 use App\Notifications\FulfillmentFailedNotification;
+use App\Services\OperationalIntelligenceService;
 use Illuminate\Support\Facades\DB;
 
 class FailFulfillment
@@ -90,6 +91,7 @@ class FailFulfillment
                 DB::afterCommit(function () use ($failedFulfillmentId, $failureReason, $orderOwnerId): void {
                     $fulfillment = Fulfillment::query()->find($failedFulfillmentId);
                     if ($fulfillment !== null) {
+                        app(OperationalIntelligenceService::class)->detectFulfillmentFailure($fulfillment);
                         $owner = User::query()->find($orderOwnerId);
                         if ($owner !== null) {
                             $owner->notify(FulfillmentFailedNotification::fromFulfillment($fulfillment, $failureReason));

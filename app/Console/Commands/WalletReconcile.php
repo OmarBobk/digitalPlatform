@@ -9,7 +9,9 @@ use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Notifications\WalletReconciledNotification;
 use App\Services\NotificationRecipientService;
+use App\Services\OperationalIntelligenceService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class WalletReconcile extends Command
 {
@@ -57,20 +59,62 @@ class WalletReconcile extends Command
         $updated = 0;
 
         foreach ($wallets as $wallet) {
-            $expected = (float) WalletTransaction::query()
-                ->where('wallet_id', $wallet->id)
-                ->where('status', WalletTransaction::STATUS_POSTED)
-                ->selectRaw(
-                    'COALESCE(SUM(CASE WHEN direction = ? THEN amount ELSE -amount END), 0) as balance',
-                    [WalletTransactionDirection::Credit->value]
-                )
-                ->value('balance');
+            $result = DB::transaction(function () use ($wallet, $dryRun): ?array {
+                $lockedWallet = Wallet::query()
+                    ->whereKey($wallet->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-            $expected = round($expected, 2);
-            $stored = round((float) $wallet->balance, 2);
-            $diff = round($expected - $stored, 2);
+                $expected = (float) WalletTransaction::query()
+                    ->where('wallet_id', $lockedWallet->id)
+                    ->where('status', WalletTransaction::STATUS_POSTED)
+                    ->selectRaw(
+                        'COALESCE(SUM(CASE WHEN direction = ? THEN amount ELSE -amount END), 0) as balance',
+                        [WalletTransactionDirection::Credit->value]
+                    )
+                    ->value('balance');
 
-            if ($diff === 0.0) {
+                $expected = round($expected, 2);
+                $stored = round((float) $lockedWallet->balance, 2);
+                $diff = round($expected - $stored, 2);
+
+                if ($diff === 0.0) {
+                    return null;
+                }
+
+                $walletForDrift = $lockedWallet;
+                $driftMeta = ['stored' => $stored, 'expected' => $expected, 'diff' => $diff];
+                DB::afterCommit(function () use ($walletForDrift, $driftMeta): void {
+                    app(OperationalIntelligenceService::class)->detectReconciliationDrift($walletForDrift, $driftMeta);
+                });
+
+                if (! $dryRun) {
+                    $lockedWallet->update([
+                        'balance' => number_format($expected, 2, '.', ''),
+                    ]);
+                    activity()
+                        ->inLog('payments')
+                        ->event('wallet.reconciled')
+                        ->performedOn($lockedWallet)
+                        ->withProperties([
+                            'wallet_id' => $lockedWallet->id,
+                            'user_id' => $lockedWallet->user_id,
+                            'stored_balance' => $stored,
+                            'expected_balance' => $expected,
+                            'diff' => $diff,
+                        ])
+                        ->log('Wallet reconciled');
+
+                    $notification = WalletReconciledNotification::fromWallet($lockedWallet, $stored, $expected, $diff);
+                    app(NotificationRecipientService::class)->adminUsers()->each(fn ($admin) => $admin->notify($notification));
+
+                    return ['stored' => $stored, 'expected' => $expected, 'diff' => $diff];
+                }
+
+                return ['stored' => $stored, 'expected' => $expected, 'diff' => $diff];
+            });
+
+            if ($result === null) {
                 continue;
             }
 
@@ -79,30 +123,12 @@ class WalletReconcile extends Command
                 'Wallet %d (user %d): stored=%.2f expected=%.2f diff=%.2f',
                 $wallet->id,
                 $wallet->user_id,
-                $stored,
-                $expected,
-                $diff
+                $result['stored'],
+                $result['expected'],
+                $result['diff']
             ));
 
             if (! $dryRun) {
-                $wallet->update([
-                    'balance' => number_format($expected, 2, '.', ''),
-                ]);
-                activity()
-                    ->inLog('payments')
-                    ->event('wallet.reconciled')
-                    ->performedOn($wallet)
-                    ->withProperties([
-                        'wallet_id' => $wallet->id,
-                        'user_id' => $wallet->user_id,
-                        'stored_balance' => $stored,
-                        'expected_balance' => $expected,
-                        'diff' => $diff,
-                    ])
-                    ->log('Wallet reconciled');
-
-                $notification = WalletReconciledNotification::fromWallet($wallet, $stored, $expected, $diff);
-                app(NotificationRecipientService::class)->adminUsers()->each(fn ($admin) => $admin->notify($notification));
                 $updated++;
             }
         }

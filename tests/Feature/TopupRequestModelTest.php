@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Topups\CreateTopupRequestAction;
 use App\Enums\TopupMethod;
 use App\Enums\TopupRequestStatus;
 use App\Enums\WalletTransactionDirection;
@@ -39,7 +40,7 @@ test('topup request belongs to user and wallet', function () {
         'currency' => 'USD',
     ]);
 
-    $request = TopupRequest::create([
+    $request = app(CreateTopupRequestAction::class)->handle([
         'user_id' => $user->id,
         'wallet_id' => $wallet->id,
         'method' => TopupMethod::ShamCash,
@@ -60,7 +61,7 @@ test('topup request has many proofs', function () {
         'currency' => 'USD',
     ]);
 
-    $request = TopupRequest::create([
+    $request = app(CreateTopupRequestAction::class)->handle([
         'user_id' => $user->id,
         'wallet_id' => $wallet->id,
         'method' => TopupMethod::EftTransfer,
@@ -85,7 +86,7 @@ test('creating a topup request creates a pending wallet transaction', function (
         'currency' => 'USD',
     ]);
 
-    $request = TopupRequest::create([
+    $request = app(CreateTopupRequestAction::class)->handle([
         'user_id' => $user->id,
         'wallet_id' => $wallet->id,
         'method' => TopupMethod::ShamCash,

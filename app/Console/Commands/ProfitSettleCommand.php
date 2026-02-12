@@ -7,12 +7,14 @@ namespace App\Console\Commands;
 use App\Enums\FulfillmentStatus;
 use App\Enums\WalletTransactionDirection;
 use App\Enums\WalletTransactionType;
+use App\Enums\WalletType;
 use App\Models\Fulfillment;
 use App\Models\Settlement;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Notifications\SettlementCreatedNotification;
 use App\Services\NotificationRecipientService;
+use App\Services\SystemEventService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -74,7 +76,11 @@ class ProfitSettleCommand extends Command
             $settlement = Settlement::create(['total_amount' => $totalAmount]);
             $settlement->fulfillments()->attach($eligible->pluck('id')->all());
 
-            $platformWallet = Wallet::forPlatform();
+            $platformWallet = Wallet::query()
+                ->where('type', WalletType::Platform->value)
+                ->lockForUpdate()
+                ->firstOrFail();
+
             $idempotencyKey = 'settlement:'.$settlement->id;
 
             $existing = WalletTransaction::query()
@@ -103,7 +109,40 @@ class ProfitSettleCommand extends Command
 
             $platformWallet->increment('balance', $totalAmount);
 
+            app(SystemEventService::class)->record(
+                'platform.profit.recorded',
+                $settlement,
+                null,
+                [
+                    'settlement_id' => $settlement->id,
+                    'total_amount' => $totalAmount,
+                    'fulfillment_count' => $eligible->count(),
+                ],
+                'info',
+                true,
+            );
+
             $settlementId = $settlement->id;
+            $totalAmountForEvent = $totalAmount;
+            $fulfillmentCountForEvent = $eligible->count();
+            DB::afterCommit(function () use ($settlementId, $totalAmountForEvent, $fulfillmentCountForEvent): void {
+                $settlement = Settlement::query()->find($settlementId);
+                if ($settlement !== null) {
+                    app(SystemEventService::class)->record(
+                        'profit.settlement.executed',
+                        $settlement,
+                        null,
+                        [
+                            'settlement_id' => $settlement->id,
+                            'total_amount' => $totalAmountForEvent,
+                            'fulfillment_count' => $fulfillmentCountForEvent,
+                        ],
+                        'info',
+                        false,
+                    );
+                }
+            });
+
             $notifySettlement = config('notifications.settlement_created_enabled', false);
             DB::afterCommit(function () use ($settlementId, $notifySettlement): void {
                 if (! $notifySettlement) {

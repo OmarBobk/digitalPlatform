@@ -11,6 +11,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\CustomerPriceService;
+use App\Services\SystemEventService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -151,6 +152,28 @@ class CreateOrderFromCartPayload
                     'status_to' => $order->status->value,
                 ])
                 ->log('Order created');
+
+            $orderId = $order->id;
+            $userId = $user->id;
+            DB::afterCommit(function () use ($orderId, $userId): void {
+                $order = Order::query()->find($orderId);
+                $user = User::query()->find($userId);
+                if ($order !== null && $user !== null) {
+                    app(SystemEventService::class)->record(
+                        'order.created',
+                        $order,
+                        $user,
+                        [
+                            'order_number' => $order->order_number,
+                            'item_count' => $order->items()->count(),
+                            'total' => (float) $order->total,
+                            'currency' => $order->currency,
+                        ],
+                        'info',
+                        false,
+                    );
+                }
+            });
 
             return $order->load('items');
         };

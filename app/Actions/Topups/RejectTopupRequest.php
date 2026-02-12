@@ -10,6 +10,7 @@ use App\Models\TopupRequest;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Notifications\TopupRejectedNotification;
+use App\Services\SystemEventService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -81,11 +82,26 @@ class RejectTopupRequest
 
             $rejectedRequestId = $request->id;
             $rejectionReason = $reason;
-            DB::afterCommit(function () use ($rejectedRequestId, $rejectionReason): void {
+            $rejectedByIdForEvent = $rejectedById;
+            DB::afterCommit(function () use ($rejectedRequestId, $rejectionReason, $rejectedByIdForEvent): void {
                 $rejectedRequest = TopupRequest::query()->find($rejectedRequestId);
                 if ($rejectedRequest === null) {
                     return;
                 }
+
+                $admin = User::query()->find($rejectedByIdForEvent);
+                app(SystemEventService::class)->record(
+                    'admin.rejected.topup',
+                    $rejectedRequest,
+                    $admin,
+                    [
+                        'amount' => (float) $rejectedRequest->amount,
+                        'currency' => $rejectedRequest->currency,
+                        'reason' => $rejectionReason,
+                    ],
+                    'info',
+                    false,
+                );
 
                 event(new TopupRequestsChanged($rejectedRequest->id, 'status-updated'));
 

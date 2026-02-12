@@ -10,6 +10,7 @@ use App\Models\LoyaltyTierConfig;
 use App\Models\User;
 use App\Notifications\LoyaltyTierChangedNotification;
 use App\Services\LoyaltySpendService;
+use App\Services\SystemEventService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -68,6 +69,18 @@ class EvaluateLoyaltyForUserAction
             DB::afterCommit(function () use ($userId, $previousTier, $tierName): void {
                 $u = User::query()->find($userId);
                 if ($u !== null) {
+                    app(SystemEventService::class)->record(
+                        'tier.upgraded',
+                        $u,
+                        null,
+                        [
+                            'previous_tier' => $previousTier,
+                            'new_tier' => $tierName,
+                        ],
+                        'info',
+                        false,
+                        $tierName,
+                    );
                     $u->notify(LoyaltyTierChangedNotification::fromUser($u, $previousTier, $tierName));
                 }
             });

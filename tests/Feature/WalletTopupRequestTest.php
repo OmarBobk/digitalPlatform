@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Topups\CreateTopupRequestAction;
 use App\Enums\TopupMethod;
 use App\Enums\TopupRequestStatus;
 use App\Events\TopupRequestsChanged;
@@ -77,7 +78,7 @@ test('user cannot create a second pending topup request', function () {
     $user = User::factory()->create();
     $wallet = \App\Models\Wallet::forUser($user);
 
-    TopupRequest::create([
+    app(CreateTopupRequestAction::class)->handle([
         'user_id' => $user->id,
         'wallet_id' => $wallet->id,
         'method' => TopupMethod::ShamCash,

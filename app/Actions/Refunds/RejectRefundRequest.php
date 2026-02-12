@@ -13,6 +13,7 @@ use App\Models\OrderItem;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Notifications\RefundRejectedNotification;
+use App\Services\SystemEventService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -132,11 +133,24 @@ class RejectRefundRequest
 
             $rejectedTransactionId = $transaction->id;
             $orderOwnerId = (int) data_get($transaction->meta, 'user_id', 0);
-            DB::afterCommit(function () use ($rejectedTransactionId, $orderOwnerId): void {
+            $adminIdForEvent = $adminId;
+            DB::afterCommit(function () use ($rejectedTransactionId, $orderOwnerId, $adminIdForEvent): void {
                 $tx = WalletTransaction::query()->find($rejectedTransactionId);
                 if ($tx === null || $orderOwnerId === 0) {
                     return;
                 }
+                $admin = User::query()->find($adminIdForEvent);
+                app(SystemEventService::class)->record(
+                    'admin.rejected.refund',
+                    $tx,
+                    $admin,
+                    [
+                        'order_id' => data_get($tx->meta, 'order_id'),
+                        'amount' => (float) $tx->amount,
+                    ],
+                    'info',
+                    false,
+                );
                 $owner = User::query()->find($orderOwnerId);
                 if ($owner !== null) {
                     $owner->notify(RefundRejectedNotification::fromRefundTransaction($tx));

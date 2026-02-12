@@ -12,7 +12,6 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Package;
 use App\Models\Product;
-use App\Models\TopupRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Date;
@@ -98,7 +97,7 @@ test('topup indicator updates when pending topups exist', function () {
 
     $requestOwner = User::factory()->create();
 
-    TopupRequest::create([
+    app(\App\Actions\Topups\CreateTopupRequestAction::class)->handle([
         'user_id' => $requestOwner->id,
         'wallet_id' => null,
         'method' => TopupMethod::ShamCash,

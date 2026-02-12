@@ -43,8 +43,10 @@ Route::middleware(['auth', 'verified', 'backend'])->group(function () {
     Route::livewire('/admin/orders', 'pages::backend.orders.index')->name('admin.orders.index');
     Route::livewire('/admin/orders/{order}', 'pages::backend.orders.show')->name('admin.orders.show');
     Route::livewire('/admin/activities', 'pages::backend.activities.index')->name('admin.activities.index');
+    Route::livewire('/admin/system-events', 'pages::backend.system-events.index')->name('admin.system-events.index');
     Route::livewire('/admin/users', 'pages::backend.users.index')->name('admin.users.index');
     Route::livewire('/admin/users/{user}', 'pages::backend.users.show')->name('admin.users.show');
+    Route::livewire('/admin/users/{user}/audit', 'pages::backend.users.audit')->name('admin.users.audit');
     Route::livewire('/fulfillments', 'pages::backend.fulfillments.index')->name('fulfillments');
     Route::livewire('/refunds', 'pages::backend.refunds.index')->name('refunds');
     Route::livewire('/topups', 'pages::backend.topups.index')->name('topups');

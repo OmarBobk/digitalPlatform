@@ -1,9 +1,9 @@
 <?php
 
+use App\Actions\Topups\CreateTopupRequestAction;
 use App\Enums\TopupMethod;
 use App\Enums\TopupRequestStatus;
 use App\Models\TopupProof;
-use App\Models\TopupRequest;
 use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,7 +17,7 @@ test('other user cannot access proof', function () {
     $otherUser = User::factory()->create();
     $wallet = Wallet::forUser($owner);
 
-    $topupRequest = TopupRequest::create([
+    $topupRequest = app(CreateTopupRequestAction::class)->handle([
         'user_id' => $owner->id,
         'wallet_id' => $wallet->id,
         'method' => TopupMethod::ShamCash,
@@ -47,7 +47,7 @@ test('owner can access own proof', function () {
     $owner = User::factory()->create();
     $wallet = Wallet::forUser($owner);
 
-    $topupRequest = TopupRequest::create([
+    $topupRequest = app(CreateTopupRequestAction::class)->handle([
         'user_id' => $owner->id,
         'wallet_id' => $wallet->id,
         'method' => TopupMethod::ShamCash,
@@ -79,7 +79,7 @@ test('admin can access any proof', function () {
     $admin->givePermissionTo(\Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'manage_topups']));
     $wallet = Wallet::forUser($owner);
 
-    $topupRequest = TopupRequest::create([
+    $topupRequest = app(CreateTopupRequestAction::class)->handle([
         'user_id' => $owner->id,
         'wallet_id' => $wallet->id,
         'method' => TopupMethod::ShamCash,

@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Topups\CreateTopupRequestAction;
 use App\Enums\TopupMethod;
 use App\Enums\TopupRequestStatus;
 use App\Models\TopupRequest;
@@ -24,7 +25,7 @@ test('admin can approve topup and credit wallet', function () {
     $customer = User::factory()->create();
     $wallet = Wallet::forUser($customer);
 
-    $topupRequest = TopupRequest::create([
+    $topupRequest = app(CreateTopupRequestAction::class)->handle([
         'user_id' => $customer->id,
         'method' => TopupMethod::ShamCash,
         'amount' => 50,

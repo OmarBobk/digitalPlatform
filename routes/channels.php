@@ -27,3 +27,7 @@ Broadcast::channel('admin.topups', function ($user) {
 Broadcast::channel('admin.activities', function ($user) {
     return $user !== null && $user->hasRole('admin');
 });
+
+Broadcast::channel('admin.system-events', function ($user) {
+    return $user !== null && $user->hasRole('admin');
+});

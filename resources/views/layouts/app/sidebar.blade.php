@@ -111,11 +111,19 @@
                     <flux:sidebar.item icon="clock" :href="route('admin.activities.index')" :current="request()->routeIs('admin.activities.*')" wire:navigate>
                         {{ __('messages.activities') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="list-bullet" :href="route('admin.system-events.index')" :current="request()->routeIs('admin.system-events.*')" wire:navigate>
+                        {{ __('messages.system_events') }}
+                    </flux:sidebar.item>
                     @endcan
                     @can('manage_users')
-                    <flux:sidebar.item icon="users" :href="route('admin.users.index')" :current="request()->routeIs('admin.users.*')" wire:navigate>
+                    <flux:sidebar.item icon="users" :href="route('admin.users.index')" :current="request()->routeIs('admin.users.index')" wire:navigate>
                         {{ __('messages.users') }}
                     </flux:sidebar.item>
+                    @if ((request()->routeIs('admin.users.show') || request()->routeIs('admin.users.audit')) && request()->route('user'))
+                    <flux:sidebar.item icon="clock" :href="route('admin.users.audit', request()->route('user'))" :current="request()->routeIs('admin.users.audit')" wire:navigate>
+                        {{ __('messages.audit_timeline') }}
+                    </flux:sidebar.item>
+                    @endif
                     @endcan
                 </flux:sidebar.group>
             </flux:sidebar.nav>

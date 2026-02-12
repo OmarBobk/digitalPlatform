@@ -46,4 +46,13 @@ if (import.meta.env.VITE_REVERB_APP_KEY && window.Laravel?.isAdmin) {
 
         window.dispatchEvent(new CustomEvent('activity-list-updated', { detail: payload || {} }));
     });
+
+    window.Echo.private('admin.system-events').listen('.SystemEventCreated', (payload) => {
+        if (window.Livewire?.dispatch) {
+            window.Livewire.dispatch('system-event-created', payload ?? {});
+            return;
+        }
+
+        window.dispatchEvent(new CustomEvent('system-event-created', { detail: payload || {} }));
+    });
 }

@@ -309,4 +309,6 @@ new class extends Component
             </a>
         </flux:text>
     </section>
+
+    <x-timeline :entity="$order" />
 </div>

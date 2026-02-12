@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Topups\ApproveTopupRequest;
+use App\Actions\Topups\CreateTopupRequestAction;
 use App\Actions\Topups\RejectTopupRequest;
 use App\Enums\TopupMethod;
 use App\Enums\TopupRequestStatus;
@@ -24,7 +25,7 @@ test('approving a topup posts ledger and increments balance once', function () {
         'currency' => 'USD',
     ]);
 
-    $request = TopupRequest::create([
+    $request = app(CreateTopupRequestAction::class)->handle([
         'user_id' => $user->id,
         'wallet_id' => $wallet->id,
         'method' => TopupMethod::ShamCash,
@@ -70,7 +71,7 @@ test('approving a topup dispatches change event', function () {
         'currency' => 'USD',
     ]);
 
-    $request = TopupRequest::create([
+    $request = app(CreateTopupRequestAction::class)->handle([
         'user_id' => $user->id,
         'wallet_id' => $wallet->id,
         'method' => TopupMethod::ShamCash,
@@ -96,7 +97,7 @@ test('rejecting a topup does not change balance', function () {
         'currency' => 'USD',
     ]);
 
-    $request = TopupRequest::create([
+    $request = app(CreateTopupRequestAction::class)->handle([
         'user_id' => $user->id,
         'wallet_id' => $wallet->id,
         'method' => TopupMethod::EftTransfer,
@@ -138,7 +139,7 @@ test('rejecting a topup dispatches change event', function () {
         'currency' => 'USD',
     ]);
 
-    $request = TopupRequest::create([
+    $request = app(CreateTopupRequestAction::class)->handle([
         'user_id' => $user->id,
         'wallet_id' => $wallet->id,
         'method' => TopupMethod::EftTransfer,
