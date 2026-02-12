@@ -22,9 +22,12 @@ Route::get('language/{locale}', function (string $locale) {
 //    ->name('home');
 
 Route::livewire('/', 'pages::frontend.main')->name('home');
+Route::livewire('/contact', 'pages::frontend.contact')->name('contact');
 Route::livewire('/cart', 'pages::frontend.cart')->name('cart');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::livewire('/profile', 'pages::frontend.profile')->name('profile');
+    Route::livewire('/profile/edit', 'pages::frontend.profile-edit')->name('profile.edit-information');
     Route::livewire('/wallet', 'pages::frontend.wallet')->name('wallet');
     Route::livewire('/loyalty', 'pages::frontend.loyalty')->name('loyalty');
     Route::livewire('/orders', 'pages::frontend.orders')->name('orders.index');
@@ -53,6 +56,10 @@ Route::middleware(['auth', 'verified', 'backend'])->group(function () {
     Route::livewire('/customer-funds', 'pages::backend.customer-funds.index')->name('customer-funds');
     Route::livewire('/settlements', 'pages::backend.settlements.index')->name('settlements');
     Route::livewire('/admin/notifications', 'pages::backend.notifications.index')->name('admin.notifications.index');
+});
+
+Route::middleware(['auth', 'verified', 'backend', 'admin'])->group(function () {
+    Route::livewire('/admin/website-settings', 'pages::backend.website-settings.index')->name('admin.website-settings');
 });
 
 require __DIR__.'/settings.php';

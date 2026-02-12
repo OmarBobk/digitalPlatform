@@ -118,7 +118,7 @@
                         <a href="#" class="text-zinc-600 transition hover:text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) dark:text-zinc-300 dark:hover:text-white">{{ __('main.footer_track_order') }}</a>
                     </li>
                     <li>
-                        <a href="#" class="text-zinc-600 transition hover:text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) dark:text-zinc-300 dark:hover:text-white">{{ __('main.footer_contact') }}</a>
+                        <a href="{{ route('contact') }}" wire:navigate class="text-zinc-600 transition hover:text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) dark:text-zinc-300 dark:hover:text-white">{{ __('main.footer_contact') }}</a>
                     </li>
                 </ul>
             </div>

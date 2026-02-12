@@ -76,6 +76,30 @@ test('customer price service applies tier discount for user with gold tier', fun
     expect($result['tier_name'])->toBe('gold');
 });
 
+test('customer price service uses wholesale price for salesperson role', function (): void {
+    \App\Models\PricingRule::create([
+        'min_price' => 0,
+        'max_price' => 9999,
+        'retail_percentage' => 10,
+        'wholesale_percentage' => 2,
+        'priority' => 0,
+        'is_active' => true,
+    ]);
+    $product = Product::factory()->create(['entry_price' => 100]);
+    $customer = User::factory()->create();
+    $customer->assignRole('customer');
+    $salesperson = User::factory()->create();
+    $salesperson->assignRole('salesperson');
+
+    $service = app(CustomerPriceService::class);
+    $customerResult = $service->priceFor($product, $customer);
+    $salespersonResult = $service->priceFor($product, $salesperson);
+
+    expect($customerResult['base_price'])->toBe(110.0);
+    expect($salespersonResult['base_price'])->toBe(102.0);
+    expect($service->finalPrice($product, $salesperson))->toBe(102.0);
+});
+
 test('loyalty evaluate command updates user tier from spend', function (): void {
     $user = User::factory()->create();
     $user->assignRole('customer');

@@ -8,81 +8,110 @@
         <form method="POST" action="{{ route('register.store') }}" class="flex flex-col gap-6" id="register-form">
             @csrf
 
-            <!-- Hidden timezone field -->
             <input type="hidden" name="timezone_detected" id="timezone-detected" value="">
 
-            <!-- Name -->
-            <flux:input
-                name="name"
-                :label="__('messages.name')"
-                :value="old('name')"
-                type="text"
-                required
-                autofocus
-                autocomplete="name"
-                :placeholder="__('messages.full_name')"
-            />
-
-            <!-- Username -->
-            <flux:input
-                name="username"
-                :label="__('messages.username')"
-                :value="old('username')"
-                type="text"
-                required
-                autocomplete="username"
-                :placeholder="__('messages.username')"
-            />
-
-            <!-- Email Address -->
-            <flux:input
-                name="email"
-                :label="__('messages.email_address')"
-                :value="old('email')"
-                type="email"
-                required
-                autocomplete="email"
-                :placeholder="__('messages.email_placeholder')"
-            />
-
-            <!-- Country Code -->
-            <flux:select name="country_code" :label="__('messages.country_code')" :value="old('country_code')" autocomplete="tel-country-code" placeholder="{{ __('messages.select_country_code') }}">
-                <flux:select.option value="+963">🇸🇾 {{ __('messages.syria') }} (+963)</flux:select.option>
-                <flux:select.option value="+90">🇹🇷 {{ __('messages.turkey') }} (+90)</flux:select.option>
-            </flux:select>
-
-            <!-- Phone -->
-            <flux:input
-                name="phone"
-                :label="__('messages.phone_number')"
-                :value="old('phone')"
-                type="tel"
-                autocomplete="tel"
-                :placeholder="__('messages.phone_number')"
-                class="phone-input-rtl"
-            />
-
-            <!-- Password -->
-            <flux:input
-                name="password"
-                :label="__('messages.password')"
-                type="password"
-                required
-                autocomplete="new-password"
-                :placeholder="__('messages.password')"
-                viewable
-            />
-
-            <!-- Confirm Password -->
-            <flux:input
-                name="password_confirmation"
-                :label="__('messages.confirm_password')"
-                type="password"
-                required
-                autocomplete="new-password"
-                :placeholder="__('messages.confirm_password')"
-                viewable
-            />
+            <div class="grid gap-4 md:grid-cols-2">
+                <flux:field>
+                    <flux:label>{{ __('messages.name') }}</flux:label>
+                    <flux:input
+                        name="name"
+                        :value="old('name')"
+                        type="text"
+                        required
+                        autofocus
+                        autocomplete="name"
+                        :placeholder="__('messages.full_name')"
+                        class="w-full"
+                        class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                    />
+                    <flux:error name="name" />
+                </flux:field>
+                <flux:field>
+                    <flux:label>{{ __('messages.username') }}</flux:label>
+                    <flux:input.group>
+                        <flux:input.group.prefix>@</flux:input.group.prefix>
+                        <flux:input
+                            name="username"
+                            :value="old('username')"
+                            type="text"
+                            required
+                            autocomplete="username"
+                            :placeholder="__('messages.username')"
+                            class="w-full"
+                            class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                        />
+                    </flux:input.group>
+                    <flux:error name="username" />
+                </flux:field>
+                <flux:field>
+                    <flux:label>{{ __('messages.email_address') }}</flux:label>
+                    <flux:input
+                        name="email"
+                        :value="old('email')"
+                        type="email"
+                        required
+                        autocomplete="email"
+                        :placeholder="__('messages.email_placeholder')"
+                        class="w-full"
+                        class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                    />
+                    <flux:error name="email" />
+                </flux:field>
+                <flux:field>
+                    <flux:label>{{ __('messages.password') }}</flux:label>
+                    <flux:input
+                        name="password"
+                        type="password"
+                        required
+                        autocomplete="new-password"
+                        :placeholder="__('messages.password')"
+                        viewable
+                        class="w-full"
+                        class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                    />
+                    <flux:error name="password" />
+                </flux:field>
+                <flux:field>
+                    <flux:label>{{ __('messages.confirm_password') }}</flux:label>
+                    <flux:input
+                        name="password_confirmation"
+                        type="password"
+                        required
+                        autocomplete="new-password"
+                        :placeholder="__('messages.confirm_password')"
+                        viewable
+                        class="w-full"
+                        class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                    />
+                    <flux:error name="password_confirmation" />
+                </flux:field>
+                <flux:field class="md:col-span-2">
+                    <flux:label>{{ __('messages.phone_number') }}</flux:label>
+                    <flux:input.group>
+                        <flux:select
+                            name="country_code"
+                            :value="old('country_code')"
+                            autocomplete="tel-country-code"
+                            class="max-w-fit focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                        >
+                            <flux:select.option value="">{{ __('messages.select_country_code') }}</flux:select.option>
+                            <flux:select.option value="+90">+90</flux:select.option>
+                            <flux:select.option value="+963">+963</flux:select.option>
+                        </flux:select>
+                        <flux:input
+                            name="phone"
+                            :value="old('phone')"
+                            type="text"
+                            autocomplete="tel"
+                            mask="(999) 999-9999"
+                            placeholder="( ___ ) ___-____"
+                            class="w-full phone-input-rtl"
+                            class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                        />
+                    </flux:input.group>
+                    <flux:error name="phone" />
+                </flux:field>
+            </div>
 
             <div class="flex items-center justify-end">
                 <flux:button type="submit" variant="primary" class="w-full">

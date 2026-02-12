@@ -528,7 +528,7 @@ new class extends Component
                     <flux:select.option value="active">{{ __('messages.active') }}</flux:select.option>
                     <flux:select.option value="inactive">{{ __('messages.inactive_status') }}</flux:select.option>
                 </flux:select>
-                <div class="flex flex-wrap h-full items-end gap-2">
+                <div class="flex w-full sm:w-auto justify-between flex-wrap mt-6 items-end gap-2">
                     <flux:button type="submit" variant="primary" icon="magnifying-glass">
                         {{ __('messages.apply') }}
                     </flux:button>

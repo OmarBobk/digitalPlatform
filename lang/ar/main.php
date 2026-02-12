@@ -30,6 +30,7 @@ return [
     'wallet' => 'المحفظة',
     'my_orders' => 'طلباتي',
     'loyalty' => 'الولاء',
+    'profile' => 'الملف الشخصي',
     'shopping_cart' => 'سلة التسوق',
     'cart_aria_label' => 'السلة',
     'my_cart' => 'سلتي',

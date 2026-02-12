@@ -101,7 +101,11 @@ new class extends Component
                                             <flux:icon icon="plus" class="size-3" />
                                         </button>
                                     </div>
+                                    @if(\App\Models\WebsiteSetting::getPricesVisible())
                                     <span class="text-sm font-semibold text-(--color-accent)" x-text="$store.cart.format(item.price * item.quantity)"></span>
+                                    @else
+                                    <span class="text-sm font-semibold text-zinc-500 dark:text-zinc-400">—</span>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -111,7 +115,11 @@ new class extends Component
                 <div class="mt-2 border-t border-zinc-100 px-3 pt-3 dark:border-zinc-800" x-show="$store.cart.items.length != 0">
                     <div class="flex items-center justify-between text-sm">
                         <span class="text-zinc-600 dark:text-zinc-300">{{ __('main.subtotal') }}</span>
+                        @if(\App\Models\WebsiteSetting::getPricesVisible())
                         <span class="font-semibold text-zinc-900 dark:text-zinc-100" x-text="$store.cart.format($store.cart.subtotal)"></span>
+                        @else
+                        <span class="font-semibold text-zinc-500 dark:text-zinc-400">—</span>
+                        @endif
                     </div>
                     <div class="mt-3">
                         <a

@@ -420,7 +420,11 @@ new #[Layout('layouts::frontend')] class extends Component {
                                         class="block truncate text-sm font-semibold text-zinc-900 hover:underline dark:text-zinc-100"
                                         x-text="item.name"
                                     ></a>
+                                    @if(\App\Models\WebsiteSetting::getPricesVisible())
                                     <div class="mt-1 text-sm font-semibold text-(--color-accent)" dir="ltr" x-text="$store.cart.format(item.price)"></div>
+                                    @else
+                                    <div class="mt-1 text-sm font-semibold text-zinc-500 dark:text-zinc-400" dir="ltr">—</div>
+                                    @endif
                                 </div>
                             </div>
 
@@ -496,7 +500,11 @@ new #[Layout('layouts::frontend')] class extends Component {
                                     </button>
                                 </div>
 
+                                @if(\App\Models\WebsiteSetting::getPricesVisible())
                                 <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr" x-text="$store.cart.format(item.price * item.quantity)"></div>
+                                @else
+                                <div class="text-sm font-semibold text-zinc-500 dark:text-zinc-400" dir="ltr">—</div>
+                                @endif
 
                                 <button
                                     type="button"
@@ -565,12 +573,18 @@ new #[Layout('layouts::frontend')] class extends Component {
                 <div class="mt-4 space-y-3 text-sm">
                     <div class="flex items-center justify-between text-zinc-600 dark:text-zinc-300">
                         <span>{{ __('messages.subtotal') }}</span>
+                        @if(\App\Models\WebsiteSetting::getPricesVisible())
                         <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr" x-text="$store.cart.format($store.cart.subtotal)"></span>
+                        @else
+                        <span class="font-semibold text-zinc-500 dark:text-zinc-400">—</span>
+                        @endif
                     </div>
+                    @if(\App\Models\WebsiteSetting::getPricesVisible())
                     <div class="flex items-center justify-between text-green-600 dark:text-green-400" x-show="$store.cart.loyaltyDiscount > 0" x-cloak>
                         <span>{{ __('messages.loyalty_discount') }} <span x-show="$store.cart.loyaltyTierName" x-text="'(' + ($store.cart.loyaltyTierName ? $store.cart.loyaltyTierName.charAt(0).toUpperCase() + $store.cart.loyaltyTierName.slice(1) : '') + ')'"></span>:</span>
                         <span class="font-semibold" dir="ltr" x-text="'-' + $store.cart.format($store.cart.loyaltyDiscount)"></span>
                     </div>
+                    @endif
                     <div class="flex items-center justify-between text-zinc-600 dark:text-zinc-300">
                         <span>{{ __('main.shipping') }}</span>
                         <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ __('main.free_shipping') }}</span>
@@ -579,7 +593,11 @@ new #[Layout('layouts::frontend')] class extends Component {
 
                 <div class="mt-4 flex items-center justify-between border-t border-zinc-100 pt-4 text-base font-semibold dark:border-zinc-700">
                     <span class="text-zinc-900 dark:text-zinc-100">{{ __('messages.total') }}</span>
+                    @if(\App\Models\WebsiteSetting::getPricesVisible())
                     <span class="text-(--color-accent)" dir="ltr" x-text="$store.cart.format($store.cart.subtotal - $store.cart.loyaltyDiscount)"></span>
+                    @else
+                    <span class="text-zinc-500 dark:text-zinc-400">—</span>
+                    @endif
                 </div>
 
                 <div class="mt-4 space-y-3">

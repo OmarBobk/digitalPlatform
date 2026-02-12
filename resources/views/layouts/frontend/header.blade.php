@@ -77,6 +77,13 @@
                             <flux:navmenu class="min-w-48 rounded-xl border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
                                 @auth
                                     <flux:navmenu.item
+                                        icon="user"
+                                        href="{{ route('profile') }}"
+                                        class="rounded-lg !text-zinc-700 hover:!bg-zinc-100 focus-visible:!bg-zinc-100 dark:!text-zinc-200 dark:hover:!bg-zinc-800 dark:focus-visible:!bg-zinc-800"
+                                    >
+                                        {{ __('main.profile') }}
+                                    </flux:navmenu.item>
+                                    <flux:navmenu.item
                                         icon="bell"
                                         href="{{ route('notifications.index') }}"
                                         class="rounded-lg !text-zinc-700 hover:!bg-zinc-100 focus-visible:!bg-zinc-100 dark:!text-zinc-200 dark:hover:!bg-zinc-800 dark:focus-visible:!bg-zinc-800"
@@ -159,9 +166,11 @@
                                 data-test="wallet-balance"
                             >
                                 <flux:icon icon="wallet" class="size-4 text-zinc-500 dark:text-zinc-300" />
+                                @if(\App\Models\WebsiteSetting::getPricesVisible())
                                 <span class="text-zinc-900 dark:text-zinc-100 hidden sm:block" dir="ltr">
                                     {{ config('billing.currency_symbol', '$') }}{{ number_format((float) $walletBalance, 2) }}
                                 </span>
+                                @endif
                             </a>
                         @endauth
 
@@ -213,6 +222,7 @@
                                     <flux:navbar.item class="border !border-accent after:!h-0 {{request()->routeIs('orders.index') ? '!bg-accent hover:!bg-accent-hover !text-accent-foreground' : ''}}"
                                                       data-nav-active="{{ request()->routeIs('orders.index') ? 'true' : 'false' }}"
                                                       href="{{route('orders.index')}}">{{__('main.my_orders')}}</flux:navbar.item>
+                                    @if(\App\Models\WebsiteSetting::getPricesVisible())
                                     <flux:navbar.item class="border !border-accent after:!h-0 {{request()->routeIs('wallet') ? '!bg-accent hover:!bg-accent-hover !text-accent-foreground' : ''}}"
                                                       data-nav-active="{{ request()->routeIs('wallet') ? 'true' : 'false' }}"
                                                       href="{{route('wallet')}}"
@@ -220,6 +230,12 @@
                                                       badge:color="{{request()->routeIs('wallet') ? 'green' : 'sky'}}"
                                                       badge:class="ms-3 whitespace-nowrap px-2 {{request()->routeIs('wallet') ? 'dark:!text-green-800' : ''}}"
                                                       icon="plus">{{__('main.add_sufficient')}}</flux:navbar.item>
+                                    @else
+                                    <flux:navbar.item class="border !border-accent after:!h-0 {{request()->routeIs('wallet') ? '!bg-accent hover:!bg-accent-hover !text-accent-foreground' : ''}}"
+                                                      data-nav-active="{{ request()->routeIs('wallet') ? 'true' : 'false' }}"
+                                                      href="{{route('wallet')}}"
+                                                      icon="plus">{{__('main.add_sufficient')}}</flux:navbar.item>
+                                    @endif
                                     @if (auth()->user()?->loyaltyRole() !== null)
                                         <flux:navbar.item class="border !border-accent after:!h-0 {{ request()->routeIs('loyalty') ? '!bg-accent hover:!bg-accent-hover !text-accent-foreground' : '' }}"
                                                           data-nav-active="{{ request()->routeIs('loyalty') ? 'true' : 'false' }}"
@@ -227,16 +243,24 @@
                                                           wire:navigate
                                                           icon="sparkles">{{ __('main.loyalty') }}</flux:navbar.item>
                                     @endif
-                                    <flux:navbar.item class="border !border-accent after:!h-0" href="#" >{{__('main.contact_us')}}</flux:navbar.item>
+                                    @auth
+                                        <flux:navbar.item class="border !border-accent after:!h-0 {{ request()->routeIs('profile') ? '!bg-accent hover:!bg-accent-hover !text-accent-foreground' : '' }}"
+                                                          data-nav-active="{{ request()->routeIs('profile') ? 'true' : 'false' }}"
+                                                          href="{{ route('profile') }}"
+                                                          wire:navigate
+                                                          icon="user">{{ __('main.profile') }}</flux:navbar.item>
+                                    @endauth
+                                    <flux:navbar.item class="border !border-accent after:!h-0 {{ request()->routeIs('contact') ? '!bg-accent hover:!bg-accent-hover !text-accent-foreground' : '' }}" data-nav-active="{{ request()->routeIs('contact') ? 'true' : 'false' }}"
+                                                      href="{{ route('contact') }}" wire:navigate>{{ __('main.contact_us') }}</flux:navbar.item>
 
-                                    <flux:dropdown class="border !border-accent rounded-lg">
+                                    <!-- <flux:dropdown class="border !border-accent rounded-lg">
                                         <flux:navbar.item icon:trailing="chevron-down" class="!border-accent">Account</flux:navbar.item>
                                         <flux:navmenu class="!border-accent">
                                             <flux:navmenu.item href="#">Profile</flux:navmenu.item>
                                             <flux:navmenu.item href="#">Settings</flux:navmenu.item>
                                             <flux:navmenu.item href="#">Billing</flux:navmenu.item>
                                         </flux:navmenu>
-                                    </flux:dropdown>
+                                    </flux:dropdown> -->
                                 </flux:navbar>
                             </div>
 

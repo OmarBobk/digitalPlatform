@@ -260,11 +260,11 @@ new class extends Component
     x-on:open-product-panel.window="showProductForm = true"
     data-test="products-page"
 >
-    <section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
-                <div class="flex size-12 items-center justify-center rounded-xl bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                    <flux:icon icon="shopping-cart" class="size-5" />
+    <section class="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+        <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+                <div class="flex size-14 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-950/50 dark:text-sky-400">
+                    <flux:icon icon="shopping-cart" class="size-6" />
                 </div>
                 <div class="flex flex-col gap-2">
                     <div class="flex flex-col gap-1">
@@ -286,14 +286,14 @@ new class extends Component
                         </span>
                         <span>{{ __('messages.products') }}</span>
                         @if ($statusFilter !== 'all')
-                            <flux:badge class="capitalize">
+                            <flux:badge color="{{ $statusFilter === 'active' ? 'emerald' : 'amber' }}" size="sm" variant="subtle">
                                 {{ $statusFilter === 'active' ? __('messages.active') : __('messages.inactive_status') }}
                             </flux:badge>
                         @endif
                     </div>
                 </div>
             </div>
-            <div class="flex flex-wrap items-center gap-2">
+            <div class="flex flex-wrap items-center gap-3">
                 <flux:button
                     type="button"
                     variant="primary"
@@ -307,8 +307,9 @@ new class extends Component
                 </flux:button>
                 <flux:button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     icon="adjustments-horizontal"
+                    class="border-zinc-300 text-zinc-700 hover:bg-sky-50 hover:border-sky-300 hover:text-sky-700 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-sky-950/30 dark:hover:border-sky-800 dark:hover:text-sky-300"
                     x-on:click="showFilters = !showFilters"
                     x-bind:aria-expanded="showFilters"
                     aria-controls="products-filters"
@@ -317,8 +318,9 @@ new class extends Component
                 </flux:button>
                 <flux:button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     icon="arrow-path"
+                    class="border-zinc-300 text-zinc-700 hover:bg-zinc-50 hover:border-zinc-400 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:border-zinc-500"
                     wire:click="$refresh"
                     wire:loading.attr="disabled"
                 >
@@ -329,7 +331,7 @@ new class extends Component
 
         <form
             id="products-filters"
-            class="grid gap-4 pt-4"
+            class="mt-6 rounded-xl border border-zinc-100 bg-zinc-50/80 p-6 dark:border-zinc-800 dark:bg-zinc-800/40"
             wire:submit.prevent="applyFilters"
             x-show="showFilters"
             x-cloak
@@ -337,7 +339,7 @@ new class extends Component
             role="search"
             aria-label="{{ __('messages.filters') }}"
         >
-            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <div class="grid gap-2">
                     <flux:input
                         name="search"
@@ -372,25 +374,25 @@ new class extends Component
                     </flux:select>
                 </div>
             </div>
-            <div class="flex flex-wrap justify-between gap-2 sm:justify-start sm:gap-3">
-                <flux:select
-                    class="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
-                    name="statusFilter"
-                    label="{{ __('messages.status') }}"
-                    wire:model.defer="statusFilter"
-                >
-                    <flux:select.option value="all">{{ __('messages.all') }}</flux:select.option>
-                    <flux:select.option value="active">{{ __('messages.active') }}</flux:select.option>
-                    <flux:select.option value="inactive">{{ __('messages.inactive_status') }}</flux:select.option>
-                </flux:select>
-                <div class="flex flex-wrap h-full items-end gap-2">
-                    <flux:button type="submit" variant="primary" icon="magnifying-glass">
-                        {{ __('messages.apply') }}
-                    </flux:button>
-                    <flux:button type="button" variant="ghost" icon="arrow-path" wire:click="resetFilters">
-                        {{ __('messages.reset') }}
-                    </flux:button>
+            <div class="mt-6 flex flex-row flex-wrap items-end gap-3">
+                <div class="w-full min-w-0 sm:w-auto sm:min-w-[140px]">
+                    <flux:select
+                        class="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                        name="statusFilter"
+                        label="{{ __('messages.status') }}"
+                        wire:model.defer="statusFilter"
+                    >
+                        <flux:select.option value="all">{{ __('messages.all') }}</flux:select.option>
+                        <flux:select.option value="active">{{ __('messages.active') }}</flux:select.option>
+                        <flux:select.option value="inactive">{{ __('messages.inactive_status') }}</flux:select.option>
+                    </flux:select>
                 </div>
+                <flux:button type="submit" variant="primary" icon="magnifying-glass" class="w-full sm:w-auto !bg-emerald-600 hover:!bg-emerald-700 dark:!bg-emerald-600 dark:hover:!bg-emerald-500">
+                    {{ __('messages.apply') }}
+                </flux:button>
+                <flux:button type="button" variant="outline" icon="arrow-path" wire:click="resetFilters" class="w-full sm:w-auto border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800">
+                    {{ __('messages.reset') }}
+                </flux:button>
             </div>
         </form>
     </section>
@@ -527,15 +529,6 @@ new class extends Component
     </section>
 
     <section class="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900" aria-labelledby="products-table-heading">
-        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
-            <flux:heading id="products-table-heading" size="sm" class="text-zinc-900 dark:text-zinc-100">
-                {{ __('messages.products') }}
-            </flux:heading>
-            <div class="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-                <span>{{ __('messages.total') }}</span>
-                <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $this->products->total() }}</span>
-            </div>
-        </div>
 
         <div
             class="overflow-x-auto"
@@ -584,10 +577,11 @@ new class extends Component
                     </div>
                 @else
                     <table class="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800" data-test="products-table">
-                        <thead class="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400">
+                        <thead class="bg-zinc-100 text-xs uppercase tracking-wide text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                             <tr>
                                 <th scope="col" class="px-5 py-3 text-start font-semibold">{{ __('messages.product') }}</th>
                                 <th scope="col" class="px-5 py-3 text-start font-semibold hidden sm:table-cell">{{ __('messages.package') }}</th>
+                                <th scope="col" class="px-5 py-3 text-start font-semibold">{{ __('messages.entry_price') }}</th>
                                 <th scope="col" class="px-5 py-3 text-start font-semibold">{{ __('messages.retail_price') }}</th>
                                 <th scope="col" class="px-5 py-3 text-start font-semibold hidden lg:table-cell">{{ __('messages.wholesale_price') }}</th>
                                 <th scope="col" class="px-5 py-3 text-start font-semibold hidden xl:table-cell">{{ __('messages.order') }}</th>
@@ -596,9 +590,12 @@ new class extends Component
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
-                            @foreach ($this->products as $product)
+                            @foreach ($this->products as $index => $product)
+                                @php
+                                    $rowBg = $index % 2 === 0 ? 'bg-white dark:bg-zinc-900' : 'bg-zinc-50/50 dark:bg-zinc-800/30';
+                                @endphp
                                 <tr
-                                    class="transition hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+                                    class="transition {{ $rowBg }} hover:bg-sky-50/50 dark:hover:bg-sky-950/20"
                                     wire:key="product-{{ $product->id }}"
                                 >
                                     <td class="px-5 py-4">
@@ -608,9 +605,7 @@ new class extends Component
                                                     {{ $product->name }}
                                                 </span>
                                                 @if ($product->serial)
-                                                    <span class="rounded-md bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                                                        {{ $product->serial }}
-                                                    </span>
+                                                    <flux:badge color="zinc" size="sm" variant="subtle">{{ $product->serial }}</flux:badge>
                                                 @endif
                                             </div>
                                             <div class="text-xs text-zinc-500 dark:text-zinc-400">
@@ -629,6 +624,9 @@ new class extends Component
                                     </td>
                                     <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300 hidden sm:table-cell">
                                         {{ $product->package?->name ?? __('messages.no_package') }}
+                                    </td>
+                                    <td class="px-5 py-4 text-end tabular-nums text-zinc-900 dark:text-zinc-100">
+                                        {{ $product->entry_price !== null ? number_format((float) $product->entry_price, 2) : '—' }}
                                     </td>
                                     <td class="px-5 py-4 text-end tabular-nums text-zinc-900 dark:text-zinc-100">
                                         {{ number_format($product->retail_price, 2) }}

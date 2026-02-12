@@ -35,3 +35,12 @@
   - ###DONE wallet transaction in /wallets should be more described
   - ###DONE Wallet /wallet Request topups form borders remove the ring
   - ###DONE /orders Redesign
+  - Register form: mask the phone number field
+
+
+🔒 Ticket → Audit → Fix → Lock
+
+🔒 TICKET 2 — Global System Explainability Dashboard
+🔒 Ticket 2 — Global System Audit Dashboard
+🔒 Ticket 3 — Operational Anomaly Layer
+🔒 Ticket 4 — Fraud Detection Hooks

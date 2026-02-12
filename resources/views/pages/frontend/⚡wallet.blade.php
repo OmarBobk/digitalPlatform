@@ -458,7 +458,11 @@ new #[Layout('layouts::frontend')] class extends Component
                     </flux:heading>
                 </div>
                 <div class="mt-4 text-3xl font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
-                    ${{ number_format((float) $this->wallet->balance, 2) }}
+                    @if(\App\Models\WebsiteSetting::getPricesVisible())
+                        ${{ number_format((float) $this->wallet->balance, 2) }}
+                    @else
+                        —
+                    @endif
                 </div>
                 <flux:text class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
                     {{ __('messages.wallet_balance_hint') }}
@@ -519,7 +523,11 @@ new #[Layout('layouts::frontend')] class extends Component
                                     {{-- Primary: amount + direction --}}
                                     <div class="flex items-center justify-between gap-3">
                                         <span class="text-xl font-bold tabular-nums {{ $amountColor }}" dir="ltr">
-                                            {{ $transaction->direction === WalletTransactionDirection::Credit ? '+' : '−' }}${{ number_format((float) $transaction->amount, 2) }}
+                                            @if(\App\Models\WebsiteSetting::getPricesVisible())
+                                                {{ $transaction->direction === WalletTransactionDirection::Credit ? '+' : '−' }}${{ number_format((float) $transaction->amount, 2) }}
+                                            @else
+                                                —
+                                            @endif
                                         </span>
                                         <div class="flex items-center gap-2 shrink-0">
                                             <flux:badge color="{{ $directionColor }}" class="text-xs">{{ $directionLabel }}</flux:badge>
@@ -606,7 +614,11 @@ new #[Layout('layouts::frontend')] class extends Component
                                                 <flux:badge color="{{ $directionColor }}">{{ $directionLabel }}</flux:badge>
                                             </td>
                                             <td class="px-5 py-4 text-zinc-700 dark:text-zinc-200" dir="ltr">
-                                                ${{ number_format((float) $transaction->amount, 2) }}
+                                                @if(\App\Models\WebsiteSetting::getPricesVisible())
+                                                    ${{ number_format((float) $transaction->amount, 2) }}
+                                                @else
+                                                    —
+                                                @endif
                                             </td>
                                             <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
                                                 <flux:badge color="{{ $statusColor }}">
@@ -736,7 +748,11 @@ new #[Layout('layouts::frontend')] class extends Component
                             <div class="flex items-center justify-between gap-3 rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-800/60">
                                 <div>
                                     <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                                        ${{ number_format((float) $topupRequest->amount, 2) }}
+                                        @if(\App\Models\WebsiteSetting::getPricesVisible())
+                                            ${{ number_format((float) $topupRequest->amount, 2) }}
+                                        @else
+                                            —
+                                        @endif
                                     </div>
                                     <div class="text-xs text-zinc-500 dark:text-zinc-400">
                                         {{ $topupRequest->created_at?->format('M d, Y') ?? '—' }}

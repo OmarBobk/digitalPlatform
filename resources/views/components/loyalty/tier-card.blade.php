@@ -32,12 +32,20 @@
     <div class="{{ $layout === 'compact' ? '' : 'mt-4' }} flex flex-wrap items-center gap-3">
         <flux:badge class="capitalize font-semibold" color="zinc">{{ $currentTierName }}</flux:badge>
         @if ($layout === 'full')
+            @if(\App\Models\WebsiteSetting::getPricesVisible())
             <span class="text-lg font-bold tabular-nums text-zinc-900 dark:text-zinc-100" dir="ltr">${{ number_format($rollingSpend, 2) }}</span>
+            @else
+            <span class="text-lg font-bold tabular-nums text-zinc-500 dark:text-zinc-400">—</span>
+            @endif
             @if ($discountPercent > 0)
                 <flux:text class="text-sm text-emerald-600 dark:text-emerald-400">{{ number_format($discountPercent, 0) }}% {{ __('messages.discount_percent') }}</flux:text>
             @endif
         @else
+            @if(\App\Models\WebsiteSetting::getPricesVisible())
             <span class="tabular-nums text-zinc-900 dark:text-zinc-100" dir="ltr">${{ number_format($rollingSpend, 2) }}</span>
+            @else
+            <span class="tabular-nums text-zinc-500 dark:text-zinc-400">—</span>
+            @endif
         @endif
     </div>
     @if ($hasNextTier)
@@ -50,7 +58,11 @@
                 <div class="h-full rounded-full bg-violet-500 dark:bg-violet-500 transition-all duration-300" style="width: {{ min(100, $progressPercent) }}%"></div>
             </div>
             <flux:text class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                @if(\App\Models\WebsiteSetting::getPricesVisible())
                 {{ __('messages.loyalty_next_tier', ['tier' => ucfirst($nextTierName), 'amount' => number_format($amountToNext, 2)]) }}
+                @else
+                {{ __('messages.loyalty_progress_to', ['tier' => ucfirst($nextTierName)]) }}
+                @endif
             </flux:text>
         </div>
     @else

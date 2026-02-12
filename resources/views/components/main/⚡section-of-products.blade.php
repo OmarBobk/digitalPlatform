@@ -99,19 +99,21 @@ new class extends Component
                             </button>
                             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
                                 <div class="flex flex-wrap items-center gap-1.5 shrink-0">
-                                    @if (!empty($product['tier_name']) && (float) ($product['discount_amount'] ?? 0) > 0)
-                                        <flux:badge size="sm" color="zinc">{{ ucfirst($product['tier_name']) }} {{ __('messages.loyalty_price') }}</flux:badge>
-                                        @if ((float) ($product['base_price'] ?? 0) > (float) ($product['price'] ?? 0))
-                                            <span class="tabular-nums text-sm text-zinc-500 line-through dark:text-zinc-400" dir="ltr">${{ number_format((float) $product['base_price'], 2) }}</span>
+                                    @if(\App\Models\WebsiteSetting::getPricesVisible())
+                                        @if (!empty($product['tier_name']) && (float) ($product['discount_amount'] ?? 0) > 0)
+                                            <flux:badge size="sm" color="zinc">{{ ucfirst($product['tier_name']) }} {{ __('messages.loyalty_price') }}</flux:badge>
+                                            @if ((float) ($product['base_price'] ?? 0) > (float) ($product['price'] ?? 0))
+                                                <span class="tabular-nums text-sm text-zinc-500 line-through dark:text-zinc-400" dir="ltr">${{ number_format((float) $product['base_price'], 2) }}</span>
+                                            @endif
                                         @endif
+                                        <span
+                                            class="tabular-nums text-base font-bold text-(--color-accent)"
+                                            dir="ltr"
+                                            aria-label="{{ __('messages.amount') }}: ${{ number_format((float) $product['price'], 2) }}"
+                                        >
+                                            ${{ number_format((float) $product['price'], 2) }}
+                                        </span>
                                     @endif
-                                    <span
-                                        class="tabular-nums text-base font-bold text-(--color-accent)"
-                                        dir="ltr"
-                                        aria-label="{{ __('messages.amount') }}: ${{ number_format((float) $product['price'], 2) }}"
-                                    >
-                                        ${{ number_format((float) $product['price'], 2) }}
-                                    </span>
                                 </div>
                                 <div class="flex items-center justify-between gap-1.5 shrink-0 sm:gap-2">
                                     <flux:button

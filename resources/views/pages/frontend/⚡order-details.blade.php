@@ -268,9 +268,13 @@ new #[Layout('layouts::frontend')] class extends Component
                 </div>
                 <div class="flex items-center justify-between gap-2 rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-800/60">
                     <span>{{ __('messages.total') }}</span>
+                    @if(\App\Models\WebsiteSetting::getPricesVisible())
                     <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
                         {{ $order->total }} {{ $order->currency }}
                     </span>
+                    @else
+                    <span class="font-semibold text-zinc-500 dark:text-zinc-400">—</span>
+                    @endif
                 </div>
                 <div class="flex items-center justify-between gap-2 rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-800/60">
                     <span>{{ __('messages.created') }}</span>
@@ -313,15 +317,23 @@ new #[Layout('layouts::frontend')] class extends Component
                     <div class="mt-4 grid gap-2 text-xs text-zinc-500 dark:text-zinc-400 sm:grid-cols-3">
                         <div class="flex items-center justify-between gap-2 rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-800/60">
                             <span>{{ __('messages.unit_price') }}</span>
+                            @if(\App\Models\WebsiteSetting::getPricesVisible())
                             <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
                                 {{ $item->unit_price }} {{ $order->currency }}
                             </span>
+                            @else
+                            <span class="font-semibold text-zinc-500 dark:text-zinc-400">—</span>
+                            @endif
                         </div>
                         <div class="flex items-center justify-between gap-2 rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-800/60">
                             <span>{{ __('messages.line_total') }}</span>
+                            @if(\App\Models\WebsiteSetting::getPricesVisible())
                             <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
                                 {{ $item->line_total }} {{ $order->currency }}
                             </span>
+                            @else
+                            <span class="font-semibold text-zinc-500 dark:text-zinc-400">—</span>
+                            @endif
                         </div>
                         <div class="flex items-center justify-between gap-2 rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-800/60">
                             <span>{{ __('messages.payment_status') }}</span>

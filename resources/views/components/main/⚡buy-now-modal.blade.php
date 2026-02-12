@@ -467,9 +467,11 @@ new class extends Component
                                 <div class="font-semibold">
                                     {{ $product['name'] }}
                                 </div>
+                                @if(\App\Models\WebsiteSetting::getPricesVisible())
                                 <div class="tabular-nums text-lg font-semibold text-(--color-accent)" dir="ltr">
                                     ${{ number_format((float) $product['price'], 2) }}
                                 </div>
+                                @endif
                             </div>
 
                             <div class="flex items-center gap-3 justify-between">

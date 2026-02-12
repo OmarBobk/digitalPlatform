@@ -10,7 +10,8 @@ use App\Models\User;
 
 /**
  * Single source of customer-facing price including loyalty discount.
- * Uses PriceCalculator for base retail; applies tier discount. Do not modify PriceCalculator or Product accessors.
+ * Uses PriceCalculator for base retail/wholesale; salesperson role gets wholesale, others get retail.
+ * Applies tier discount on top. Do not modify PriceCalculator or Product accessors.
  */
 class CustomerPriceService
 {
@@ -25,7 +26,7 @@ class CustomerPriceService
      */
     public function priceFor(Product|float $productOrEntryPrice, ?User $user = null): array
     {
-        $basePrice = $this->resolveBaseRetail($productOrEntryPrice);
+        $basePrice = $this->resolveBasePrice($productOrEntryPrice, $user);
         $tierConfig = $user !== null ? $this->tierConfigForUser($user) : null;
         $discountPercent = $tierConfig !== null ? (float) $tierConfig->discount_percentage : 0.0;
         $discountAmount = $this->round($basePrice * $discountPercent / 100);
@@ -48,24 +49,37 @@ class CustomerPriceService
         return $this->priceFor($productOrEntryPrice, $user)['final_price'];
     }
 
-    private function resolveBaseRetail(Product|float $productOrEntryPrice): float
+    /**
+     * Base price before loyalty discount: wholesale for salesperson role, retail otherwise.
+     */
+    private function resolveBasePrice(Product|float $productOrEntryPrice, ?User $user = null): float
+    {
+        $useWholesale = $user !== null && $user->hasRole('salesperson');
+        $prices = $this->resolveRetailAndWholesale($productOrEntryPrice);
+
+        return $useWholesale ? $prices['wholesale_price'] : $prices['retail_price'];
+    }
+
+    /**
+     * @return array{retail_price: float, wholesale_price: float}
+     */
+    private function resolveRetailAndWholesale(Product|float $productOrEntryPrice): array
     {
         if ($productOrEntryPrice instanceof Product) {
             $entryPrice = $productOrEntryPrice->entry_price !== null
                 ? (float) $productOrEntryPrice->entry_price
                 : null;
             if ($entryPrice !== null) {
-                $prices = $this->priceCalculator->calculate($entryPrice);
-
-                return (float) $prices['retail_price'];
+                return $this->priceCalculator->calculate($entryPrice);
             }
 
-            return (float) $productOrEntryPrice->retail_price;
+            return [
+                'retail_price' => (float) $productOrEntryPrice->retail_price,
+                'wholesale_price' => (float) $productOrEntryPrice->wholesale_price,
+            ];
         }
 
-        $prices = $this->priceCalculator->calculate((float) $productOrEntryPrice);
-
-        return (float) $prices['retail_price'];
+        return $this->priceCalculator->calculate((float) $productOrEntryPrice);
     }
 
     private function tierConfigForUser(User $user): ?LoyaltyTierConfig

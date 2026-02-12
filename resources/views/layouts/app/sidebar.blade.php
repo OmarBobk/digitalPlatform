@@ -126,6 +126,14 @@
                     @endif
                     @endcan
                 </flux:sidebar.group>
+
+                @role('admin')
+                <flux:sidebar.group :heading="__('messages.nav_website_settings')" class="grid">
+                    <flux:sidebar.item icon="globe-alt" :href="route('admin.website-settings')" :current="request()->routeIs('admin.website-settings')" wire:navigate>
+                        {{ __('messages.website_settings') }}
+                    </flux:sidebar.item>
+                </flux:sidebar.group>
+                @endrole
             </flux:sidebar.nav>
 
             <flux:spacer />

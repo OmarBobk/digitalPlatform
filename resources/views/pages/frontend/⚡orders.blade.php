@@ -241,13 +241,17 @@ new #[Layout('layouts::frontend')] class extends Component
                                                     </div>
                                                 @endif
                                                 <div class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                    {{__('messages.order_id')}}: #{{ $item->id }}U{{ $index + 1 }} · {{ __('messages.unit') }} {{ $index + 1 }} {{ __('messages.of') }} {{ $item->quantity }} · {{ $item->unit_price }} {{ $order->currency }}
+                                                    {{__('messages.order_id')}}: #{{ $item->id }}U{{ $index + 1 }} · {{ __('messages.unit') }} {{ $index + 1 }} {{ __('messages.of') }} {{ $item->quantity }}@if(\App\Models\WebsiteSetting::getPricesVisible()) · {{ $item->unit_price }} {{ $order->currency }}@endif
                                                 </div>
                                             </div>
                                             <div class="flex shrink-0 flex-col items-end gap-1">
+                                                @if(\App\Models\WebsiteSetting::getPricesVisible())
                                                 <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
                                                     {{ $item->unit_price }} {{ $order->currency }}
                                                 </span>
+                                                @else
+                                                <span class="font-semibold text-zinc-500 dark:text-zinc-400">—</span>
+                                                @endif
                                                 <flux:badge color="{{ $unitStatusColor }}" class="text-xs">
                                                     {{ $unitStatusLabel }}
                                                 </flux:badge>
@@ -278,13 +282,17 @@ new #[Layout('layouts::frontend')] class extends Component
                                                 </div>
                                             @endif
                                             <div class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                {{__('messages.order_id')}}: #{{ $item->id }} · {{ __('messages.quantity') }}: {{ $item->quantity }} × {{ $item->unit_price }} {{ $order->currency }}
+                                                {{__('messages.order_id')}}: #{{ $item->id }} · {{ __('messages.quantity') }}: {{ $item->quantity }}@if(\App\Models\WebsiteSetting::getPricesVisible()) × {{ $item->unit_price }} {{ $order->currency }}@endif
                                             </div>
                                         </div>
                                         <div class="flex shrink-0 flex-col items-end gap-1">
+                                            @if(\App\Models\WebsiteSetting::getPricesVisible())
                                             <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
                                                 {{ $item->line_total }} {{ $order->currency }}
                                             </span>
+                                            @else
+                                            <span class="font-semibold text-zinc-500 dark:text-zinc-400">—</span>
+                                            @endif
                                             <flux:badge color="{{ $itemStatusColor }}" class="text-xs">
                                                 {{ $statusLabel }}
                                             </flux:badge>
