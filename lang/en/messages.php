@@ -21,6 +21,7 @@ return [
     'name' => 'Name',
     'description' => 'Description',
     'full_name' => 'Full name',
+    'id' => 'ID',
     'email_address' => 'Email address',
     'email_placeholder' => 'email@example.com',
     'phone' => 'Phone',

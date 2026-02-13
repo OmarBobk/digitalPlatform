@@ -26,6 +26,8 @@ class GetUsers
                 'name',
                 'username',
                 'email',
+                'phone',
+                'country_code',
                 'email_verified_at',
                 'blocked_at',
                 'last_login_at',

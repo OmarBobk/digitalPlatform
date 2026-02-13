@@ -22,6 +22,7 @@ return [
     'name' => 'الاسم',
     'description' => 'الوصف',
     'full_name' => 'الاسم الكامل',
+    'id' => 'المعرف',
     'email_address' => 'عنوان البريد الإلكتروني',
     'email_placeholder' => 'email@example.com',
     'phone' => 'الهاتف',

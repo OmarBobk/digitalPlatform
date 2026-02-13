@@ -245,8 +245,10 @@ new class extends Component
                     <table class="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800" data-test="users-table">
                         <thead class="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400">
                             <tr>
+                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.id') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.name') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.email') }}</th>
+                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.phone') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.username') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.roles') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.status') }}</th>
@@ -261,8 +263,10 @@ new class extends Component
                                     class="transition hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
                                     wire:key="user-{{ $u->id }}"
                                 >
+                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300 tabular-nums">{{ $u->id }}</td>
                                     <td class="px-5 py-4 font-medium text-zinc-900 dark:text-zinc-100">{{ $u->name }}</td>
                                     <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">{{ $u->email }}</td>
+                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300" dir="ltr">{{ ($u->country_code || $u->phone) ? trim(($u->country_code ?? '') . ' ' . ($u->phone ?? '')) : '—' }}</td>
                                     <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">{{ $u->username }}</td>
                                     <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
                                         {{ $u->roles->pluck('name')->implode(', ') ?: '—' }}
