@@ -122,6 +122,18 @@ new #[Layout('layouts::frontend')] class extends Component
         <flux:text class="mt-2 block text-sm text-zinc-500 dark:text-zinc-400">
             {{ __('messages.loyalty_evaluation_window', ['days' => \App\Models\LoyaltySetting::getRollingWindowDays()]) }}
         </flux:text>
+
+        <flux:callout variant="subtle" icon="information-circle" class="mt-4">
+            <flux:callout.heading>{{ __('messages.loyalty_how_it_works') }}</flux:callout.heading>
+            <flux:callout.text>
+                <ul class="mt-2 list-inside list-disc space-y-1 text-sm">
+                    <li>{{ __('messages.loyalty_detail_rolling', ['days' => \App\Models\LoyaltySetting::getRollingWindowDays()]) }}</li>
+                    <li>{{ __('messages.loyalty_detail_tiers') }}</li>
+                    <li>{{ __('messages.loyalty_detail_eligible') }}</li>
+                    <li>{{ __('messages.loyalty_detail_discount') }}</li>
+                </ul>
+            </flux:callout.text>
+        </flux:callout>
     </section>
 
     @if ($this->loyaltyCurrentTierConfig !== null)

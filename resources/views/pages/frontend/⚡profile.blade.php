@@ -186,7 +186,11 @@ new #[Layout('layouts::frontend')] class extends Component
                 </div>
                 <div class="min-w-0">
                     <flux:heading size="sm" class="text-zinc-900 dark:text-zinc-100">{{ __('main.loyalty') }}</flux:heading>
-                    <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ ucfirst(auth()->user()?->loyalty_tier?->value ?? 'bronze') }}</flux:text>
+                    @php
+    $profileTierKey = strtolower(auth()->user()?->loyalty_tier?->value ?? 'bronze');
+    $profileTierLabel = \Illuminate\Support\Facades\Lang::has("messages.loyalty_tier_{$profileTierKey}") ? __("messages.loyalty_tier_{$profileTierKey}") : ucfirst($profileTierKey);
+@endphp
+                    <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ $profileTierLabel }}</flux:text>
                 </div>
             </a>
         @endif

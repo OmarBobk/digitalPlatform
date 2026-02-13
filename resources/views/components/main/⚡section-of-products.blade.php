@@ -90,24 +90,28 @@ new class extends Component
                                 />
                             </div>
                         </button>
-                        <div class="flex flex-1 flex-col gap-2 px-3 pb-3 pt-2">
+                        <div class="flex min-w-0 flex-1 flex-col gap-2 px-3 pb-3 pt-2">
                             <button
                                 x-on:click="$dispatch('open-buy-now', { productId: {{ $product['id'] }} })"
                                 class="text-start text-sm font-semibold text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) dark:text-zinc-100"
                             >
                                 {{ $product['name'] }}
                             </button>
-                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-                                <div class="flex flex-wrap items-center gap-1.5 shrink-0">
+                            <div class="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                                <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
                                     @if(\App\Models\WebsiteSetting::getPricesVisible())
                                         @if (!empty($product['tier_name']) && (float) ($product['discount_amount'] ?? 0) > 0)
-                                            <flux:badge size="sm" color="zinc">{{ ucfirst($product['tier_name']) }} {{ __('messages.loyalty_price') }}</flux:badge>
+                                            @php
+                                                $tierKey = strtolower($product['tier_name']);
+                                                $tierLabel = \Illuminate\Support\Facades\Lang::has("messages.loyalty_tier_{$tierKey}") ? __("messages.loyalty_tier_{$tierKey}") : ucfirst($product['tier_name']);
+                                            @endphp
+                                            <flux:badge size="sm" color="zinc">{{ $tierLabel }} {{ __('messages.loyalty_price') }}</flux:badge>
                                             @if ((float) ($product['base_price'] ?? 0) > (float) ($product['price'] ?? 0))
-                                                <span class="tabular-nums text-sm text-zinc-500 line-through dark:text-zinc-400" dir="ltr">${{ number_format((float) $product['base_price'], 2) }}</span>
+                                                <span class="shrink-0 tabular-nums text-sm text-zinc-500 line-through dark:text-zinc-400" dir="ltr">${{ number_format((float) $product['base_price'], 2) }}</span>
                                             @endif
                                         @endif
                                         <span
-                                            class="tabular-nums text-base font-bold text-(--color-accent)"
+                                            class="shrink-0 tabular-nums text-base font-bold text-(--color-accent)"
                                             dir="ltr"
                                             aria-label="{{ __('messages.amount') }}: ${{ number_format((float) $product['price'], 2) }}"
                                         >
@@ -115,7 +119,7 @@ new class extends Component
                                         </span>
                                     @endif
                                 </div>
-                                <div class="flex items-center justify-between gap-1.5 shrink-0 sm:gap-2">
+                                <div class="flex shrink-0 items-center justify-between gap-1.5 sm:gap-2">
                                     <flux:button
                                         type="button"
                                         variant="outline"

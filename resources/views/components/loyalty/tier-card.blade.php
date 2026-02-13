@@ -11,7 +11,10 @@
 ])
 
 @php
-    $currentTierName = ucfirst($currentTierName ?? 'bronze');
+    $currentTierKey = strtolower($currentTierName ?? 'bronze');
+    $currentTierLabel = \Illuminate\Support\Facades\Lang::has("messages.loyalty_tier_{$currentTierKey}") ? __("messages.loyalty_tier_{$currentTierKey}") : ucfirst($currentTierKey);
+    $nextTierKey = $nextTierName ? strtolower($nextTierName) : null;
+    $nextTierLabel = $nextTierKey && \Illuminate\Support\Facades\Lang::has("messages.loyalty_tier_{$nextTierKey}") ? __("messages.loyalty_tier_{$nextTierKey}") : ($nextTierName ? ucfirst($nextTierName) : null);
     $hasNextTier = $nextTierName !== null && $progressPercent !== null && $amountToNext !== null;
 @endphp
 
@@ -30,7 +33,7 @@
         </div>
     @endif
     <div class="{{ $layout === 'compact' ? '' : 'mt-4' }} flex flex-wrap items-center gap-3">
-        <flux:badge class="capitalize font-semibold" color="zinc">{{ $currentTierName }}</flux:badge>
+        <flux:badge class="capitalize font-semibold" color="zinc">{{ $currentTierLabel }}</flux:badge>
         @if ($layout === 'full')
             @if(\App\Models\WebsiteSetting::getPricesVisible())
             <span class="text-lg font-bold tabular-nums text-zinc-900 dark:text-zinc-100" dir="ltr">${{ number_format($rollingSpend, 2) }}</span>
@@ -51,7 +54,7 @@
     @if ($hasNextTier)
         <div class="{{ $layout === 'compact' ? 'mt-2' : 'mt-4' }}">
             <div class="mb-1 flex justify-between text-xs text-zinc-500 dark:text-zinc-400">
-                <span>{{ __('messages.loyalty_progress_to', ['tier' => ucfirst($nextTierName)]) }}</span>
+                <span>{{ __('messages.loyalty_progress_to', ['tier' => $nextTierLabel]) }}</span>
                 <span dir="ltr">{{ number_format($progressPercent, 0) }}%</span>
             </div>
             <div class="h-2.5 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700" role="progressbar" aria-valuenow="{{ (int) min(100, $progressPercent) }}" aria-valuemin="0" aria-valuemax="100">
@@ -59,15 +62,15 @@
             </div>
             <flux:text class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                 @if(\App\Models\WebsiteSetting::getPricesVisible())
-                {{ __('messages.loyalty_next_tier', ['tier' => ucfirst($nextTierName), 'amount' => number_format($amountToNext, 2)]) }}
+                {{ __('messages.loyalty_next_tier', ['tier' => $nextTierLabel, 'amount' => number_format($amountToNext, 2)]) }}
                 @else
-                {{ __('messages.loyalty_progress_to', ['tier' => ucfirst($nextTierName)]) }}
+                {{ __('messages.loyalty_progress_to', ['tier' => $nextTierLabel]) }}
                 @endif
             </flux:text>
         </div>
     @else
         <flux:text class="{{ $layout === 'compact' ? 'mt-2' : 'mt-3' }} text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            {{ __('messages.loyalty_you_reached', ['tier' => $currentTierName]) }}
+            {{ __('messages.loyalty_you_reached', ['tier' => $currentTierLabel]) }}
         </flux:text>
     @endif
 </div>

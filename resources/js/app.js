@@ -468,6 +468,12 @@ document.addEventListener('alpine:init', () => {
             const withTier = this.items.find((item) => item.tier_name);
             return withTier ? withTier.tier_name : null;
         },
+        get loyaltyTierLabel() {
+            const name = this.loyaltyTierName;
+            if (!name) return '';
+            const labels = window.Laravel?.loyaltyTierLabels ?? {};
+            return labels[name] ?? (name.charAt(0).toUpperCase() + name.slice(1));
+        },
         get hasMissingRequirements() {
             return this.items.some((item) => {
                 const schema = Array.isArray(item.requirements_schema) ? item.requirements_schema : [];

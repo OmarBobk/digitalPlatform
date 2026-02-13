@@ -581,7 +581,7 @@ new #[Layout('layouts::frontend')] class extends Component {
                     </div>
                     @if(\App\Models\WebsiteSetting::getPricesVisible())
                     <div class="flex items-center justify-between text-green-600 dark:text-green-400" x-show="$store.cart.loyaltyDiscount > 0" x-cloak>
-                        <span>{{ __('messages.loyalty_discount') }} <span x-show="$store.cart.loyaltyTierName" x-text="'(' + ($store.cart.loyaltyTierName ? $store.cart.loyaltyTierName.charAt(0).toUpperCase() + $store.cart.loyaltyTierName.slice(1) : '') + ')'"></span>:</span>
+                        <span>{{ __('messages.loyalty_discount') }} <span x-show="$store.cart.loyaltyTierName" x-text="'(' + $store.cart.loyaltyTierLabel + ')'"></span>:</span>
                         <span class="font-semibold" dir="ltr" x-text="'-' + $store.cart.format($store.cart.loyaltyDiscount)"></span>
                     </div>
                     @endif

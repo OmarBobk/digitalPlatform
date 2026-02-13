@@ -19,6 +19,7 @@
         @foreach ($tiers as $tier)
             @php
                 $name = strtolower($tier['name'] ?? '');
+                $tierLabel = \Illuminate\Support\Facades\Lang::has("messages.loyalty_tier_{$name}") ? __("messages.loyalty_tier_{$name}") : ucfirst($name);
                 $minSpend = (float) ($tier['min_spend'] ?? 0);
                 $discount = (float) ($tier['discount_percentage'] ?? 0);
                 $isCurrent = $name === $currentTierName;
@@ -28,7 +29,7 @@
             <div
                 class="flex items-center gap-3 rounded-xl border p-3 {{ $isCurrent ? 'border-violet-400 bg-violet-50/80 dark:border-violet-500 dark:bg-violet-950/30' : 'border-zinc-200 dark:border-zinc-700' }}"
             >
-                <flux:badge color="{{ $isCurrent ? 'violet' : 'zinc' }}" class="capitalize shrink-0">{{ ucfirst($name) }}</flux:badge>
+                <flux:badge color="{{ $isCurrent ? 'violet' : 'zinc' }}" class="capitalize shrink-0">{{ $tierLabel }}</flux:badge>
                 @if(\App\Models\WebsiteSetting::getPricesVisible())
                 <span class="tabular-nums text-sm text-zinc-600 dark:text-zinc-400" dir="ltr">${{ number_format($minSpend, 0) }}+</span>
                 @else
@@ -36,7 +37,7 @@
                 @endif
                 <span class="text-sm font-medium text-emerald-600 dark:text-emerald-400">{{ number_format($discount, 0) }}%</span>
                 @if ($isCurrent)
-                    <flux:text class="ml-auto text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.loyalty_you_reached', ['tier' => ucfirst($name)]) }}</flux:text>
+                    <flux:text class="ml-auto text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.loyalty_you_reached', ['tier' => $tierLabel]) }}</flux:text>
                 @elseif ($remaining !== null && \App\Models\WebsiteSetting::getPricesVisible())
                     <flux:text class="ml-auto text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.loyalty_remaining_spend') }}: ${{ number_format($remaining, 2) }}</flux:text>
                 @endif

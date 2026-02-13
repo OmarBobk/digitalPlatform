@@ -35,6 +35,13 @@ new #[Layout('layouts::frontend')] class extends Component
         return $this->view()->title(__('messages.order_details'));
     }
 
+    protected function formatAmount(float|string $amount, string $currency): string
+    {
+        $value = number_format((float) $amount, 2);
+
+        return strtoupper($currency) === 'USD' ? '$' . $value : $value . ' ' . $currency;
+    }
+
     public function retryFulfillment(int $fulfillmentId): void
     {
         $this->reset('actionMessage');
@@ -270,7 +277,7 @@ new #[Layout('layouts::frontend')] class extends Component
                     <span>{{ __('messages.total') }}</span>
                     @if(\App\Models\WebsiteSetting::getPricesVisible())
                     <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
-                        {{ $order->total }} {{ $order->currency }}
+                        {{ $this->formatAmount($order->total, $order->currency) }}
                     </span>
                     @else
                     <span class="font-semibold text-zinc-500 dark:text-zinc-400">—</span>
@@ -319,7 +326,7 @@ new #[Layout('layouts::frontend')] class extends Component
                             <span>{{ __('messages.unit_price') }}</span>
                             @if(\App\Models\WebsiteSetting::getPricesVisible())
                             <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
-                                {{ $item->unit_price }} {{ $order->currency }}
+                                {{ $this->formatAmount($item->unit_price, $order->currency) }}
                             </span>
                             @else
                             <span class="font-semibold text-zinc-500 dark:text-zinc-400">—</span>
@@ -329,7 +336,7 @@ new #[Layout('layouts::frontend')] class extends Component
                             <span>{{ __('messages.line_total') }}</span>
                             @if(\App\Models\WebsiteSetting::getPricesVisible())
                             <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
-                                {{ $item->line_total }} {{ $order->currency }}
+                                {{ $this->formatAmount($item->line_total, $order->currency) }}
                             </span>
                             @else
                             <span class="font-semibold text-zinc-500 dark:text-zinc-400">—</span>

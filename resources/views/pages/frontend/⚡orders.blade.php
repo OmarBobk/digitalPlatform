@@ -116,6 +116,50 @@ new #[Layout('layouts::frontend')] class extends Component
         ];
     }
 
+    protected function formatAmount(float|string $amount, string $currency): string
+    {
+        $value = number_format((float) $amount, 2);
+
+        return strtoupper($currency) === 'USD' ? '$' . $value : $value . ' ' . $currency;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $payload
+     * @return array<int, array{key: string, value: string}>
+     */
+    protected function requirementsEntries(?array $payload): array
+    {
+        if ($payload === null || $payload === []) {
+            return [];
+        }
+
+        $entries = [];
+
+        foreach ($payload as $key => $value) {
+            $entries[] = [
+                'key' => is_string($key) ? $key : (string) $key,
+                'value' => $this->stringifyPayloadValue($value),
+            ];
+        }
+
+        return $entries;
+    }
+
+    protected function stringifyPayloadValue(mixed $value): string
+    {
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+        if (is_array($value)) {
+            return (string) json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        }
+        if (is_null($value)) {
+            return 'null';
+        }
+
+        return (string) $value;
+    }
+
     public function render(): View
     {
         return $this->view()->title(__('messages.orders'));
@@ -187,7 +231,7 @@ new #[Layout('layouts::frontend')] class extends Component
                                     {{ $summary['label'] }}
                                 </flux:badge>
                                 <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
-                                    {{ $order->total }} {{ $order->currency }}
+                                    {{ $this->formatAmount($order->total, $order->currency) }}
                                 </span>
                             </div>
                         </div>
@@ -205,6 +249,7 @@ new #[Layout('layouts::frontend')] class extends Component
                                         \App\Enums\FulfillmentStatus::Processing, \App\Enums\FulfillmentStatus::Queued => __('messages.delivery_preparing'),
                                         default => __('messages.delivery_preparing'),
                                     };
+                                    $requirementsEntries = $this->requirementsEntries($item->requirements_payload);
                                 @endphp
                                 @if ($item->quantity > 1 && $fulfillments->isNotEmpty())
                                     @foreach ($fulfillments as $index => $fulfillment)
@@ -241,13 +286,20 @@ new #[Layout('layouts::frontend')] class extends Component
                                                     </div>
                                                 @endif
                                                 <div class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                    {{__('messages.order_id')}}: #{{ $item->id }}U{{ $index + 1 }} · {{ __('messages.unit') }} {{ $index + 1 }} {{ __('messages.of') }} {{ $item->quantity }}@if(\App\Models\WebsiteSetting::getPricesVisible()) · {{ $item->unit_price }} {{ $order->currency }}@endif
+                                                    {{__('messages.order_id')}}: #{{ $item->id }}U{{ $index + 1 }} · {{ __('messages.unit') }} {{ $index + 1 }} {{ __('messages.of') }} {{ $item->quantity }}@if(\App\Models\WebsiteSetting::getPricesVisible()) · {{ $this->formatAmount($item->unit_price, $order->currency) }}@endif
                                                 </div>
+                                                @if ($requirementsEntries !== [])
+                                                    <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                                                        @foreach ($requirementsEntries as $entry)
+                                                            <span class="text-zinc-600 dark:text-zinc-300"><span class="text-zinc-500 dark:text-zinc-400">{{ $entry['key'] }}:</span> {{ $entry['value'] }}</span>
+                                                        @endforeach
+                                                    </div>
+                                                @endif
                                             </div>
                                             <div class="flex shrink-0 flex-col items-end gap-1">
                                                 @if(\App\Models\WebsiteSetting::getPricesVisible())
                                                 <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
-                                                    {{ $item->unit_price }} {{ $order->currency }}
+                                                    {{ $this->formatAmount($item->unit_price, $order->currency) }}
                                                 </span>
                                                 @else
                                                 <span class="font-semibold text-zinc-500 dark:text-zinc-400">—</span>
@@ -282,13 +334,20 @@ new #[Layout('layouts::frontend')] class extends Component
                                                 </div>
                                             @endif
                                             <div class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                {{__('messages.order_id')}}: #{{ $item->id }} · {{ __('messages.quantity') }}: {{ $item->quantity }}@if(\App\Models\WebsiteSetting::getPricesVisible()) × {{ $item->unit_price }} {{ $order->currency }}@endif
+                                                {{__('messages.order_id')}}: #{{ $item->id }} · {{ __('messages.quantity') }}: {{ $item->quantity }}@if(\App\Models\WebsiteSetting::getPricesVisible()) × {{ $this->formatAmount($item->unit_price, $order->currency) }}@endif
                                             </div>
+                                            @if ($requirementsEntries !== [])
+                                                <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                                                    @foreach ($requirementsEntries as $entry)
+                                                        <span class="text-zinc-600 dark:text-zinc-300"><span class="text-zinc-500 dark:text-zinc-400">{{ $entry['key'] }}:</span> {{ $entry['value'] }}</span>
+                                                    @endforeach
+                                                </div>
+                                            @endif
                                         </div>
                                         <div class="flex shrink-0 flex-col items-end gap-1">
                                             @if(\App\Models\WebsiteSetting::getPricesVisible())
                                             <span class="font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
-                                                {{ $item->line_total }} {{ $order->currency }}
+                                                {{ $this->formatAmount($item->line_total, $order->currency) }}
                                             </span>
                                             @else
                                             <span class="font-semibold text-zinc-500 dark:text-zinc-400">—</span>
