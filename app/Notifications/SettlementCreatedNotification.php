@@ -11,7 +11,7 @@ class SettlementCreatedNotification extends BaseNotification
 {
     public static function fromSettlement(Settlement $settlement): self
     {
-        $amount = number_format((float) $settlement->total_amount, 2);
+        $amountDisplay = config('billing.currency_symbol', '$').number_format((float) $settlement->total_amount, 2);
         $count = $settlement->fulfillments()->count();
 
         return new self(
@@ -20,7 +20,7 @@ class SettlementCreatedNotification extends BaseNotification
             title: __('notifications.settlement_created_title'),
             message: __('notifications.settlement_created_message', [
                 'settlement_id' => $settlement->id,
-                'amount' => $amount,
+                'amount_display' => $amountDisplay,
                 'count' => $count,
             ]),
             url: Route::has('settlements') ? route('settlements') : null

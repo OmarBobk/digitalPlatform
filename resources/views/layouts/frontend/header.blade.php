@@ -64,6 +64,7 @@
                         @endauth
 
                         <!-- User Profile Icon -->
+                        <div x-data x-on:scroll.window="const p = $el.querySelector('[popover]'); if (p) { try { p.hidePopover(); } catch (_) {} }">
                         <flux:dropdown position="bottom" align="end">
                             <flux:button
                                 variant="ghost"
@@ -155,6 +156,7 @@
                                 @endauth
                             </flux:navmenu>
                         </flux:dropdown>
+                        </div>
 
 
                         @auth

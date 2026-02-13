@@ -11,7 +11,7 @@ class RefundRequestedNotification extends BaseNotification
 {
     public static function fromRefundTransaction(WalletTransaction $transaction): self
     {
-        $amount = number_format((float) $transaction->amount, 2);
+        $amountDisplay = config('billing.currency_symbol', '$').number_format((float) $transaction->amount, 2);
         $orderId = (int) data_get($transaction->meta, 'order_id', 0);
 
         return new self(
@@ -19,7 +19,7 @@ class RefundRequestedNotification extends BaseNotification
             sourceId: $transaction->id,
             title: __('notifications.refund_requested_title'),
             message: __('notifications.refund_requested_message', [
-                'amount' => $amount,
+                'amount_display' => $amountDisplay,
                 'transaction_id' => $transaction->id,
             ]),
             url: Route::has('refunds') ? route('refunds') : null

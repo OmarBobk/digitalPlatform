@@ -2,6 +2,7 @@
     class="relative"
     x-data="{ newIds: [], markDelay: false }"
     x-on:notification-received.window="const id = $event.detail?.id; if (id) newIds.push(id); $wire.$refresh(); setTimeout(() => { const i = newIds.indexOf(id); if (i !== -1) newIds.splice(i, 1); }, 8000)"
+    x-on:scroll.window="const p = $el.querySelector('[popover]'); if (p) { try { p.hidePopover(); } catch (_) {} }"
 >
     <flux:dropdown position="bottom" align="end" class="min-w-[320px] max-w-[90vw]">
         <div class="relative">

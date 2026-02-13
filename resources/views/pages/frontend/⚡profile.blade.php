@@ -120,7 +120,7 @@ new #[Layout('layouts::frontend')] class extends Component
                 <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ $user->username }}</flux:text>
                 <flux:text class="block text-sm text-zinc-600 dark:text-zinc-400">{{ $user->email }}</flux:text>
                 @if ($user->phone || $user->country_code)
-                    <flux:text class="block text-sm text-zinc-600 dark:text-zinc-400">
+                    <flux:text class="block text-sm text-zinc-600 dark:text-zinc-400 {{ app()->getLocale() === 'ar' ? 'text-right' : '' }}" dir="ltr">
                         {{ $user->country_code ? $user->country_code . ' ' : '' }}{{ $user->phone ?? '' }}
                     </flux:text>
                 @endif

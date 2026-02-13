@@ -4,22 +4,22 @@ return [
     'no_reason_given' => 'No reason given',
 
     'topup_requested_title' => 'New top-up request',
-    'topup_requested_message' => 'A top-up of :amount :currency (request #:id) is pending review.',
+    'topup_requested_message' => 'A top-up of :amount_display (request #:id) is pending review.',
 
     'topup_approved_title' => 'Top-up approved',
-    'topup_approved_message' => 'Your top-up of :amount :currency has been approved and credited to your wallet.',
+    'topup_approved_message' => 'Your top-up of :amount_display has been approved and credited to your wallet.',
 
     'topup_rejected_title' => 'Top-up rejected',
-    'topup_rejected_message' => 'Your top-up of :amount :currency was rejected. Reason: :reason',
+    'topup_rejected_message' => 'Your top-up of :amount_display was rejected. Reason: :reason',
 
     'refund_requested_title' => 'New refund request',
-    'refund_requested_message' => 'A refund of :amount (transaction #:transaction_id) is pending approval.',
+    'refund_requested_message' => 'A refund of :amount_display (transaction #:transaction_id) is pending approval.',
 
     'refund_approved_title' => 'Refund approved',
-    'refund_approved_message' => 'Your refund of :amount for order :order_number has been approved and credited to your wallet.',
+    'refund_approved_message' => 'Your refund of :amount_display for order :order_number has been approved and credited to your wallet.',
 
     'refund_rejected_title' => 'Refund rejected',
-    'refund_rejected_message' => 'Your refund of :amount for order :order_number was rejected.',
+    'refund_rejected_message' => 'Your refund of :amount_display for order :order_number was rejected.',
 
     'fulfillment_process_failed_title' => 'Fulfillment processing failed',
     'fulfillment_process_failed_message' => 'Fulfillment #:fulfillment_id (order #:order_id) failed. Error: :error',
@@ -34,7 +34,7 @@ return [
     'wallet_reconciled_message' => 'Wallet #:wallet_id (user #:user_id) was reconciled. Stored: :stored, expected: :expected, diff: :diff.',
 
     'settlement_created_title' => 'Settlement batch created',
-    'settlement_created_message' => 'Settlement #:settlement_id created: :amount from :count fulfillment(s).',
+    'settlement_created_message' => 'Settlement #:settlement_id created: :amount_display from :count fulfillment(s).',
 
     'loyalty_tier_changed_title' => 'Loyalty tier updated',
     'loyalty_tier_changed_message' => 'Your loyalty tier has changed from :previous_tier to :new_tier.',

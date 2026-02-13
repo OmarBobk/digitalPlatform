@@ -13,14 +13,16 @@ class TopupRejectedNotification extends BaseNotification
     {
         $amount = number_format((float) $topupRequest->amount, 2);
         $currency = $topupRequest->currency ?? 'USD';
+        $amountDisplay = strtoupper($currency) === 'USD'
+            ? config('billing.currency_symbol', '$').$amount
+            : $amount.' '.$currency;
 
         return new self(
             sourceType: TopupRequest::class,
             sourceId: $topupRequest->id,
             title: __('notifications.topup_rejected_title'),
             message: __('notifications.topup_rejected_message', [
-                'amount' => $amount,
-                'currency' => $currency,
+                'amount_display' => $amountDisplay,
                 'reason' => $reason ?? __('notifications.no_reason_given'),
             ]),
             url: Route::has('wallet') ? route('wallet') : null
