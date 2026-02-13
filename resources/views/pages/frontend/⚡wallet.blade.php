@@ -469,6 +469,67 @@ new #[Layout('layouts::frontend')] class extends Component
                 </flux:text>
             </section>
 
+            {{-- Request top-up form: visible on mobile only, placed right after wallet balance --}}
+            <section class="block rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:p-6 lg:hidden">
+                <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
+                    {{ __('messages.request_topup') }}
+                </flux:heading>
+                @if ($noticeMessage)
+                    <div class="mt-4">
+                        <flux:callout variant="{{ $noticeVariant === 'danger' ? 'danger' : 'subtle' }}" icon="{{ $noticeVariant === 'danger' ? 'exclamation-triangle' : 'check-circle' }}">
+                            {{ $noticeMessage }}
+                        </flux:callout>
+                    </div>
+                @endif
+                <form class="mt-4 space-y-4" wire:submit.prevent="submitTopup">
+                    <div class="grid gap-2">
+                        <flux:input
+                            class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                            name="topupAmountMobile"
+                            label="{{ __('messages.amount') }}"
+                            wire:model.defer="topupAmount"
+                            placeholder="0.00"
+                        />
+                    </div>
+                    <div class="grid gap-2">
+                        <flux:select
+                            name="topupMethodMobile"
+                            class="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                            label="{{ __('messages.method') }}"
+                            wire:model.defer="topupMethod"
+                        >
+                            @foreach ($this->topupMethodOptions as $value => $label)
+                                <flux:select.option value="{{ $value }}">{{ $label }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                    </div>
+                    <div class="grid gap-2">
+                        <flux:field>
+                            <flux:label>{{ __('messages.proof_of_payment') }}</flux:label>
+                            <input
+                                type="file"
+                                name="proofFileMobile"
+                                accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                wire:model.defer="proofFile"
+                                class="block w-full text-sm text-zinc-600 file:mr-4 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-zinc-800 hover:file:bg-zinc-200 dark:text-zinc-400 dark:file:bg-zinc-700 dark:file:text-zinc-200 dark:hover:file:bg-zinc-600"
+                            />
+                        </flux:field>
+                        @error('proofFile')
+                            <flux:text class="text-xs text-red-600">{{ $message }}</flux:text>
+                        @enderror
+                    </div>
+                    <flux:button
+                        type="submit"
+                        variant="primary"
+                        class="w-full justify-center !bg-accent !text-accent-foreground hover:!bg-accent-hover"
+                        wire:loading.attr="disabled"
+                        wire:target="submitTopup"
+                    >
+                        {{ __('messages.submit_topup') }}
+                    </flux:button>
+                </form>
+            </section>
+
             <section class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:p-6">
                 <div class="flex items-center justify-between gap-3">
                     <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
@@ -658,14 +719,15 @@ new #[Layout('layouts::frontend')] class extends Component
         </div>
 
         <aside class="space-y-6">
-            <section class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:p-6">
+            {{-- Request top-up form: visible on desktop (lg+) only --}}
+            <section class="hidden rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:p-6 lg:block">
                 <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
                     {{ __('messages.request_topup') }}
                 </flux:heading>
 
                 @if ($noticeMessage)
                     <div class="mt-4">
-                        <flux:callout variant="subtle" icon="check-circle">
+                        <flux:callout variant="{{ $noticeVariant === 'danger' ? 'danger' : 'subtle' }}" icon="{{ $noticeVariant === 'danger' ? 'exclamation-triangle' : 'check-circle' }}">
                             {{ $noticeMessage }}
                         </flux:callout>
                     </div>
