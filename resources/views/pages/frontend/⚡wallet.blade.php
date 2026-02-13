@@ -60,7 +60,7 @@ new #[Layout('layouts::frontend')] class extends Component
         return [
             'topupAmount' => ['required', 'numeric', 'min:0.01'],
             'topupMethod' => ['required', Rule::in(TopupMethod::values())],
-            'proofFile' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'proofFile' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf'],
         ];
     }
 
