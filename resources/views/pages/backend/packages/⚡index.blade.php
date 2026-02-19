@@ -24,7 +24,7 @@ new class extends Component
     use WithFileUploads;
     use WithPagination;
 
-    private const REQUIREMENT_KEYS = ['player_id', 'username', 'phone'];
+    private const REQUIREMENT_KEYS = ['id', 'username', 'phone'];
     private const REQUIREMENT_TYPES = ['string', 'number', 'select'];
 
     public string $search = '';
@@ -45,7 +45,7 @@ new class extends Component
     public bool $packageIsActive = true;
 
     public ?int $editingRequirementId = null;
-    public string $requirementKey = 'player_id';
+    public string $requirementKey = 'id';
     public string $requirementLabel = '';
     public string $requirementType = 'string';
     public bool $requirementIsRequired = true;
@@ -353,7 +353,7 @@ new class extends Component
     public function getRequirementKeyOptionsProperty(): array
     {
         return [
-            'player_id' => __('messages.requirement_key_player_id'),
+            'id' => __('messages.requirement_key_id'),
             'username' => __('messages.requirement_key_username'),
             'phone' => __('messages.requirement_key_phone'),
         ];

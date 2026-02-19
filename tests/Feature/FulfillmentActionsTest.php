@@ -185,7 +185,7 @@ test('create fulfillments stores requirements payload in meta', function () {
         'unit_price' => 20,
         'quantity' => 1,
         'line_total' => 20,
-        'requirements_payload' => ['player_id' => '12345'],
+        'requirements_payload' => ['id' => '12345'],
         'status' => OrderItemStatus::Pending,
     ]);
 
@@ -194,7 +194,7 @@ test('create fulfillments stores requirements payload in meta', function () {
     $fulfillment = Fulfillment::query()->where('order_item_id', $item->id)->first();
 
     expect($fulfillment)->not->toBeNull();
-    expect(data_get($fulfillment->meta, 'requirements_payload'))->toBe(['player_id' => '12345']);
+    expect(data_get($fulfillment->meta, 'requirements_payload'))->toBe(['id' => '12345']);
 });
 
 test('create fulfillments dispatches list changed event', function () {
@@ -255,7 +255,7 @@ test('process fulfillments includes requirements payload in delivered payload', 
         'unit_price' => 20,
         'quantity' => 1,
         'line_total' => 20,
-        'requirements_payload' => ['player_id' => '99999'],
+        'requirements_payload' => ['id' => '99999'],
         'status' => OrderItemStatus::Pending,
     ]);
 
@@ -267,7 +267,7 @@ test('process fulfillments includes requirements payload in delivered payload', 
 
     expect($fulfillment)->not->toBeNull();
     expect(data_get($fulfillment->meta, 'delivered_payload.requirements_payload'))
-        ->toBe(['player_id' => '99999']);
+        ->toBe(['id' => '99999']);
 });
 
 test('append fulfillment log stores context', function () {

@@ -136,7 +136,7 @@ test('package requirement can be added to selected package', function () {
 
     Livewire::test('pages::backend.packages.index')
         ->set('selectedPackageId', $package->id)
-        ->set('requirementKey', 'player_id')
+        ->set('requirementKey', 'id')
         ->set('requirementLabel', 'Player ID')
         ->set('requirementType', 'number')
         ->set('requirementIsRequired', true)
@@ -147,7 +147,7 @@ test('package requirement can be added to selected package', function () {
 
     $this->assertDatabaseHas('package_requirements', [
         'package_id' => $package->id,
-        'key' => 'player_id',
+        'key' => 'id',
         'label' => 'Player ID',
         'type' => 'number',
         'is_required' => true,

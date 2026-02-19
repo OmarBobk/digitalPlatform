@@ -1,0 +1,685 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Strict comparison using \!\=\= between non\-empty\-array\<mixed\> and array\{\} will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Actions/Categories/DeleteCategoryTree.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Actions/Fortify/LoginResponse.php
+
+		-
+			message: '#^Method App\\Actions\\Fulfillments\\AppendFulfillmentLog\:\:handle\(\) should return App\\Models\\FulfillmentLog but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Actions/Fulfillments/AppendFulfillmentLog.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Actions/Fulfillments/CompleteFulfillment.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\FulfillmentStatus\:\:Cancelled will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Actions/Fulfillments/CompleteFulfillment.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\FulfillmentStatus\:\:Completed will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Actions/Fulfillments/CompleteFulfillment.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\OrderStatus\:\:Paid will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Actions/Fulfillments/CreateFulfillmentsForOrder.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Actions/Fulfillments/CreateFulfillmentsForOrder.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Actions/Fulfillments/FailFulfillment.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\FulfillmentStatus\:\:Cancelled will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Actions/Fulfillments/FailFulfillment.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\FulfillmentStatus\:\:Completed will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Actions/Fulfillments/FailFulfillment.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\FulfillmentStatus\:\:Failed will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Actions/Fulfillments/FailFulfillment.php
+
+		-
+			message: '#^Method App\\Actions\\Fulfillments\\RetryFulfillment\:\:buildContext\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Actions/Fulfillments/RetryFulfillment.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\FulfillmentStatus\:\:Failed will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Actions/Fulfillments/RetryFulfillment.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Actions/Fulfillments/RetryFulfillment.php
+
+		-
+			message: '#^Method App\\Actions\\Fulfillments\\StartFulfillment\:\:buildContext\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Actions/Fulfillments/StartFulfillment.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\FulfillmentStatus\:\:Queued will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Actions/Fulfillments/StartFulfillment.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Actions/Fulfillments/StartFulfillment.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Actions/Loyalty/EvaluateLoyaltyForUserAction.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Actions/Loyalty/EvaluateLoyaltyForUserAction.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Actions/Orders/CheckoutFromPayload.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\OrderStatus\:\:Paid will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Actions/Orders/CheckoutFromPayload.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$requirements\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Actions/Orders/CreateOrderFromCartPayload.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Actions/Orders/CreateOrderFromCartPayload.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Actions/Orders/CreateOrderFromCartPayload.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>requirements" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Actions/Orders/CreateOrderFromCartPayload.php
+
+		-
+			message: '#^Method App\\Actions\\Orders\\PayOrderWithWallet\:\:logOrderPaid\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Actions/Orders/PayOrderWithWallet.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\OrderStatus\:\:PendingPayment will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Actions/Orders/PayOrderWithWallet.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\OrderStatus\:\:Paid will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Actions/Orders/PayOrderWithWallet.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Actions/Orders/PayOrderWithWallet.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\FulfillmentStatus\:\:Failed will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Actions/Orders/RefundOrderItem.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Actions/Orders/RefundOrderItem.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\WalletTransactionType\:\:Refund will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Actions/Refunds/ApproveRefundRequest.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Actions/Refunds/ApproveRefundRequest.php
+
+		-
+			message: '#^Parameter \#1 \$relations of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\WalletTransaction\>\:\:with\(\) expects array\<array\|\(Closure\(Illuminate\\Database\\Eloquent\\Relations\\Relation\<\*, \*, \*\>\)\: mixed\)\|string\>\|string, array\{reference\: Closure\(Illuminate\\Database\\Eloquent\\Relations\\MorphTo\)\: void\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Actions/Refunds/GetRefundRequests.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\WalletTransactionType\:\:Refund will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Actions/Refunds/RejectRefundRequest.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Actions/Refunds/RejectRefundRequest.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\TopupRequestStatus\:\:Pending will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Actions/Topups/ApproveTopupRequest.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\TopupRequestStatus\:\:Approved will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Actions/Topups/ApproveTopupRequest.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Actions/Topups/ApproveTopupRequest.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\TopupRequestStatus\:\:Pending will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Actions/Topups/RejectTopupRequest.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\TopupRequestStatus\:\:Rejected will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Actions/Topups/RejectTopupRequest.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Actions/Topups/RejectTopupRequest.php
+
+		-
+			message: '#^Method App\\Actions\\Users\\CreateUser\:\:countryCodeRules\(\) should return array\<int, array\<mixed\>\|Illuminate\\Contracts\\Validation\\Rule\|string\> but returns array\<int, Illuminate\\Validation\\Rules\\In\|string\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Actions/Users/CreateUser.php
+
+		-
+			message: '#^Method App\\Actions\\Users\\CreateUser\:\:emailRules\(\) should return array\<int, array\<mixed\>\|Illuminate\\Contracts\\Validation\\Rule\|string\> but returns array\<int, Illuminate\\Validation\\Rules\\Unique\|string\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Actions/Users/CreateUser.php
+
+		-
+			message: '#^Method App\\Actions\\Users\\CreateUser\:\:phoneRules\(\) should return array\<int, array\<mixed\>\|Illuminate\\Contracts\\Validation\\Rule\|string\> but returns array\<int, Illuminate\\Validation\\Rules\\Unique\|string\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Actions/Users/CreateUser.php
+
+		-
+			message: '#^Method App\\Actions\\Users\\CreateUser\:\:usernameRules\(\) should return array\<int, array\<mixed\>\|Illuminate\\Contracts\\Validation\\Rule\|string\> but returns array\<int, Illuminate\\Validation\\Rules\\Unique\|string\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Actions/Users/CreateUser.php
+
+		-
+			message: '#^Method App\\Actions\\Users\\UpdateUser\:\:countryCodeRules\(\) should return array\<int, array\<mixed\>\|Illuminate\\Contracts\\Validation\\Rule\|string\> but returns array\<int, Illuminate\\Validation\\Rules\\In\|string\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Actions/Users/UpdateUser.php
+
+		-
+			message: '#^Method App\\Actions\\Users\\UpdateUser\:\:emailRules\(\) should return array\<int, array\<mixed\>\|Illuminate\\Contracts\\Validation\\Rule\|string\> but returns array\<int, Illuminate\\Validation\\Rules\\Unique\|string\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Actions/Users/UpdateUser.php
+
+		-
+			message: '#^Method App\\Actions\\Users\\UpdateUser\:\:phoneRules\(\) should return array\<int, array\<mixed\>\|Illuminate\\Contracts\\Validation\\Rule\|string\> but returns array\<int, Illuminate\\Validation\\Rules\\Unique\|string\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Actions/Users/UpdateUser.php
+
+		-
+			message: '#^Method App\\Actions\\Users\\UpdateUser\:\:usernameRules\(\) should return array\<int, array\<mixed\>\|Illuminate\\Contracts\\Validation\\Rule\|string\> but returns array\<int, Illuminate\\Validation\\Rules\\Unique\|string\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Actions/Users/UpdateUser.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Actions/Users/UpdateUser.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>username" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Actions/Users/UpdateUser.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$requirements_payload\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/ProcessFulfillments.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\FulfillmentStatus\:\:Queued will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Console/Commands/ProcessFulfillments.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$unit_price\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/ProfitSettleCommand.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Console/Commands/ProfitSettleCommand.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/TopupProofController.php
+
+		-
+			message: '#^Access to an undefined property App\\Livewire\\Settings\\Profile\:\:\$loyaltyNextTier\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Livewire/Settings/Profile.php
+
+		-
+			message: '#^Access to an undefined property App\\Livewire\\Settings\\Profile\:\:\$loyaltyRollingSpend\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Livewire/Settings/Profile.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Livewire/Settings/Profile.php
+
+		-
+			message: '#^Instanceof between App\\Models\\User&Illuminate\\Contracts\\Auth\\MustVerifyEmail and Illuminate\\Contracts\\Auth\\MustVerifyEmail will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Livewire/Settings/Profile.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Livewire/Settings/Profile.php
+
+		-
+			message: '#^Access to an undefined property App\\Livewire\\Users\\UserModals\:\:\$allPermissions\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/Users/UserModals.php
+
+		-
+			message: '#^PHPDoc tag @use has invalid type Database\\Factories\\FulfillmentFactory\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Models/Fulfillment.php
+
+		-
+			message: '#^Type Database\\Factories\\FulfillmentFactory in generic type Illuminate\\Database\\Eloquent\\Factories\\HasFactory\<Database\\Factories\\FulfillmentFactory\> in PHPDoc tag @use is not subtype of template type TFactory of Illuminate\\Database\\Eloquent\\Factories\\Factory of trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory\.$#'
+			identifier: generics.notSubtype
+			count: 1
+			path: app/Models/Fulfillment.php
+
+		-
+			message: '#^PHPDoc tag @use has invalid type Database\\Factories\\FulfillmentLogFactory\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Models/FulfillmentLog.php
+
+		-
+			message: '#^Type Database\\Factories\\FulfillmentLogFactory in generic type Illuminate\\Database\\Eloquent\\Factories\\HasFactory\<Database\\Factories\\FulfillmentLogFactory\> in PHPDoc tag @use is not subtype of template type TFactory of Illuminate\\Database\\Eloquent\\Factories\\Factory of trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory\.$#'
+			identifier: generics.notSubtype
+			count: 1
+			path: app/Models/FulfillmentLog.php
+
+		-
+			message: '#^PHPDoc tag @use has invalid type Database\\Factories\\OrderFactory\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Models/Order.php
+
+		-
+			message: '#^Type Database\\Factories\\OrderFactory in generic type Illuminate\\Database\\Eloquent\\Factories\\HasFactory\<Database\\Factories\\OrderFactory\> in PHPDoc tag @use is not subtype of template type TFactory of Illuminate\\Database\\Eloquent\\Factories\\Factory of trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory\.$#'
+			identifier: generics.notSubtype
+			count: 1
+			path: app/Models/Order.php
+
+		-
+			message: '#^PHPDoc tag @use has invalid type Database\\Factories\\OrderItemFactory\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Models/OrderItem.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\OrderItemStatus\:\:Failed\|App\\Enums\\OrderItemStatus\:\:Fulfilled\|App\\Enums\\OrderItemStatus\:\:Pending\|App\\Enums\\OrderItemStatus\:\:Processing will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Models/OrderItem.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\FulfillmentStatus\:\:Completed will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/OrderItem.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\FulfillmentStatus\:\:Failed will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/OrderItem.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\FulfillmentStatus\:\:Processing will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/OrderItem.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\FulfillmentStatus\:\:Queued will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/OrderItem.php
+
+		-
+			message: '#^Type Database\\Factories\\OrderItemFactory in generic type Illuminate\\Database\\Eloquent\\Factories\\HasFactory\<Database\\Factories\\OrderItemFactory\> in PHPDoc tag @use is not subtype of template type TFactory of Illuminate\\Database\\Eloquent\\Factories\\Factory of trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory\.$#'
+			identifier: generics.notSubtype
+			count: 1
+			path: app/Models/OrderItem.php
+
+		-
+			message: '#^PHPDoc tag @use has invalid type Database\\Factories\\TopupProofFactory\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Models/TopupProof.php
+
+		-
+			message: '#^Type Database\\Factories\\TopupProofFactory in generic type Illuminate\\Database\\Eloquent\\Factories\\HasFactory\<Database\\Factories\\TopupProofFactory\> in PHPDoc tag @use is not subtype of template type TFactory of Illuminate\\Database\\Eloquent\\Factories\\Factory of trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory\.$#'
+			identifier: generics.notSubtype
+			count: 1
+			path: app/Models/TopupProof.php
+
+		-
+			message: '#^PHPDoc tag @use has invalid type Database\\Factories\\TopupRequestFactory\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Models/TopupRequest.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between int\<0, max\> and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Models/TopupRequest.php
+
+		-
+			message: '#^Type Database\\Factories\\TopupRequestFactory in generic type Illuminate\\Database\\Eloquent\\Factories\\HasFactory\<Database\\Factories\\TopupRequestFactory\> in PHPDoc tag @use is not subtype of template type TFactory of Illuminate\\Database\\Eloquent\\Factories\\Factory of trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory\.$#'
+			identifier: generics.notSubtype
+			count: 1
+			path: app/Models/TopupRequest.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Models/TopupRequest.php
+
+		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^PHPDoc tag @use has invalid type Database\\Factories\\WalletFactory\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Models/Wallet.php
+
+		-
+			message: '#^Type Database\\Factories\\WalletFactory in generic type Illuminate\\Database\\Eloquent\\Factories\\HasFactory\<Database\\Factories\\WalletFactory\> in PHPDoc tag @use is not subtype of template type TFactory of Illuminate\\Database\\Eloquent\\Factories\\Factory of trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory\.$#'
+			identifier: generics.notSubtype
+			count: 1
+			path: app/Models/Wallet.php
+
+		-
+			message: '#^PHPDoc tag @use has invalid type Database\\Factories\\WalletTransactionFactory\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Models/WalletTransaction.php
+
+		-
+			message: '#^Type Database\\Factories\\WalletTransactionFactory in generic type Illuminate\\Database\\Eloquent\\Factories\\HasFactory\<Database\\Factories\\WalletTransactionFactory\> in PHPDoc tag @use is not subtype of template type TFactory of Illuminate\\Database\\Eloquent\\Factories\\Factory of trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory\.$#'
+			identifier: generics.notSubtype
+			count: 1
+			path: app/Models/WalletTransaction.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$order_number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Notifications/FulfillmentCompletedNotification.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$order_number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Notifications/FulfillmentFailedNotification.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$email_verified_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$phone\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$username\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Parameter \#1 \$model of method Spatie\\Activitylog\\ActivityLogger\:\:performedOn\(\) expects Illuminate\\Database\\Eloquent\\Model, Illuminate\\Contracts\\Auth\\Authenticatable given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Parameter \#1 \$modelOrId of method Spatie\\Activitylog\\ActivityLogger\:\:causedBy\(\) expects Illuminate\\Database\\Eloquent\\Model\|int\|string\|null, Illuminate\\Contracts\\Auth\\Authenticatable given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between Illuminate\\Contracts\\Auth\\Authenticatable and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/CustomerPriceService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/CustomerPriceService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$unit_price\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/LoyaltySpendService.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Services/LoyaltySpendService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/OperationalIntelligenceService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\FulfillmentStatus\:\:Failed will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/OperationalIntelligenceService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Services/OperationalIntelligenceService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/UserAuditTimelineService.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 3
+			path: app/Services/UserAuditTimelineService.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 8
+			path: app/Services/UserAuditTimelineService.php
+
+		-
+			message: '#^Offset ''currency'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/UserAuditTimelineService.php
+
+		-
+			message: '#^Offset ''new_tier'' on non\-falsy\-string in isset\(\) does not exist\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Services/UserAuditTimelineService.php
+
+		-
+			message: '#^Offset ''order_number'' on non\-falsy\-string in isset\(\) does not exist\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Services/UserAuditTimelineService.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 2
+			path: app/Services/UserAuditTimelineService.php
+
+		-
+			message: '#^Ternary operator condition is always false\.$#'
+			identifier: ternary.alwaysFalse
+			count: 1
+			path: app/Services/UserAuditTimelineService.php

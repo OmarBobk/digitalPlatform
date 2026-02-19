@@ -41,8 +41,8 @@
 - package_requirements
   - id
   - package_id
-  - key (player_id, username, phone)
-  - label ("Player ID")
+  - key (id, username, phone)
+  - label ("ID")
   - type (enum: string, number, select)
   - is_required
   - validation_rules (string nullable) (Laravel-style: required|numeric)
@@ -121,7 +121,7 @@ Fields:
 - unit_price (decimal 12,2)
 - quantity (unsigned int)
 - line_total (decimal 12,2)
-- requirements_payload (json nullable)  // e.g. {"player_id":"...", "region":"..."}
+- requirements_payload (json nullable)  // e.g. {"id":"...", "region":"..."}
 - status (enum/string: pending, processing, fulfilled, failed)
 - created_at, updated_at
 

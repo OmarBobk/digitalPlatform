@@ -17,9 +17,9 @@ class PackageRequirementFactory extends Factory
      */
     public function definition(): array
     {
-        $key = fake()->randomElement(['player_id', 'username', 'phone']);
+        $key = fake()->randomElement(['id', 'username', 'phone']);
         $labels = [
-            'player_id' => 'Player ID',
+            'id' => 'ID',
             'username' => 'Username',
             'phone' => 'Phone',
         ];

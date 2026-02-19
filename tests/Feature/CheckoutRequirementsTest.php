@@ -25,8 +25,8 @@ function makeProductWithRequirement(): array
 
     PackageRequirement::factory()->create([
         'package_id' => $package->id,
-        'key' => 'player_id',
-        'label' => 'Player ID',
+        'key' => 'id',
+        'label' => 'ID',
         'type' => 'string',
         'is_required' => true,
         'validation_rules' => 'required|string',
@@ -87,7 +87,7 @@ test('checkout stores requirements and creates fulfillment', function () {
         'package_id' => $package->id,
         'quantity' => 1,
         'requirements' => [
-            'player_id' => '12345',
+            'id' => '12345',
         ],
     ]]);
 
@@ -96,7 +96,7 @@ test('checkout stores requirements and creates fulfillment', function () {
 
     expect($order->status)->toBe(OrderStatus::Paid);
     expect($item)->not->toBeNull();
-    expect($item->requirements_payload)->toMatchArray(['player_id' => '12345']);
+    expect($item->requirements_payload)->toMatchArray(['id' => '12345']);
     expect(Fulfillment::query()->where('order_id', $order->id)->exists())->toBeTrue();
 });
 
@@ -113,8 +113,8 @@ test('number requirements enforce numeric min value', function () {
 
     PackageRequirement::factory()->create([
         'package_id' => $package->id,
-        'key' => 'player_id',
-        'label' => 'Player ID',
+        'key' => 'id',
+        'label' => 'ID',
         'type' => 'number',
         'is_required' => true,
         'validation_rules' => 'min:5',
@@ -128,7 +128,7 @@ test('number requirements enforce numeric min value', function () {
         'package_id' => $package->id,
         'quantity' => 1,
         'requirements' => [
-            'player_id' => 3,
+            'id' => 3,
         ],
     ]]))->toThrow(ValidationException::class);
 
@@ -137,7 +137,7 @@ test('number requirements enforce numeric min value', function () {
         'package_id' => $package->id,
         'quantity' => 1,
         'requirements' => [
-            'player_id' => 5,
+            'id' => 5,
         ],
     ]]);
 

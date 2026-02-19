@@ -191,6 +191,10 @@ new class extends Component
             'reason',
             'username',
             'role',
+            'roles',
+            'previous_roles',
+            'permissions',
+            'previous_permissions',
             'phone',
             'is_active',
             'last_login_at',
@@ -211,7 +215,7 @@ new class extends Component
             }
 
             if (is_array($value)) {
-                $value = json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                $value = implode(', ', array_map(fn ($v) => is_string($v) ? $v : json_encode($v), $value));
             }
 
             $summary[] = $key.': '.$value;
@@ -227,6 +231,64 @@ new class extends Component
         }
 
         return $this->subjectOptions[$type] ?? class_basename($type);
+    }
+
+    protected function subjectDisplayText(Activity $activity): string
+    {
+        if ($activity->subject_type === User::class && $activity->subject instanceof User) {
+            $user = $activity->subject;
+
+            return 'ID: ' . ($user->id ?? $activity->subject_id ?? '—') . ', ' . __('messages.user') . ': ' . ($user->username ?? $user->name ?? '—');
+        }
+
+        $typeLabel = $this->subjectTypeLabel($activity->subject_type);
+
+        return $typeLabel . ' #' . ($activity->subject_id ?? '—');
+    }
+
+    /**
+     * Format activity properties for the details modal with human-readable labels and values.
+     *
+     * @return array<string, string>
+     */
+    protected function formatPropertiesForModal(mixed $properties): array
+    {
+        if ($properties instanceof \Illuminate\Support\Collection) {
+            $properties = $properties->toArray();
+        }
+
+        if (! is_array($properties) || $properties === []) {
+            return [];
+        }
+
+        $out = [];
+
+        foreach ($properties as $key => $value) {
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            $label = __('messages.activity_prop_'.$key);
+            if ($label === 'messages.activity_prop_'.$key) {
+                $label = str_replace('_', ' ', ucfirst($key));
+            }
+
+            if (is_array($value)) {
+                $value = implode(', ', array_map(fn ($v) => is_string($v) ? $v : json_encode($v), $value));
+            }
+
+            if (is_bool($value)) {
+                $value = $value ? __('messages.yes') : __('messages.no');
+            }
+
+            if ($value instanceof \Carbon\CarbonInterface || $value instanceof \DateTimeInterface) {
+                $value = $value->format('Y-m-d H:i:s');
+            }
+
+            $out[$label] = (string) $value;
+        }
+
+        return $out;
     }
 
     protected function logNameColor(?string $logName): string
@@ -439,7 +501,7 @@ new class extends Component
         </form>
 
         <div class="mt-4 overflow-hidden rounded-2xl border border-zinc-100 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-            <div class="overflow-x-auto">
+            <div class="max-h-[calc(100vh-14rem)] overflow-auto">
                 @if ($this->activities->isEmpty())
                     <div class="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
                         <flux:heading size="sm" class="text-zinc-900 dark:text-zinc-100">
@@ -451,16 +513,16 @@ new class extends Component
                     </div>
                 @else
                     <table class="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800" data-test="activities-table">
-                        <thead class="bg-zinc-100 text-xs uppercase tracking-wide text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                        <thead class="sticky top-0 z-10 bg-zinc-100 text-xs uppercase tracking-wide text-zinc-700 shadow-sm dark:bg-zinc-800 dark:text-zinc-300 dark:shadow-zinc-900/50">
                             <tr>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.created') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.log_name') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.event') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.description') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.causer') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.subject_type') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.properties') }}</th>
-                                <th class="px-5 py-3 text-end font-semibold">{{ __('messages.actions') }}</th>
+                                <th class="bg-zinc-100 px-5 py-3 text-start font-semibold dark:bg-zinc-800">{{ __('messages.created') }}</th>
+                                <th class="bg-zinc-100 px-5 py-3 text-start font-semibold dark:bg-zinc-800">{{ __('messages.log_name') }}</th>
+                                <th class="bg-zinc-100 px-5 py-3 text-start font-semibold dark:bg-zinc-800">{{ __('messages.event') }}</th>
+                                <th class="bg-zinc-100 px-5 py-3 text-start font-semibold dark:bg-zinc-800">{{ __('messages.description') }}</th>
+                                <th class="bg-zinc-100 px-5 py-3 text-start font-semibold dark:bg-zinc-800">{{ __('messages.causer') }}</th>
+                                <th class="bg-zinc-100 px-5 py-3 text-start font-semibold dark:bg-zinc-800">{{ __('messages.subject_type') }}</th>
+                                <th class="bg-zinc-100 px-5 py-3 text-start font-semibold dark:bg-zinc-800">{{ __('messages.properties') }}</th>
+                                <th class="bg-zinc-100 px-5 py-3 text-end font-semibold dark:bg-zinc-800">{{ __('messages.actions') }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -484,8 +546,20 @@ new class extends Component
                                             {{ $activity->event ?? '—' }}
                                         </flux:badge>
                                     </td>
-                                    <td class="px-5 py-4">
-                                        <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ $activity->description }}</span>
+                                    <td class="px-5 py-4 max-w-[180px]"
+                                        x-data="{
+                                            expanded: false,
+                                            desc: @js($activity->description ?? ''),
+                                            limit: 38,
+                                            get displayText() { return this.expanded || this.desc.length <= this.limit ? this.desc : this.desc.slice(0, this.limit) + '...'; },
+                                            get isLong() { return this.desc.length > this.limit; },
+                                            showLess: @js(__('messages.show_less')),
+                                            more: @js(__('messages.more'))
+                                        }"
+                                    >
+                                        <span class="block max-w-full truncate font-medium text-zinc-900 dark:text-zinc-100" x-show="!expanded" x-cloak x-text="displayText" :title="isLong ? desc : ''"></span>
+                                        <span class="font-medium text-zinc-900 dark:text-zinc-100 break-words" x-show="expanded" x-cloak x-text="desc" style="display: none;"></span>
+                                        <button type="button" class="mt-0.5 block text-left text-xs font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300" x-show="isLong" x-cloak x-on:click="expanded = !expanded" x-text="expanded ? showLess : more" :aria-expanded="expanded"></button>
                                     </td>
                                     <td class="px-5 py-4">
                                         @if ($causer)
@@ -500,43 +574,40 @@ new class extends Component
                                         @endif
                                     </td>
                                     <td class="px-5 py-4">
-                                        <span class="font-semibold text-zinc-800 dark:text-zinc-200">{{ $this->subjectTypeLabel($activity->subject_type) }}</span>
-                                        <span class="ml-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">#{{ $activity->subject_id ?? '—' }}</span>
+                                        <span class="font-medium text-zinc-800 dark:text-zinc-200">{{ $this->subjectDisplayText($activity) }}</span>
                                     </td>
-                                    <td class="px-5 py-4">
+                                    <td class="px-5 py-4 max-w-[200px]"
+                                        x-data="{
+                                            expanded: false,
+                                            lines: @js(collect($summary)->map(fn ($line) => array_combine(['key', 'value'], array_map('trim', array_replace([0 => '', 1 => $line], explode(':', $line, 2)))))->values()->all()),
+                                            limit: 30,
+                                            get hasExtraLines() { return this.lines.length > 2; },
+                                            get extraCount() { return this.lines.length - 2; },
+                                            get anyFirstTwoLong() { return this.lines.slice(0, 2).some(l => l.value.length > this.limit); },
+                                            get showToggle() { return this.hasExtraLines || this.anyFirstTwoLong; },
+                                            showLess: @js(__('messages.show_less')),
+                                            more: @js(__('messages.more'))
+                                        }"
+                                    >
                                         @if ($summary !== [])
-                                            @php
-                                                $summaryCount = count($summary);
-                                            @endphp
-                                            <div class="space-y-0.5 text-xs" x-data="{ expanded: false }">
-                                                @foreach ($summary as $idx => $line)
-                                                    @if ($idx < 2)
-                                                        <div class="font-medium text-zinc-700 dark:text-zinc-300">
-                                                            <span class="text-zinc-500 dark:text-zinc-400">{{ explode(':', $line, 2)[0] ?? '' }}:</span>
-                                                            {{ explode(':', $line, 2)[1] ?? $line }}
-                                                        </div>
-                                                    @endif
-                                                @endforeach
-                                                @if ($summaryCount > 2)
-                                                    <div x-show="expanded" x-collapse class="space-y-0.5">
-                                                        @foreach ($summary as $idx => $line)
-                                                            @if ($idx >= 2)
-                                                                <div class="text-zinc-700 dark:text-zinc-300">
-                                                                    <span class="text-zinc-500 dark:text-zinc-400">{{ explode(':', $line, 2)[0] ?? '' }}:</span>
-                                                                    {{ explode(':', $line, 2)[1] ?? $line }}
-                                                                </div>
-                                                            @endif
-                                                        @endforeach
+                                            <div class="space-y-0.5 text-xs min-w-0">
+                                                <template x-for="(line, idx) in lines.slice(0, expanded ? lines.length : 2)" :key="idx">
+                                                    <div class="font-medium text-zinc-700 dark:text-zinc-300 min-w-0">
+                                                        <span class="shrink-0 text-zinc-500 dark:text-zinc-400" x-text="line.key + ':'"></span>
+                                                        <span x-show="!expanded" x-cloak x-text="line.value.length > limit ? line.value.slice(0, limit) + '...' : line.value" :title="line.value.length > limit ? line.value : ''"></span>
+                                                        <span class="break-words" x-show="expanded" x-cloak x-text="line.value" style="display: none;"></span>
                                                     </div>
-                                                    <button
-                                                        type="button"
-                                                        class="text-left font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
-                                                        x-on:click="expanded = !expanded"
-                                                        :aria-expanded="expanded"
-                                                    >
-                                                        <span x-text="expanded ? '{{ __('messages.show_less') }}' : '+{{ $summaryCount - 2 }} {{ __('messages.more') }}'"></span>
-                                                    </button>
-                                                @endif
+                                                </template>
+                                                <button
+                                                    type="button"
+                                                    class="text-left font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
+                                                    x-show="showToggle"
+                                                    x-cloak
+                                                    x-on:click="expanded = !expanded"
+                                                    :aria-expanded="expanded"
+                                                >
+                                                    <span x-text="expanded ? showLess : (hasExtraLines ? `+${extraCount} ${more}` : more)"></span>
+                                                </button>
                                             </div>
                                         @else
                                             <span class="text-zinc-400 dark:text-zinc-500">—</span>
@@ -574,8 +645,20 @@ new class extends Component
                         <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
                             {{ __('messages.activity_details') }}
                         </flux:heading>
-                        <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">
-                            {{ $this->selectedActivity->event ?? $this->selectedActivity->description }}
+                        <flux:text class="text-sm text-zinc-600 dark:text-zinc-400"
+                            x-data="{
+                                expanded: false,
+                                desc: @js($this->selectedActivity->event ?? $this->selectedActivity->description ?? ''),
+                                limit: 80,
+                                get displayText() { return this.expanded || this.desc.length <= this.limit ? this.desc : this.desc.slice(0, this.limit) + '...'; },
+                                get isLong() { return this.desc.length > this.limit; },
+                                showLess: @js(__('messages.show_less')),
+                                more: @js(__('messages.more'))
+                            }"
+                        >
+                            <span x-show="!expanded" x-cloak x-text="displayText"></span>
+                            <span x-show="expanded" x-cloak class="block break-words" style="display: none;" x-text="desc"></span>
+                            <button type="button" class="mt-0.5 text-left text-xs font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300" x-show="isLong" x-cloak x-on:click="expanded = !expanded" x-text="expanded ? showLess : more" :aria-expanded="expanded"></button>
                         </flux:text>
                     </div>
                     <flux:badge color="gray">{{ $this->selectedActivity->log_name ?? '—' }}</flux:badge>
@@ -604,13 +687,8 @@ new class extends Component
                         <div class="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                             {{ __('messages.subject_type') }}
                         </div>
-                        <div class="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
-                            <div class="font-semibold text-zinc-900 dark:text-zinc-100">
-                                {{ $this->subjectTypeLabel($this->selectedActivity->subject_type) }}
-                            </div>
-                            <div class="text-xs text-zinc-500 dark:text-zinc-400">
-                                #{{ $this->selectedActivity->subject_id ?? '—' }}
-                            </div>
+                        <div class="mt-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                            {{ $this->subjectDisplayText($this->selectedActivity) }}
                         </div>
                     </div>
                 </div>
@@ -620,13 +698,34 @@ new class extends Component
                         {{ __('messages.properties') }}
                     </div>
                     <div class="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
-                        @if ($this->selectedActivity->properties)
-                            @php
-                                $properties = $this->selectedActivity->properties instanceof \Illuminate\Support\Collection
-                                    ? $this->selectedActivity->properties->toArray()
-                                    : $this->selectedActivity->properties;
-                            @endphp
-                            <pre class="whitespace-pre-wrap break-words rounded-xl border border-zinc-200 bg-white p-4 text-xs text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">{{ json_encode($properties, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }}</pre>
+                        @php
+                            $modalProperties = $this->selectedActivity->properties
+                                ? $this->formatPropertiesForModal($this->selectedActivity->properties)
+                                : [];
+                        @endphp
+                        @if ($modalProperties !== [])
+                            <dl class="space-y-2 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
+                                @foreach ($modalProperties as $label => $value)
+                                    <div class="flex flex-col gap-0.5 sm:flex-row sm:gap-2"
+                                        x-data="{
+                                            expanded: false,
+                                            value: @js($value),
+                                            limit: 80,
+                                            get displayText() { return this.expanded || this.value.length <= this.limit ? this.value : this.value.slice(0, this.limit) + '...'; },
+                                            get isLong() { return this.value.length > this.limit; },
+                                            showLess: @js(__('messages.show_less')),
+                                            more: @js(__('messages.more'))
+                                        }"
+                                    >
+                                        <dt class="shrink-0 font-medium text-zinc-500 dark:text-zinc-400 sm:w-40">{{ $label }}</dt>
+                                        <dd class="min-w-0 break-words text-zinc-900 dark:text-zinc-100">
+                                            <span x-show="!expanded" x-cloak x-text="displayText"></span>
+                                            <span x-show="expanded" x-cloak class="block break-words" style="display: none;" x-text="value"></span>
+                                            <button type="button" class="mt-0.5 text-left text-xs font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300" x-show="isLong" x-cloak x-on:click="expanded = !expanded" x-text="expanded ? showLess : more" :aria-expanded="expanded"></button>
+                                        </dd>
+                                    </div>
+                                @endforeach
+                            </dl>
                         @else
                             <span class="text-zinc-500 dark:text-zinc-400">—</span>
                         @endif

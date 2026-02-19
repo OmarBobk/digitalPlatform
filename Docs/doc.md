@@ -3,7 +3,7 @@
 
 
 #BUG
-- ###DONE if a non-admin user hit /admin he will see forbidden but he should be redirected to 404 error page
+- ###DONE if a non-admin user hit /dashboard he will see forbidden but he should be redirected to 404 error page
 - ###DONE If user click on the logo on the main page it should redirect him to home page
 - ###DONE after login / register user should be redirected to home page not dashboard
 - ###DONE packages/index -> create form : when there is an error and the language is arabic the field name is displaying in English instead in arabic
@@ -30,7 +30,8 @@
 - Backend:
   - ###DONE Users Manager
   - ###DOING Notifications with Laravel Verb
-  - ###DONE if admin is on the fulfillment page and a new fulfillment came, admin should refresh the page so he can see the new fulfillment now how to fix this behavior 
+  - ###DONE if admin is on the fulfillment page and a new fulfillment came, admin should refresh the page so he can see the new fulfillment now how to fix this behavior
+  - ###TODO Activities: The table header should be sticky
 - Frontend:
   - ###DONE wallet transaction in /wallets should be more described
   - ###DONE Wallet /wallet Request topups form borders remove the ring
@@ -38,4 +39,15 @@
   - ###DONE Register form: mask the phone number field
 
 
-🔒 Ticket → Audit → Fix → Lock
+
+
+
+
+
+
+
+
+**🔒 Ticket → Audit → Fix → Lock**
+
+
+

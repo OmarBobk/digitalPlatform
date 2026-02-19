@@ -42,7 +42,7 @@ function makeCompletedOrder(User $user, array $payload): array
         'unit_price' => 25,
         'quantity' => 1,
         'line_total' => 25,
-        'requirements_payload' => ['player_id' => '12345'],
+        'requirements_payload' => ['id' => '12345'],
         'status' => OrderItemStatus::Fulfilled,
     ]);
 

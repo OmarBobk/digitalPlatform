@@ -38,12 +38,16 @@ class UpdateUser
             'profile_photo' => $input['profile_photo'] ?? $user->profile_photo,
         ])->save();
 
+        $loggedRoles = false;
+        $loggedPermissions = false;
+
         $roleNames = $input['roles'] ?? null;
         if (is_array($roleNames)) {
             $previousRoles = $user->getRoleNames()->all();
             $user->syncRoles($roleNames);
             if ($previousRoles !== $roleNames) {
                 $this->logRolesUpdated($user, $roleNames, $previousRoles, $causedById);
+                $loggedRoles = true;
             }
         }
 
@@ -53,20 +57,23 @@ class UpdateUser
             $user->syncPermissions($permissionNames);
             if ($previousPermissions !== $permissionNames) {
                 $this->logPermissionsUpdated($user, $permissionNames, $previousPermissions, $causedById);
+                $loggedPermissions = true;
             }
         }
 
-        $causer = User::query()->find($causedById);
-        activity()
-            ->inLog('admin')
-            ->event('user.updated')
-            ->performedOn($user)
-            ->causedBy($causer)
-            ->withProperties([
-                'user_id' => $user->id,
-                'email' => $user->email,
-            ])
-            ->log('User updated by admin');
+        if (! $loggedRoles && ! $loggedPermissions) {
+            $causer = User::query()->find($causedById);
+            activity()
+                ->inLog('admin')
+                ->event('user.updated')
+                ->performedOn($user)
+                ->causedBy($causer)
+                ->withProperties([
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                ])
+                ->log('User updated by admin');
+        }
     }
 
     /**
@@ -76,6 +83,24 @@ class UpdateUser
     private function logRolesUpdated(User $user, array $newRoles, array $oldRoles, int $causedById): void
     {
         $causer = User::query()->find($causedById);
+        $adminUsername = $causer?->username ?? $causer?->name ?? 'admin';
+        $targetUsername = $user->username ?? $user->name ?? (string) $user->id;
+
+        $removed = array_values(array_diff($oldRoles, $newRoles));
+        $added = array_values(array_diff($newRoles, $oldRoles));
+
+        $parts = [];
+        if ($removed !== []) {
+            $rolesList = implode(', ', $removed);
+            $parts[] = "removed role {$rolesList} from {$targetUsername}";
+        }
+        if ($added !== []) {
+            $rolesList = implode(', ', $added);
+            $parts[] = "assigned role {$rolesList} to {$targetUsername}";
+        }
+        $action = implode(' and ', $parts) ?: "updated roles for {$targetUsername}";
+        $description = "Admin({$adminUsername}) {$action}";
+
         activity()
             ->inLog('admin')
             ->event('user.roles_updated')
@@ -86,7 +111,7 @@ class UpdateUser
                 'roles' => $newRoles,
                 'previous_roles' => $oldRoles,
             ])
-            ->log('User roles updated');
+            ->log($description);
     }
 
     /**
@@ -96,6 +121,24 @@ class UpdateUser
     private function logPermissionsUpdated(User $user, array $newPermissions, array $oldPermissions, int $causedById): void
     {
         $causer = User::query()->find($causedById);
+        $adminUsername = $causer?->username ?? $causer?->name ?? 'admin';
+        $targetUsername = $user->username ?? $user->name ?? (string) $user->id;
+
+        $removed = array_values(array_diff($oldPermissions, $newPermissions));
+        $added = array_values(array_diff($newPermissions, $oldPermissions));
+
+        $parts = [];
+        if ($removed !== []) {
+            $permList = implode(', ', $removed);
+            $parts[] = "removed permission {$permList} from {$targetUsername}";
+        }
+        if ($added !== []) {
+            $permList = implode(', ', $added);
+            $parts[] = "assigned permission {$permList} to {$targetUsername}";
+        }
+        $action = implode(' and ', $parts) ?: "updated permissions for {$targetUsername}";
+        $description = "Admin({$adminUsername}) {$action}";
+
         activity()
             ->inLog('admin')
             ->event('user.permissions_updated')
@@ -106,6 +149,6 @@ class UpdateUser
                 'permissions' => $newPermissions,
                 'previous_permissions' => $oldPermissions,
             ])
-            ->log('User direct permissions updated');
+            ->log($description);
     }
 }

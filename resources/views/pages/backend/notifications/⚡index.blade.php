@@ -43,6 +43,7 @@ new class extends Component
     {
         return Auth::user()
             ->notifications()
+            ->reorder()
             ->select('type')
             ->distinct()
             ->pluck('type')
