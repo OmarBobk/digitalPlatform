@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Users;
 
 use App\Concerns\ProfileValidationRules;
+use App\Data\UpdateUserProfileData;
 use App\Enums\Timezone;
 use App\Models\User;
 use Illuminate\Support\Facades\Validator;
@@ -23,25 +24,35 @@ class UpdateUser
     {
         Validator::make($input, $this->profileRules($user->id))->validate();
 
+        $data = UpdateUserProfileData::from($input);
+
         $timezone = Timezone::detect(
-            $input['timezone_detected'] ?? null,
-            $input['country_code'] ?? null
+            $data->timezone_detected,
+            $data->country_code
         );
 
+        $previous = [
+            'name' => $user->name,
+            'username' => $user->username,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'country_code' => $user->country_code,
+        ];
+
         $user->forceFill([
-            'name' => $input['name'],
-            'username' => $input['username'],
-            'email' => $input['email'],
-            'phone' => $input['phone'] ?? null,
-            'country_code' => $input['country_code'] ?? null,
+            'name' => $data->name,
+            'username' => $data->username,
+            'email' => $data->email,
+            'phone' => $data->phone,
+            'country_code' => $data->country_code,
             'timezone' => $timezone,
-            'profile_photo' => $input['profile_photo'] ?? $user->profile_photo,
+            'profile_photo' => $data->profile_photo ?? $user->profile_photo,
         ])->save();
 
         $loggedRoles = false;
         $loggedPermissions = false;
 
-        $roleNames = $input['roles'] ?? null;
+        $roleNames = $data->roles;
         if (is_array($roleNames)) {
             $previousRoles = $user->getRoleNames()->all();
             $user->syncRoles($roleNames);
@@ -51,7 +62,7 @@ class UpdateUser
             }
         }
 
-        $permissionNames = $input['permissions'] ?? null;
+        $permissionNames = $data->permissions;
         if (is_array($permissionNames)) {
             $previousPermissions = $user->getDirectPermissions()->pluck('name')->all();
             $user->syncPermissions($permissionNames);
@@ -62,18 +73,79 @@ class UpdateUser
         }
 
         if (! $loggedRoles && ! $loggedPermissions) {
-            $causer = User::query()->find($causedById);
-            activity()
-                ->inLog('admin')
-                ->event('user.updated')
-                ->performedOn($user)
-                ->causedBy($causer)
-                ->withProperties([
-                    'user_id' => $user->id,
-                    'email' => $user->email,
-                ])
-                ->log('User updated by admin');
+            $changes = $this->profileChanges($previous, [
+                'name' => $user->name,
+                'username' => $user->username,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'country_code' => $user->country_code,
+            ]);
+            if ($changes !== []) {
+                $this->logProfileUpdated($user, $changes, $causedById);
+            }
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $previous
+     * @param  array<string, mixed>  $current
+     * @return array<string, array{previous: mixed, updated: mixed}>
+     */
+    private function profileChanges(array $previous, array $current): array
+    {
+        $changes = [];
+        $fields = ['name', 'username', 'email', 'phone', 'country_code'];
+        foreach ($fields as $field) {
+            $old = $previous[$field] ?? null;
+            $new = $current[$field] ?? null;
+            if ((string) $old !== (string) $new) {
+                $changes[$field] = ['previous' => $old, 'updated' => $new];
+            }
+        }
+
+        return $changes;
+    }
+
+    /**
+     * @param  array<string, array{previous: mixed, updated: mixed}>  $changes
+     */
+    private function logProfileUpdated(User $user, array $changes, int $causedById): void
+    {
+        $causer = User::query()->find($causedById);
+        $adminUsername = $causer?->username ?? $causer?->name ?? 'admin';
+        $targetUsername = $user->username ?? $user->name ?? (string) $user->id;
+
+        $fieldLabels = [
+            'name' => 'name',
+            'username' => 'username',
+            'email' => 'email',
+            'phone' => 'phone',
+            'country_code' => 'country code',
+        ];
+        $changedParts = [];
+        foreach (array_keys($changes) as $field) {
+            $changedParts[] = $fieldLabels[$field];
+        }
+        $fieldsPhrase = count($changedParts) === 1
+            ? $changedParts[0]
+            : implode(', ', array_slice($changedParts, 0, -1)).' and '.$changedParts[array_key_last($changedParts)];
+        $description = "Admin({$adminUsername}) updated the {$fieldsPhrase} of user {$targetUsername}";
+
+        $properties = [
+            'user_id' => $user->id,
+        ];
+        foreach ($changes as $field => $vals) {
+            $properties['previous_'.$field] = $vals['previous'];
+            $properties['updated_'.$field] = $vals['updated'];
+        }
+
+        activity()
+            ->inLog('admin')
+            ->event('user.updated')
+            ->performedOn($user)
+            ->causedBy($causer)
+            ->withProperties($properties)
+            ->log($description);
     }
 
     /**

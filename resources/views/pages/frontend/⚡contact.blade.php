@@ -6,9 +6,12 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Masmerise\Toaster\Toastable;
 
 new #[Layout('layouts::frontend')] class extends Component
 {
+    use Toastable;
+
     public string $name = '';
 
     public string $email = '';
@@ -40,7 +43,7 @@ new #[Layout('layouts::frontend')] class extends Component
             $this->message
         ));
 
-        session()->flash('contact-success', true);
+        $this->success(__('messages.contact_success'));
         $this->reset('name', 'email', 'subject', 'message');
     }
 
@@ -93,12 +96,6 @@ new #[Layout('layouts::frontend')] class extends Component
 
     <section class="mt-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:p-6">
         <flux:heading size="sm" class="mb-4 text-zinc-900 dark:text-zinc-100">{{ __('messages.send_us_a_message') }}</flux:heading>
-
-        @if (session('contact-success'))
-            <flux:callout variant="subtle" icon="check-circle" class="mb-4">
-                {{ __('messages.contact_success') }}
-            </flux:callout>
-        @endif
 
         <form wire:submit="submit" class="space-y-6">
             <flux:error name="form" class="mb-4" />

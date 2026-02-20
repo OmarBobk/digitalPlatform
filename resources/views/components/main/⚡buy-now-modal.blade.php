@@ -10,9 +10,11 @@ use App\Models\Product;
 use App\Services\CustomerPriceService;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
+use Masmerise\Toaster\Toastable;
 
 new class extends Component
 {
+    use Toastable;
     public bool $showBuyNowModal = false;
     public ?int $buyNowProductId = null;
     public ?string $buyNowProductName = null;
@@ -150,18 +152,22 @@ new class extends Component
 
             if (! $order->exists || $order->status !== OrderStatus::Paid) {
                 $this->buyNowError = __('messages.checkout_could_not_complete');
+                $this->error($this->buyNowError);
+
                 return;
             }
 
             $message = __('messages.payment_successful_order_processing', ['order_number' => $order->order_number]);
-            $this->dispatch('cart-toast', message: $message);
+            $this->success($message);
             $this->closeBuyNow();
         } catch (ValidationException $exception) {
             $this->buyNowError = collect($exception->errors())->flatten()->first()
                 ?? __('messages.checkout_validation_failed');
+            $this->error($this->buyNowError);
         } catch (\Throwable $e) {
             report($e);
             $this->buyNowError = __('messages.something_went_wrong_checkout');
+            $this->error($this->buyNowError);
         }
     }
 
@@ -384,29 +390,6 @@ new class extends Component
         x-on:open-buy-now.window="$wire.openBuyNow($event.detail.productId, false, $event.detail.quantity)"
         x-on:open-package-overlay.window="$wire.openPackageOverlay($event.detail.packageId)"
     >
-        <div
-            x-data="cartToastOnModal(@js(__('main.add_to_cart_for')))"
-            x-on:cart-item-added.window="notify($event.detail)"
-            x-on:cart-toast.window="notify($event.detail)"
-            class="pointer-events-none sticky z-10 flex w-full max-w-full flex-col gap-2 px-2 sm:px-0"
-            aria-live="polite"
-        >
-            <template x-for="toast in toasts" :key="toast.id">
-                <div
-                    x-show="toast.visible"
-                    x-transition:enter="transition ease-out duration-200"
-                    x-transition:enter-start="opacity-0 translate-y-1 translate-x-2"
-                    x-transition:enter-end="opacity-100 translate-y-0 translate-x-0"
-                    x-transition:leave="transition ease-in duration-150"
-                    x-transition:leave-start="opacity-100 translate-y-0"
-                    x-transition:leave-end="opacity-0 translate-y-1"
-                    class="pointer-events-auto flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-white/95 px-3 py-2 text-xs font-medium text-emerald-700 shadow-md backdrop-blur-sm dark:border-zinc-600 dark:bg-zinc-800/95 dark:text-emerald-400 dark:shadow-zinc-950/50"
-                >
-                    <flux:icon icon="check-circle" class="size-3.5 shrink-0 text-emerald-500 dark:text-emerald-400" />
-                    <span class="truncate" x-text="toast.message"></span>
-                </div>
-            </template>
-        </div>
         <div class="flex items-center">
             <div class="flex items-center">
                 <template x-if="!showPackages && @js($isPackageOverlayOpen)">

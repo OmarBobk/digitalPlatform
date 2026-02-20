@@ -11,10 +11,12 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Masmerise\Toaster\Toastable;
 
 class Profile extends Component
 {
     use ProfileValidationRules;
+    use Toastable;
 
     public string $name = '';
 
@@ -39,7 +41,11 @@ class Profile extends Component
     {
         $user = Auth::user();
 
-        $validated = $this->validate($this->profileRules($user->id));
+        $validated = $this->validate([
+            'name' => $this->nameRules(),
+            'username' => $this->usernameRules($user->id),
+            'email' => $this->emailRules($user->id),
+        ]);
 
         $user->fill($validated);
 
@@ -49,6 +55,7 @@ class Profile extends Component
 
         $user->save();
 
+        $this->success(__('messages.saved'));
         $this->dispatch('profile-updated', name: $user->name);
     }
 
@@ -66,7 +73,7 @@ class Profile extends Component
         }
 
         $user->sendEmailVerificationNotification();
-
+        $this->info(__('messages.verification_link_sent'));
         Session::flash('status', 'verification-link-sent');
     }
 

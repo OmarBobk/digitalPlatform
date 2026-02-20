@@ -29,9 +29,11 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Masmerise\Toaster\Toastable;
 
 new #[Layout('layouts::frontend')] class extends Component
 {
+    use Toastable;
     use WithFileUploads;
 
     public ?string $topupAmount = null;
@@ -80,6 +82,7 @@ new #[Layout('layouts::frontend')] class extends Component
         if ($hasPending) {
             $this->noticeVariant = 'danger';
             $this->noticeMessage = __('messages.topup_request_pending');
+            $this->warning(__('messages.topup_request_pending'));
 
             return;
         }
@@ -145,6 +148,7 @@ new #[Layout('layouts::frontend')] class extends Component
 
         $this->noticeVariant = 'success';
         $this->noticeMessage = __('messages.topup_request_created');
+        $this->success(__('messages.topup_request_created'));
     }
 
     public function getWalletProperty(): Wallet

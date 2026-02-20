@@ -1,3 +1,5 @@
+import '../../vendor/masmerise/livewire-toaster/resources/js';
+
 document.addEventListener('alpine:init', () => {
     const { Alpine } = window;
 
@@ -16,12 +18,17 @@ document.addEventListener('alpine:init', () => {
             currency: 'USD',
             maximumFractionDigits: 2,
         }),
+        addToCartMessageTemplate: 'Added :name to cart',
+
         init() {
             if (this.hydrated) {
                 return;
             }
 
             this.items = this.read();
+            if (typeof window.__addToCartMessageTemplate !== 'undefined') {
+                this.addToCartMessageTemplate = window.__addToCartMessageTemplate;
+            }
             this.hydrated = true;
         },
         setValidationMessages(messages) {
@@ -86,6 +93,8 @@ document.addEventListener('alpine:init', () => {
             this.persist();
 
             if (product?.name) {
+                const message = this.formatMessage(this.addToCartMessageTemplate, { name: product.name });
+                window.Toaster?.success(message);
                 window.dispatchEvent(new CustomEvent('cart-item-added', {
                     detail: {
                         name: product.name,

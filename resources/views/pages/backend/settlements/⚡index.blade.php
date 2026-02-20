@@ -7,9 +7,11 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Masmerise\Toaster\Toastable;
 
 new class extends Component
 {
+    use Toastable;
     use WithPagination;
 
     public int $perPage = 15;
@@ -38,13 +40,16 @@ new class extends Component
             if ($output !== '') {
                 $this->noticeVariant = 'success';
                 $this->noticeMessage = $output;
+                $this->success($output);
             } else {
                 $this->noticeVariant = 'success';
                 $this->noticeMessage = __('messages.settlement_completed');
+                $this->success(__('messages.settlement_completed'));
             }
         } catch (\Throwable $e) {
             $this->noticeVariant = 'danger';
             $this->noticeMessage = $e->getMessage();
+            $this->error($e->getMessage());
         } finally {
             $this->isSettling = false;
         }

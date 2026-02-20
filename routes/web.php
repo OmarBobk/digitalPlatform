@@ -1,7 +1,10 @@
 <?php
 
+use App\Exports\UsersExport;
 use App\Http\Controllers\TopupProofController;
+use App\Models\User;
 use Illuminate\Support\Facades\Route;
+use Maatwebsite\Excel\Facades\Excel;
 
 Route::livewire('/404', 'pages::errors.404')->name('404');
 
@@ -48,6 +51,11 @@ Route::middleware(['auth', 'verified', 'backend'])->group(function () {
     Route::livewire('/admin/activities', 'pages::backend.activities.index')->name('admin.activities.index');
     Route::livewire('/admin/system-events', 'pages::backend.system-events.index')->name('admin.system-events.index');
     Route::livewire('/admin/users', 'pages::backend.users.index')->name('admin.users.index');
+    Route::get('/admin/users/export', function () {
+        abort_unless(auth()->user()?->can('viewAny', User::class), 403);
+
+        return Excel::download(new UsersExport, 'users.xlsx');
+    })->name('admin.users.export');
     Route::livewire('/admin/users/{user}', 'pages::backend.users.show')->name('admin.users.show');
     Route::livewire('/admin/users/{user}/audit', 'pages::backend.users.audit')->name('admin.users.audit');
     Route::livewire('/fulfillments', 'pages::backend.fulfillments.index')->name('fulfillments');

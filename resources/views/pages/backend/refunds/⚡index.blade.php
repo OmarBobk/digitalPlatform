@@ -11,9 +11,11 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Masmerise\Toaster\Toastable;
 
 new class extends Component
 {
+    use Toastable;
     use WithPagination;
 
     public int $perPage = 10;
@@ -35,6 +37,7 @@ new class extends Component
 
         $this->noticeVariant = 'success';
         $this->noticeMessage = __('messages.refund_approved');
+        $this->success(__('messages.refund_approved'));
     }
 
     public function rejectRefund(int $transactionId): void
@@ -46,6 +49,7 @@ new class extends Component
 
         $this->noticeVariant = 'danger';
         $this->noticeMessage = __('messages.refund_rejected');
+        $this->error(__('messages.refund_rejected'));
     }
 
     public function getRefundRequestsProperty(): LengthAwarePaginator

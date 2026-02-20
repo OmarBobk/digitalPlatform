@@ -121,6 +121,16 @@ new class extends Component
                 >
                     {{ __('messages.refresh') }}
                 </flux:button>
+                <flux:button
+                    type="button"
+                    variant="ghost"
+                    icon="arrow-down-tray"
+                    href="{{ route('admin.users.export') }}"
+                    target="_blank"
+                    rel="noopener"
+                >
+                    {{ __('messages.export') }}
+                </flux:button>
             </div>
         </div>
 

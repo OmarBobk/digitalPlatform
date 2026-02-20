@@ -189,7 +189,19 @@ new class extends Component
             'status_to',
             'provider',
             'reason',
+            'user_id',
+            'previous_name',
+            'updated_name',
+            'previous_username',
+            'updated_username',
+            'previous_email',
+            'updated_email',
+            'previous_phone',
+            'updated_phone',
+            'previous_country_code',
+            'updated_country_code',
             'username',
+            'email',
             'role',
             'roles',
             'previous_roles',
@@ -264,13 +276,20 @@ new class extends Component
         $out = [];
 
         foreach ($properties as $key => $value) {
-            if ($value === null || $value === '') {
+            $isPreviousOrUpdated = str_starts_with($key, 'previous_') || str_starts_with($key, 'updated_');
+            if (! $isPreviousOrUpdated && ($value === null || $value === '')) {
                 continue;
             }
 
             $label = __('messages.activity_prop_'.$key);
             if ($label === 'messages.activity_prop_'.$key) {
                 $label = str_replace('_', ' ', ucfirst($key));
+            }
+
+            if ($value === null || $value === '') {
+                $out[$label] = '—';
+
+                continue;
             }
 
             if (is_array($value)) {
@@ -550,15 +569,15 @@ new class extends Component
                                         x-data="{
                                             expanded: false,
                                             desc: @js($activity->description ?? ''),
-                                            limit: 38,
+                                            limit: 20,
                                             get displayText() { return this.expanded || this.desc.length <= this.limit ? this.desc : this.desc.slice(0, this.limit) + '...'; },
                                             get isLong() { return this.desc.length > this.limit; },
                                             showLess: @js(__('messages.show_less')),
                                             more: @js(__('messages.more'))
                                         }"
                                     >
-                                        <span class="block max-w-full truncate font-medium text-zinc-900 dark:text-zinc-100" x-show="!expanded" x-cloak x-text="displayText" :title="isLong ? desc : ''"></span>
-                                        <span class="font-medium text-zinc-900 dark:text-zinc-100 break-words" x-show="expanded" x-cloak x-text="desc" style="display: none;"></span>
+                                        <span class="block max-w-full font-medium text-zinc-900 dark:text-zinc-100" x-show="!expanded" x-cloak x-text="displayText" :title="isLong ? desc : ''"></span>
+                                        <span class="block font-medium text-zinc-900 dark:text-zinc-100 break-words" x-show="expanded" x-cloak x-text="desc" style="display: none;"></span>
                                         <button type="button" class="mt-0.5 block text-left text-xs font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300" x-show="isLong" x-cloak x-on:click="expanded = !expanded" x-text="expanded ? showLess : more" :aria-expanded="expanded"></button>
                                     </td>
                                     <td class="px-5 py-4">

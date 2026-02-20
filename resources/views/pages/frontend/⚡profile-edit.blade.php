@@ -10,6 +10,7 @@ use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Masmerise\Toaster\Toaster;
 
 new #[Layout('layouts::frontend')] class extends Component
 {
@@ -69,6 +70,7 @@ new #[Layout('layouts::frontend')] class extends Component
             $user->email_verified_at = null;
         }
         $user->save();
+        Toaster::success(__('messages.saved'));
         Session::flash('profile-updated', true);
         $this->redirect(route('profile'), navigate: true);
     }
@@ -80,6 +82,7 @@ new #[Layout('layouts::frontend')] class extends Component
             return;
         }
         $user->sendEmailVerificationNotification();
+        Toaster::info(__('messages.verification_link_sent'));
         Session::flash('status', 'verification-link-sent');
     }
 

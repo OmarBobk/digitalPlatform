@@ -12,8 +12,11 @@ use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Masmerise\Toaster\Toastable;
 
-new #[Layout('layouts::frontend')] class extends Component {
+new #[Layout('layouts::frontend')] class extends Component
+{
+    use Toastable;
 
     public ?string $checkoutError = null;
     public ?string $checkoutSuccess = null;
@@ -27,6 +30,8 @@ new #[Layout('layouts::frontend')] class extends Component {
 
         if (! auth()->check()) {
             $this->checkoutError = __('messages.sign_in_to_checkout');
+            $this->error($this->checkoutError);
+
             return;
         }
 
@@ -48,17 +53,22 @@ new #[Layout('layouts::frontend')] class extends Component {
 
             if (! $order->exists || $order->status !== OrderStatus::Paid) {
                 $this->checkoutError = __('messages.checkout_could_not_complete');
+                $this->error($this->checkoutError);
+
                 return;
             }
 
             $this->checkoutSuccess = __('messages.payment_successful_order_processing', ['order_number' => $order->order_number]);
             $this->lastOrderNumber = $order->order_number;
+            $this->success($this->checkoutSuccess);
             $this->dispatch('checkout-success', orderNumber: $order->order_number);
         } catch (ValidationException $exception) {
             $this->checkoutError = collect($exception->errors())->flatten()->first()
                 ?? __('messages.checkout_validation_failed');
+            $this->error($this->checkoutError);
         } catch (\Throwable) {
             $this->checkoutError = __('messages.something_went_wrong_checkout');
+            $this->error($this->checkoutError);
         }
     }
 
@@ -205,6 +215,7 @@ new #[Layout('layouts::frontend')] class extends Component {
             $this->dispatchCartRequirementErrors($exception->errors());
             $this->checkoutError = collect($exception->errors())->flatten()->first()
                 ?? __('messages.checkout_validation_failed');
+            $this->error($this->checkoutError);
 
             return false;
         }

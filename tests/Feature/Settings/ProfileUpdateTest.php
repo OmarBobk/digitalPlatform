@@ -32,13 +32,13 @@ test('profile information can be updated', function () {
 });
 
 test('email verification status is unchanged when email address is unchanged', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['username' => 'testuser_unchanged']);
 
     $this->actingAs($user);
 
     $response = Livewire::test(Profile::class)
         ->set('name', 'Test User')
-        ->set('username', $user->username ?? 'testuser')
+        ->set('username', 'testuser_unchanged')
         ->set('email', $user->email)
         ->call('updateProfileInformation');
 
@@ -53,7 +53,7 @@ test('user can delete their account', function () {
     $this->actingAs($user);
 
     $response = Livewire::test('settings.delete-user-form')
-        ->set('password', 'password')
+        ->set('password', '123')
         ->call('deleteUser');
 
     $response

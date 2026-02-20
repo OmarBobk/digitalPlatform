@@ -46,8 +46,10 @@ test('guest cannot access profile edit page', function () {
 });
 
 test('authenticated user can view and submit profile edit page', function () {
+
     $user = User::factory()->create([
         'name' => 'Old Name',
+        'username' => 'testuser99',
         'country_code' => '+90',
         'timezone' => \App\Enums\Timezone::Turkey,
     ]);
@@ -61,10 +63,13 @@ test('authenticated user can view and submit profile edit page', function () {
     Livewire::actingAs($user)
         ->test('pages::frontend.profile-edit')
         ->set('name', 'New Name')
+        ->set('username', 'testuser99')
+        ->set('email', $user->email)
         ->set('phone', '5551234567')
         ->set('country_code', '+90')
         ->set('timezone', \App\Enums\Timezone::Turkey->value)
         ->call('updateProfileInformation')
+        ->assertHasNoErrors()
         ->assertRedirect(route('profile'));
 
     $user->refresh();

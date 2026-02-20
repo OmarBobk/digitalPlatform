@@ -16,6 +16,7 @@
         @include('partials.frontend.head')
     </head>
     <body class="min-h-screen bg-white dark:bg-zinc-900" style="--bg-pattern: url('{{ asset('images/background-pattern.jpg') }}'); --bg-pattern-dark: url('{{ asset('images/background-pattern-dark.jpg') }}');">
+        <script>window.__addToCartMessageTemplate = @json(__('main.add_to_cart_for'));</script>
         <flux:header
             sticky class="!block !px-3 !py-3 border-b border-zinc-200  dark:border-zinc-700 dark:!bg-zinc-900 "
             x-data="{ isScrolled: false }"
@@ -386,102 +387,9 @@
             </div>
         </flux:header>
 
-        <!-- Cart Toast -->
-        <div
-            x-data="cartToast(@js(__('main.add_to_cart_for')))"
-            x-on:cart-item-added.window="notify($event.detail)"
-            x-on:cart-toast.window="notify($event.detail)"
-            class="pointer-events-none fixed top-4 z-[999] flex w-full flex-col gap-2 px-3 sm:max-w-sm ltr:right-4 rtl:left-4 sm:px-0"
-            aria-live="polite"
-        >
-            <template x-for="toast in toasts" :key="toast.id">
-                <div
-                    x-show="toast.visible"
-                    x-transition:enter="transition ease-out duration-200"
-                    x-transition:enter-start="opacity-0 translate-y-2"
-                    x-transition:enter-end="opacity-100 translate-y-0"
-                    x-transition:leave="transition ease-in duration-150"
-                    x-transition:leave-start="opacity-100 translate-y-0"
-                    x-transition:leave-end="opacity-0 translate-y-2"
-                    class="pointer-events-auto flex items-center gap-3 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-700 shadow-lg dark:border-emerald-500/30 dark:bg-zinc-900 dark:text-emerald-300"
-                >
-                    <flux:icon icon="check-circle" class="size-4 text-emerald-600 dark:text-emerald-300" />
-                    <span class="font-semibold" x-text="toast.message"></span>
-                </div>
-            </template>
-        </div>
-
         {{ $slot }}
 
-        <script>
-            function cartToast(template) {
-                return {
-                    template: template ?? '',
-                    toasts: [],
-                    notify(detail) {
-                        if (document.querySelector('dialog[open][data-open]')) {
-                            console.log('Modal is open');
-                            return;
-                        }
-
-                        const rawMessage = detail?.message ?? '';
-                        const name = detail?.name ?? '';
-                        const message = rawMessage !== ''
-                            ? rawMessage
-                            : this.template.replace(':name', name).replace(/\s+/g, ' ').trim();
-                        if (!message) {
-                            return;
-                        }
-                        const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-                        this.toasts = [...this.toasts, { id, message, visible: true }];
-                        setTimeout(() => this.remove(id), 2400);
-                    },
-                    remove(id) {
-                        this.toasts = this.toasts.map((toast) => {
-                            if (toast.id !== id) {
-                                return toast;
-                            }
-                            return { ...toast, visible: false };
-                        });
-                        setTimeout(() => {
-                            this.toasts = this.toasts.filter((toast) => toast.id !== id);
-                        }, 180);
-                    },
-                };
-            }
-
-            function cartToastOnModal(template) {
-                return {
-                    template: template ?? '',
-                    toasts: [],
-                    notify(detail) {
-
-                        const rawMessage = detail?.message ?? '';
-                        const name = detail?.name ?? '';
-                        const message = rawMessage !== ''
-                            ? rawMessage
-                            : this.template.replace(':name', name).replace(/\s+/g, ' ').trim();
-                        if (!message) {
-                            return;
-                        }
-                        const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-                        this.toasts = [...this.toasts, { id, message, visible: true }];
-                        setTimeout(() => this.remove(id), 2400);
-                    },
-                    remove(id) {
-                        this.toasts = this.toasts.map((toast) => {
-                            if (toast.id !== id) {
-                                return toast;
-                            }
-                            return { ...toast, visible: false };
-                        });
-                        setTimeout(() => {
-                            this.toasts = this.toasts.filter((toast) => toast.id !== id);
-                        }, 180);
-                    },
-                };
-            }
-        </script>
+        <x-toaster-hub />
 
         @fluxScripts
     </body>

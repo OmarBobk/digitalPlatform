@@ -12,9 +12,11 @@ use Illuminate\View\View;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Masmerise\Toaster\Toastable;
 
 new class extends Component
 {
+    use Toastable;
     use WithPagination;
 
     public string $statusFilter = 'all';
@@ -83,6 +85,7 @@ new class extends Component
 
         $this->noticeVariant = 'success';
         $this->noticeMessage = __('messages.topup_approved');
+        $this->success(__('messages.topup_approved'));
     }
 
     public function openRejectModal(int $topupRequestId): void
@@ -122,6 +125,7 @@ new class extends Component
         $this->closeRejectModal();
         $this->noticeVariant = 'danger';
         $this->noticeMessage = __('messages.topup_rejected');
+        $this->error(__('messages.topup_rejected'));
     }
 
     #[On('topup-list-updated')]

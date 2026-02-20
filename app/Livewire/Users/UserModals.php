@@ -12,11 +12,14 @@ use App\Actions\Users\VerifyUserEmail;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Livewire\Component;
+use Masmerise\Toaster\Toastable;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 class UserModals extends Component
 {
+    use Toastable;
+
     private const ALLOWED_COUNTRY_CODES = ['+963', '+90'];
 
     public bool $showCreate = false;
@@ -131,10 +134,12 @@ class UserModals extends Component
                     $this->addError($prop, $v->errors()->first($actionKey));
                 }
             }
+            $this->error(__('messages.validation_failed'));
 
             return;
         }
 
+        $this->success(__('messages.user_created'));
         $this->closeCreate();
         $this->dispatch('users-updated');
     }
@@ -187,10 +192,12 @@ class UserModals extends Component
                     $this->addError($prop, $v->errors()->first($actionKey));
                 }
             }
+            $this->error(__('messages.validation_failed'));
 
             return;
         }
 
+        $this->success(__('messages.user_updated'));
         $this->closeEdit();
         $this->dispatch('users-updated');
     }
@@ -226,6 +233,7 @@ class UserModals extends Component
         $user = User::query()->findOrFail($this->deleteUserId);
         $this->authorize('delete', $user);
         app(DeleteUser::class)->handle($user, (int) auth()->id());
+        $this->success(__('messages.user_deleted'));
         $this->cancelDelete();
         $this->dispatch('users-updated');
     }
@@ -252,6 +260,7 @@ class UserModals extends Component
         $user = User::query()->findOrFail($this->blockUserId);
         $this->authorize('block', $user);
         app(BlockUser::class)->handle($user, (int) auth()->id());
+        $this->success(__('messages.user_blocked'));
         $this->cancelBlock();
         $this->dispatch('users-updated');
     }
@@ -278,6 +287,7 @@ class UserModals extends Component
         $user = User::query()->findOrFail($this->unblockUserId);
         $this->authorize('unblock', $user);
         app(UnblockUser::class)->handle($user, (int) auth()->id());
+        $this->success(__('messages.user_unblocked'));
         $this->cancelUnblock();
         $this->dispatch('users-updated');
     }
@@ -317,10 +327,12 @@ class UserModals extends Component
             if ($e->validator->errors()->has('password')) {
                 $this->addError('resetPasswordNew', $e->validator->errors()->first('password'));
             }
+            $this->error(__('messages.validation_failed'));
 
             return;
         }
 
+        $this->success(__('messages.password_reset'));
         $this->cancelResetPassword();
         $this->dispatch('users-updated');
     }
@@ -347,6 +359,7 @@ class UserModals extends Component
         $user = User::query()->findOrFail($this->verifyUserId);
         $this->authorize('verifyEmail', $user);
         app(VerifyUserEmail::class)->handle($user, (int) auth()->id());
+        $this->success(__('messages.email_verification_sent'));
         $this->cancelVerify();
         $this->dispatch('users-updated');
     }

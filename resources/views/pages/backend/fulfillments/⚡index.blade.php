@@ -18,9 +18,11 @@ use Livewire\Attributes\Url;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Masmerise\Toaster\Toastable;
 
 new class extends Component
 {
+    use Toastable;
     use WithPagination;
 
     #[Url]
@@ -78,6 +80,7 @@ new class extends Component
 
         $this->noticeVariant = 'success';
         $this->noticeMessage = __('messages.fulfillment_marked_processing');
+        $this->success(__('messages.fulfillment_marked_processing'));
     }
 
     public function openCompleteModal(int $fulfillmentId): void
@@ -111,6 +114,7 @@ new class extends Component
         $this->reset('showCompleteModal', 'deliveredPayloadInput', 'autoDonePayload');
         $this->noticeVariant = 'success';
         $this->noticeMessage = __('messages.fulfillment_marked_completed');
+        $this->success(__('messages.fulfillment_marked_completed'));
     }
 
     public function updatedAutoDonePayload(bool $value): void
@@ -167,6 +171,11 @@ new class extends Component
         $this->noticeMessage = $refunded
             ? __('messages.fulfillment_failed_refunded')
             : __('messages.fulfillment_marked_failed');
+        if ($refunded) {
+            $this->success(__('messages.fulfillment_failed_refunded'));
+        } else {
+            $this->error(__('messages.fulfillment_marked_failed'));
+        }
     }
 
     public function retryFulfillment(int $fulfillmentId): void
@@ -179,6 +188,7 @@ new class extends Component
 
         $this->noticeVariant = 'success';
         $this->noticeMessage = __('messages.fulfillment_marked_queued');
+        $this->success(__('messages.fulfillment_marked_queued'));
     }
 
     #[On('fulfillment-list-updated')]
