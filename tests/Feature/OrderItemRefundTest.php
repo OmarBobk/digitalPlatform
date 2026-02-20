@@ -17,8 +17,13 @@ use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+});
 
 /**
  * @return array{order: Order, item: OrderItem, fulfillment: Fulfillment}

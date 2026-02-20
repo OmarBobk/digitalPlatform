@@ -11,3 +11,4 @@ Artisan::command('inspire', function () {
 Schedule::command('loyalty:evaluate')->daily();
 Schedule::command('backup:run')->daily()->at('01:00');
 Schedule::command('backup:clean')->daily()->at('02:00');
+Schedule::command('backup:monitor')->daily()->at('03:00');

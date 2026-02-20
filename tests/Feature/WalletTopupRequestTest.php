@@ -128,11 +128,13 @@ test('submit topup with invalid file type fails validation', function () {
 test('submit topup with file exceeding max size fails validation', function () {
     $user = User::factory()->create();
 
+    $oversizedFile = UploadedFile::fake()->create('proof.pdf', 6 * 1024 * 1024, 'application/pdf');
+
     Livewire::actingAs($user)
         ->test('pages::frontend.wallet')
         ->set('topupAmount', '25')
         ->set('topupMethod', TopupMethod::ShamCash->value)
-        ->set('proofFile', UploadedFile::fake()->create('proof.pdf', 5121, 'application/pdf'))
+        ->set('proofFile', $oversizedFile)
         ->call('submitTopup')
         ->assertHasErrors('proofFile');
 

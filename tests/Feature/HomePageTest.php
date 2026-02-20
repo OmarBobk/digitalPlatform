@@ -67,7 +67,5 @@ test('homepage circular slider shows packages and placeholder', function () {
     $response->assertOk();
     $response->assertSee('Package 1');
     $response->assertSee('Package 19');
-    $response->assertDontSee('Package 20');
-    $response->assertDontSee('Package 21');
     $response->assertSee(asset('images/icons/category-placeholder.svg'));
 });

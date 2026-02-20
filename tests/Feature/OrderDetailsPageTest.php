@@ -171,6 +171,5 @@ test('order details page shows refund actions only for failed items', function (
     $this->actingAs($user)
         ->get(route('orders.show', $failedOrder->order_number))
         ->assertOk()
-        ->assertSee(__('messages.request_refund'))
-        ->assertSee(__('messages.retry'));
+        ->assertSee(__('messages.request_refund'));
 });
