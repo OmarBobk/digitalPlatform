@@ -338,7 +338,7 @@ new class extends Component
             x-bind:class="{ 'cursor-grabbing': isPointerDown }"
         >
             <div
-                class="flex items-start gap-4 motion-reduce:transition-none"
+                class="flex items-start motion-reduce:transition-none"
                 x-ref="track"
             >
                 @foreach ($categoryItems as $item)
