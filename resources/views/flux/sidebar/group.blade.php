@@ -78,7 +78,7 @@
 
                 <span class="flex-1 text-start text-sm font-medium leading-none">{{ $heading }}</span>
                 @if ($hasBadge)
-                    <span class="size-2 me-1.5image.png shrink-0 rounded-full bg-amber-500" aria-hidden="true"></span>
+                    <span class="size-2 me-1.5 shrink-0 rounded-full bg-amber-500" aria-hidden="true"></span>
                 @endif
             </button>
 
