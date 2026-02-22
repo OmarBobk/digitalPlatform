@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\WalletType;
 use App\Livewire\Users\UserModals;
 use App\Models\User;
+use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
@@ -129,6 +131,26 @@ test('delete user removes user and logs activity', function () {
         'event' => 'user.deleted',
         'log_name' => 'admin',
     ]);
+});
+
+test('delete user with wallet removes user and wallet', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+    $target = User::factory()->create(['name' => 'With Wallet', 'email' => 'wallet@example.com']);
+    $wallet = Wallet::query()->create([
+        'user_id' => $target->id,
+        'type' => WalletType::Customer,
+        'balance' => 0,
+        'currency' => 'USD',
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test(UserModals::class)
+        ->call('confirmDelete', $target->id)
+        ->call('deleteUser');
+
+    $this->assertDatabaseMissing('users', ['id' => $target->id]);
+    $this->assertDatabaseMissing('wallets', ['id' => $wallet->id]);
 });
 
 test('block user sets blocked_at and logs activity', function () {
