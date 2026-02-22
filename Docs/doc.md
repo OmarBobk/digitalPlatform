@@ -29,10 +29,11 @@
 - ###DONE when a customer is incrementing the products that are in the shopping cart, the dropdown not the page the dropdown will immediately closed
 - Backend:
   - ###DONE Users Manager
-  - ###DOING Notifications with Laravel Verb
+  - ###DONE Notifications with Laravel Verb
   - ###DONE if admin is on the fulfillment page and a new fulfillment came, admin should refresh the page so he can see the new fulfillment now how to fix this behavior
   - ###DONE Activities: The table header should be sticky
   - ###TODO: Activities: don't use "User updated by admin" description use a detailed description so we can understand what happened exactly, and properties column should not be empty it should display the updated property.
+  - ###DONE: Fulfillments: when the fulfillment status is "Failed Refunded"
 - Frontend:
   - ###DONE wallet transaction in /wallets should be more described
   - ###DONE Wallet /wallet Request topups form borders remove the ring

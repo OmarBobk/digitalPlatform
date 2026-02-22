@@ -1,11 +1,27 @@
 @php
     $pendingRefundsCount = 0;
-    if (auth()->check() && auth()->user()?->can('view_refunds')) {
-        $pendingRefundsCount = \App\Models\WalletTransaction::query()
-            ->where('type', \App\Enums\WalletTransactionType::Refund)
-            ->where('status', \App\Models\WalletTransaction::STATUS_PENDING)
-            ->count();
+    $fulfillmentPendingCount = 0;
+    $pendingTopupsCount = 0;
+    if (auth()->check()) {
+        if (auth()->user()?->can('view_refunds')) {
+            $pendingRefundsCount = \App\Models\WalletTransaction::query()
+                ->where('type', \App\Enums\WalletTransactionType::Refund)
+                ->where('status', \App\Models\WalletTransaction::STATUS_PENDING)
+                ->count();
+        }
+        if (auth()->user()?->can('view_fulfillments')) {
+            $fulfillmentPendingCount = \App\Models\Fulfillment::query()
+                ->whereIn('status', [\App\Enums\FulfillmentStatus::Queued, \App\Enums\FulfillmentStatus::Processing])
+                ->count();
+        }
+        if (auth()->user()?->can('manage_topups')) {
+            $pendingTopupsCount = \App\Models\TopupRequest::query()
+                ->where('status', \App\Enums\TopupRequestStatus::Pending)
+                ->count();
+        }
     }
+    $operationsHasBadge = $pendingRefundsCount > 0 || $fulfillmentPendingCount > 0;
+    $financialsHasBadge = $pendingTopupsCount > 0;
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}" class="dark">
@@ -54,7 +70,9 @@
 
                 <flux:sidebar.group expandable
                                     :expanded="(request()->routeIs('fulfillments')) or (request()->routeIs('admin.orders.*')) or (request()->routeIs('admin.notifications.index'))"
-                                    :heading="__('messages.nav_operations')" class="grid transition-all duration-300 ease">
+                                    :heading="__('messages.nav_operations')"
+                                    :has-badge="$operationsHasBadge"
+                                    class="grid transition-all duration-300 ease">
                     <flux:sidebar.item icon="bell" :href="route('admin.notifications.index')" :current="request()->routeIs('admin.notifications.index')" wire:navigate>
                         {{ __('messages.notifications') }}
                     </flux:sidebar.item>
@@ -84,7 +102,7 @@
                 </flux:sidebar.group>
 
                 @if (auth()->user()?->can('manage_topups') || auth()->user()?->can('manage_settlements'))
-                    <flux:sidebar.group expandable :expanded="request()->routeIs('topups') || request()->routeIs('settlements') || request()->routeIs('customer-funds')" :heading="__('messages.nav_financials')" class="grid">
+                    <flux:sidebar.group expandable :expanded="request()->routeIs('topups') || request()->routeIs('settlements') || request()->routeIs('customer-funds')" :heading="__('messages.nav_financials')" :has-badge="$financialsHasBadge" class="grid">
                         @can('manage_topups')
                         <flux:sidebar.item icon="wallet" :href="route('topups')" :current="request()->routeIs('topups')" wire:navigate>
                             <span class="flex items-center gap-2">

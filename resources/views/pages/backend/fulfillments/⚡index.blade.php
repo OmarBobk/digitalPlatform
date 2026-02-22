@@ -40,9 +40,6 @@ new class extends Component
     public bool $refundAfterFail = false;
     public bool $autoDonePayload = false;
 
-    public ?string $noticeMessage = null;
-    public ?string $noticeVariant = null;
-
     public function mount(): void
     {
         $this->authorize('viewAny', Fulfillment::class);
@@ -72,14 +69,10 @@ new class extends Component
 
     public function markProcessing(int $fulfillmentId): void
     {
-        $this->reset('noticeMessage', 'noticeVariant');
-
         $fulfillment = Fulfillment::query()->findOrFail($fulfillmentId);
         $this->authorize('update', $fulfillment);
         app(StartFulfillment::class)->handle($fulfillment, 'admin', auth()->id(), ['source' => 'admin']);
 
-        $this->noticeVariant = 'success';
-        $this->noticeMessage = __('messages.fulfillment_marked_processing');
         $this->success(__('messages.fulfillment_marked_processing'));
     }
 
@@ -112,8 +105,6 @@ new class extends Component
         );
 
         $this->reset('showCompleteModal', 'deliveredPayloadInput', 'autoDonePayload');
-        $this->noticeVariant = 'success';
-        $this->noticeMessage = __('messages.fulfillment_marked_completed');
         $this->success(__('messages.fulfillment_marked_completed'));
     }
 
@@ -167,10 +158,6 @@ new class extends Component
         }
 
         $this->reset('showFailModal', 'failureReason', 'refundAfterFail');
-        $this->noticeVariant = $refunded ? 'success' : 'danger';
-        $this->noticeMessage = $refunded
-            ? __('messages.fulfillment_failed_refunded')
-            : __('messages.fulfillment_marked_failed');
         if ($refunded) {
             $this->success(__('messages.fulfillment_failed_refunded'));
         } else {
@@ -180,14 +167,10 @@ new class extends Component
 
     public function retryFulfillment(int $fulfillmentId): void
     {
-        $this->reset('noticeMessage', 'noticeVariant');
-
         $fulfillment = Fulfillment::query()->findOrFail($fulfillmentId);
         $this->authorize('update', $fulfillment);
         app(RetryFulfillment::class)->handle($fulfillment, 'admin', auth()->id());
 
-        $this->noticeVariant = 'success';
-        $this->noticeMessage = __('messages.fulfillment_marked_queued');
         $this->success(__('messages.fulfillment_marked_queued'));
     }
 
@@ -298,17 +281,6 @@ new class extends Component
                 </flux:text>
             </div>
         </div>
-
-        @if ($noticeMessage)
-            <div class="mt-4">
-                <flux:callout
-                    variant="subtle"
-                    icon="{{ $noticeVariant === 'success' ? 'check-circle' : 'exclamation-triangle' }}"
-                >
-                    {{ $noticeMessage }}
-                </flux:callout>
-            </div>
-        @endif
 
         <form
             class="mt-4 rounded-xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-800/60"

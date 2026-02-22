@@ -28,7 +28,7 @@ class FulfillmentIndicator extends Component
         }
 
         $this->count = Fulfillment::query()
-            ->where('status', FulfillmentStatus::Failed)
+            ->whereIn('status', [FulfillmentStatus::Queued, FulfillmentStatus::Processing])
             ->count();
     }
 

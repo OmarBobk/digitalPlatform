@@ -334,6 +334,7 @@ return [
     'no_wallet_transactions_hint' => 'Transactions will appear once your wallet is used.',
     'request_topup' => 'Request a top-up',
     'submit_topup' => 'Submit top-up request',
+    'please_wait' => 'Please wait…',
     'proof_of_payment' => 'Proof of payment',
     'view_proof' => 'View proof',
     'topup_request_created' => 'Request created, wait for approval.',

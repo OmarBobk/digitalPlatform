@@ -336,6 +336,7 @@ return [
     'no_wallet_transactions_hint' => 'ستظهر الحركات عند استخدام المحفظة.',
     'request_topup' => 'طلب شحن',
     'submit_topup' => 'إرسال طلب الشحن',
+    'please_wait' => 'يرجى الانتظار…',
     'proof_of_payment' => 'إثبات الدفع',
     'view_proof' => 'عرض الإثبات',
     'topup_request_created' => 'تم إنشاء الطلب، يرجى انتظار الموافقة.',

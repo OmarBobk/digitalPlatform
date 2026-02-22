@@ -100,6 +100,11 @@ new #[Layout('layouts::frontend')] class extends Component
             $ext = $this->proofFile->getClientOriginalExtension() ?: $this->proofFile->guessExtension() ?? 'bin';
             $filename = Str::uuid()->toString().'.'.$ext;
             $dir = 'topups/proofs/'.$topupRequest->id;
+
+            $fileOriginalName = $this->proofFile->getClientOriginalName();
+            $mimeType = $this->proofFile->getMimeType();
+            $sizeBytes = $this->proofFile->getSize();
+
             $path = $this->proofFile->storeAs($dir, $filename, 'local');
 
             if ($path === false) {
@@ -109,9 +114,9 @@ new #[Layout('layouts::frontend')] class extends Component
             TopupProof::create([
                 'topup_request_id' => $topupRequest->id,
                 'file_path' => $path,
-                'file_original_name' => $this->proofFile->getClientOriginalName(),
-                'mime_type' => $this->proofFile->getMimeType(),
-                'size_bytes' => $this->proofFile->getSize(),
+                'file_original_name' => $fileOriginalName,
+                'mime_type' => $mimeType,
+                'size_bytes' => $sizeBytes,
             ]);
 
             activity()
@@ -527,9 +532,9 @@ new #[Layout('layouts::frontend')] class extends Component
                         variant="primary"
                         class="w-full justify-center !bg-accent !text-accent-foreground hover:!bg-accent-hover"
                         wire:loading.attr="disabled"
-                        wire:target="submitTopup"
                     >
-                        {{ __('messages.submit_topup') }}
+                        <span wire:loading.remove>{{ __('messages.submit_topup') }}</span>
+                        <span wire:loading>{{ __('messages.please_wait') }}</span>
                     </flux:button>
                 </form>
             </section>
@@ -785,9 +790,9 @@ new #[Layout('layouts::frontend')] class extends Component
                         variant="primary"
                         class="w-full justify-center !bg-accent !text-accent-foreground hover:!bg-accent-hover"
                         wire:loading.attr="disabled"
-                        wire:target="submitTopup"
                     >
-                        {{ __('messages.submit_topup') }}
+                        <span wire:loading.remove>{{ __('messages.submit_topup') }}</span>
+                        <span wire:loading>{{ __('messages.please_wait') }}</span>
                     </flux:button>
                 </form>
             </section>

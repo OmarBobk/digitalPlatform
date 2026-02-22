@@ -36,7 +36,7 @@ beforeEach(function (): void {
     $this->admin->assignRole('admin');
 });
 
-test('fulfillment indicator updates when failed fulfillments exist', function () {
+test('fulfillment indicator counts queued and processing fulfillments', function () {
     actingAs($this->admin);
     Livewire::actingAs($this->admin);
 
@@ -76,14 +76,23 @@ test('fulfillment indicator updates when failed fulfillments exist', function ()
         'order_id' => $order->id,
         'order_item_id' => $orderItem->id,
         'provider' => 'manual',
-        'status' => FulfillmentStatus::Failed,
-        'attempts' => 1,
-        'last_error' => 'Test failure',
+        'status' => FulfillmentStatus::Queued,
     ]);
 
     $component->call('refreshCount')
         ->assertSet('count', 1)
         ->assertSee('bg-amber-500')
+        ->assertSee('1');
+
+    Fulfillment::create([
+        'order_id' => $order->id,
+        'order_item_id' => $orderItem->id,
+        'provider' => 'manual',
+        'status' => FulfillmentStatus::Failed,
+    ]);
+
+    $component->call('refreshCount')
+        ->assertSet('count', 1)
         ->assertSee('1');
 });
 
