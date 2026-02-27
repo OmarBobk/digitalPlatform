@@ -1,4 +1,4 @@
-# indirimgo.tr — Full Project Context
+# karman.store — Full Project Context
 
 Use this document to restore project context in long chat sessions (e.g. ChatGPT). Keep it versioned and update when the codebase or goals change.
 
@@ -6,16 +6,16 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 
 ## 1. Project identity
 
-- **Codebase / repo name:** indirimgo.tr (`package.json` name; workspace path).
+- **Codebase / repo name:** karman.store (workspace path).
 - **Owner:** Omar.
-- **Frontend brand:** İndirimGo (logo text in `resources/views/layouts/frontend/header.blade.php`). User-facing name may differ from repo name.
+- **Frontend brand:** Karman (logo text in `resources/views/layouts/frontend/header.blade.php`). User-facing name may differ from repo name.
 - **Type:** Laravel e‑commerce / wallet platform: catalog (categories, packages, products), wallet, orders, fulfillments, topups, refunds, settlements, loyalty, notifications.
 
 ---
 
 ## 2. Tech stack & versions
 
-- **PHP:** 8.2+ (CI runs 8.4, 8.5).
+- **PHP:** 8.4+ (CI runs 8.4, 8.5).
 - **Laravel:** 12.
 - **Livewire:** 4.
 - **Frontend:** Alpine.js, Tailwind CSS 4, Vite 7. Flux UI **free** components only (no Pro).
@@ -103,7 +103,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 - **Settlement:** total_amount; pivot to fulfillments. Created by profit:settle; one platform wallet credit per settlement (idempotency).
 - **Loyalty:** LoyaltyTier (bronze, silver, gold), LoyaltyTierConfig (per tier), LoyaltySetting (rolling_window_days). LoyaltySpendService: spend from fulfillments (excluding posted refunds). EvaluateLoyaltyCommand / EvaluateLoyaltyForUserAction.
 - **Activity log:** Spatie; logs for orders, payments, etc. Events: ActivityLogChanged (admin.activities channel).
-- **System events (observability):** Insert-only `system_events` table: event_type, entity_type/entity_id, actor_type/actor_id, meta, severity (info|warning|critical), is_financial, idempotency_key (async), created_at. **Source of truth remains wallet_transactions and wallet balance;** system_events is a mirror for timeline/audit. Model: update/delete throw (BadMethodCallException). **Invariant:** For every wallet balance mutation there is exactly one financial system_event (one POSTED wallet_transaction, one balance change, one row with is_financial=true). Financial events recorded inside same transaction; broadcast via DB::afterCommit(SystemEventCreated). Async events via PersistSystemEventJob with structured idempotency key `async:{event_type}:{entity_type}:{entity_id}[:suffix]`. See Docs/system_events_map.md.
+- **System events (observability):** Insert-only `system_events` table: event_type, entity_type/entity_id, actor_type/actor_id, meta, severity (info|warning|critical), is_financial, idempotency_key (async), created_at. **Source of truth remains wallet_transactions and wallet balance;** system_events is a mirror for timeline/audit. Model: update/delete throw (BadMethodCallException). **Invariant:** For every wallet balance mutation there is exactly one financial system_event (one POSTED wallet_transaction, one balance change, one row with is_financial=true). Financial events recorded inside same transaction; broadcast via DB::afterCommit(SystemEventCreated). Async events via PersistSystemEventJob with structured idempotency key `async:{event_type}:{entity_type}:{entity_id}[:suffix]`. Anomaly events (wallet.anomaly.*, refund.anomaly.*, fulfillment.anomaly.*) from OperationalIntelligenceService, severity warning/critical, idempotency by time bucket or date. See Docs/system_events_map.md.
 - **User audit timeline:** Unified chronological timeline per user at `/admin/users/{user}/audit`. **UserAuditTimelineService** merges: wallet_transactions (financial truth), **non-financial system_events only** (no financial system_events to avoid duplication), orders, fulfillments. **TimelineEntryDTO:** type, title, description, occurredAt, severity, isFinancial, meta, sourceKey, eventType (nullable; from system_events for domain-safe filtering). Refund workflow shown via system_events (refund.requested, refund.approved) + wallet_transaction credit; wallet entries map to type `wallet_transaction` only. Type filter: only the relevant source is queried (no IN from wallet_transaction IDs for refund; join system_events → wallet_transactions → wallets). Date filters use index-safe `created_at >= startOfDay` / `<= endOfDay`. Same auth as view user (manage_users); non-admin gets 404.
 - **Operational intelligence (anomaly detection):** **OperationalIntelligenceService** — deterministic, threshold-based; never mutates ledger; runs only inside DB::afterCommit() at invocation points. **detectWalletVelocity(WalletTransaction):** threshold POSTED tx within window (same wallet) → `wallet.anomaly.velocity_detected` (warning). **detectRefundAbuse(userId):** threshold refund.approved (non-financial) within window for user → `refund.anomaly.pattern_detected` (warning); count via join (system_events → wallet_transactions → wallets), no large IN. **detectFulfillmentFailure(Fulfillment):** threshold failed fulfillments (same provider or product) within window → `fulfillment.anomaly.failure_spike` (warning). **detectReconciliationDrift(Wallet, driftMeta):** when reconcile detects drift → `wallet.anomaly.drift_detected` (critical). All use SystemEventService::record(..., isFinancial=false); idempotency by time buckets. Thresholds/windows in **config/operational_intelligence.php** (wallet_velocity, refund_abuse, fulfillment_failure); env overrides (OI_*). Invocation: PayOrderWithWallet, ApproveRefundRequest, ApproveTopupRequest (velocity + refund abuse where applicable), FailFulfillment (failure spike), WalletReconcile (drift).
 - **Notifications:** Laravel notifications table; database + broadcast. Private channel `private-App.Models.User.{id}`. Admin channels: admin.fulfillments, admin.topups, admin.activities, admin.system-events.
@@ -184,7 +184,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 - **Docs/doc.md:** Known bugs/features, language behavior, done/doing list.
 - **Docs/DB.md:** Schema notes, orders/order_items, wallet/transaction design.
 - **Docs/roles.md:** Role list (admin, supervisor, salesperson, customer).
-- **Docs/system_events_map.md:** System events map — financial vs informational, invariant (ledger + mirror), idempotency keys, broadcast, severity.
+- **Docs/system_events_map.md:** System events map — financial vs informational vs anomaly events, invariant (ledger + mirror), idempotency keys, broadcast, severity.
 - **NOTIFICATIONS.md:** Notification triggers, channels, config, safety (afterCommit).
 - **CLAUDE.md / .cursor/rules:** Laravel Boost, Pint, Pest, Livewire, Tailwind, Flux conventions; test enforcement; MCP usage.
 - **User audit timeline:** UserAuditTimelineService (merged timeline, non-financial system_events only); TimelineEntryDTO; type/date filters; index-safe queries. Operational intelligence: OperationalIntelligenceService + config/operational_intelligence.php; anomaly detection in afterCommit only; no ledger mutation.

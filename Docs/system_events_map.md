@@ -40,6 +40,19 @@
 
 ---
 
+## Anomaly Events (operational intelligence, is_financial = false)
+
+**Recorded by OperationalIntelligenceService inside `DB::afterCommit()` at invocation points. Idempotency: time bucket or date suffix so the same condition does not flood events.**
+
+| event_type                           | Entity           | Actor | Idempotency suffix              | Severity  | Hook |
+|--------------------------------------|------------------|-------|---------------------------------|-----------|------|
+| `wallet.anomaly.velocity_detected`   | Wallet           | null  | time bucket (window_seconds)    | warning   | PayOrderWithWallet, ApproveTopupRequest (after commit) |
+| `refund.anomaly.pattern_detected`    | User             | null  | time bucket (window_minutes)    | warning   | ApproveRefundRequest (after commit) |
+| `fulfillment.anomaly.failure_spike`  | Fulfillment      | null  | provider/product + bucket      | warning   | FailFulfillment (after commit) |
+| `wallet.anomaly.drift_detected`      | Wallet           | null  | date (Y-m-d)                    | critical  | WalletReconcile (after drift fix) |
+
+---
+
 ## Broadcast
 
 - **Financial:** Insert in transaction → `DB::afterCommit(() => event(new SystemEventCreated($event->id)))`.
@@ -53,5 +66,6 @@ Admin UI: on `system-event-created`, **prepend** new event to list and trim to 5
 
 - Default: `info`.
 - Financial events: `info`.
-- Reconciliation drift: `warning` (if recorded).
+- Anomaly (velocity, refund abuse, fulfillment failure): `warning`.
+- Reconciliation drift: `critical` (if recorded).
 - System failure: `critical`.

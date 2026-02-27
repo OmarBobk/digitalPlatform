@@ -6,6 +6,25 @@
             ->where('status', \App\Models\WalletTransaction::STATUS_PENDING)
             ->count();
     }
+
+    $sidebarToggleHasBadge = false;
+    if (auth()->check()) {
+        $user = auth()->user();
+        $operationsBadge = false;
+        if ($user->can('view_fulfillments')) {
+            $operationsBadge = \App\Models\Fulfillment::query()
+                ->whereIn('status', [\App\Enums\FulfillmentStatus::Queued, \App\Enums\FulfillmentStatus::Processing])
+                ->exists();
+        }
+        if (! $operationsBadge && $user->can('view_refunds')) {
+            $operationsBadge = $pendingRefundsCount > 0;
+        }
+        $financialsBadge = $user->can('manage_topups')
+            && \App\Models\TopupRequest::query()
+                ->where('status', \App\Enums\TopupRequestStatus::Pending)
+                ->exists();
+        $sidebarToggleHasBadge = $operationsBadge || $financialsBadge;
+    }
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}" class="dark">
@@ -166,7 +185,12 @@
 
         <!-- Mobile User Menu -->
         <flux:header class="lg:hidden">
-            <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
+            <div class="relative shrink-0">
+                <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
+                @if ($sidebarToggleHasBadge)
+                    <span class="absolute end-0 top-1 size-2.5 shrink-0 rounded-full bg-amber-500 ring-2 ring-zinc-50 dark:ring-zinc-900" aria-hidden="true"></span>
+                @endif
+            </div>
 
             <flux:spacer />
 

@@ -344,7 +344,7 @@ new class extends Component
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.order_number') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.user') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.item') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.provider') }}</th>
+                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.requirements') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.status') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.updated') }}</th>
                                 <th class="px-5 py-3 text-end font-semibold">{{ __('messages.actions') }}</th>
@@ -377,8 +377,32 @@ new class extends Component
                                             {{ $fulfillment->orderItem?->product?->slug ?? '—' }}
                                         </div>
                                     </td>
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
-                                        {{ $fulfillment->provider }}
+                                    <td class="max-w-[14rem] px-5 py-4">
+                                        @php
+                                            $reqPayload = $fulfillment->orderItem?->requirements_payload ?? data_get($fulfillment->meta, 'requirements_payload');
+                                            $reqPairs = is_array($reqPayload)
+                                                ? $reqPayload
+                                                : (is_string($reqPayload) ? ['' => $reqPayload] : []);
+                                        @endphp
+                                        @if ($reqPairs !== [])
+                                            <div class="flex flex-wrap gap-1.5" title="{{ collect($reqPairs)->map(fn ($v, $k) => $k !== '' ? $k.': '.(is_string($v) ? $v : json_encode($v)) : $v)->implode(', ') }}">
+                                                @foreach ($reqPairs as $key => $val)
+                                                    @php
+                                                        $displayVal = is_string($val) ? $val : json_encode($val);
+                                                    @endphp
+                                                    <span class="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-1.5 py-0.5 dark:bg-zinc-800/80">
+                                                        @if ($key !== '')
+                                                            <span class="text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{{ $key }}</span>
+                                                            <span class="text-[11px] text-zinc-700 dark:text-zinc-300">{{ Str::limit($displayVal, 20) }}</span>
+                                                        @else
+                                                            <span class="text-[11px] text-zinc-700 dark:text-zinc-300">{{ Str::limit($displayVal, 24) }}</span>
+                                                        @endif
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <span class="text-zinc-400 dark:text-zinc-500">—</span>
+                                        @endif
                                     </td>
                                     <td class="px-5 py-4">
                                         @php

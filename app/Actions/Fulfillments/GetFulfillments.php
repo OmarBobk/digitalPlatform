@@ -33,7 +33,7 @@ class GetFulfillments
             ->with([
                 'order:id,user_id,order_number,total,currency,created_at',
                 'order.user:id,name,email',
-                'orderItem:id,order_id,product_id,package_id,name,quantity',
+                'orderItem:id,order_id,product_id,package_id,name,quantity,requirements_payload',
                 'orderItem.product:id,name,slug',
             ])
             ->latest('created_at');
