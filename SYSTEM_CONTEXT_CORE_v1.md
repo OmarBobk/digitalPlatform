@@ -8,7 +8,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 
 - **Codebase / repo name:** karman.store (workspace path).
 - **Owner:** Omar.
-- **Frontend brand:** Karman (logo text in `resources/views/layouts/frontend/header.blade.php`). User-facing name may differ from repo name.
+- **Frontend brand:** İndirimGo (logo text in `resources/views/layouts/frontend/header.blade.php`). User-facing name may differ from repo name.
 - **Type:** Laravel e‑commerce / wallet platform: catalog (categories, packages, products), wallet, orders, fulfillments, topups, refunds, settlements, loyalty, notifications.
 
 ---
@@ -25,7 +25,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 - **Realtime:** Laravel Reverb (broadcasting); Laravel Echo + Pusher JS.
 - **Testing:** Pest 3, PHPUnit 11. SQLite in-memory for tests.
 - **Code style:** Laravel Pint.
-- **Optional:** Laravel MCP (routes/ai.php), Laravel Sail.
+- **Optional:** Laravel MCP (routes/ai.php), Laravel Sail. **PWA:** erag/laravel-pwa (manifest, service worker; config/pwa.php).
 
 ---
 
@@ -43,10 +43,10 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 ## 4. Directory layout (important paths)
 
 - **App logic:** `app/Actions/` (by domain: Orders, Fulfillments, Topups, Refunds, Users, Categories, Packages, Products, PricingRules, Loyalty, Fortify), `app/Services/` (SystemEventService, UserAuditTimelineService, OperationalIntelligenceService, etc.), `app/DTOs/` (e.g. TimelineEntryDTO), `app/Models/`, `app/Enums/`, `app/Notifications/`, `app/Events/`, `app/Console/Commands/`, `app/Http/Middleware/`, `app/Policies/`.
-- **Livewire:** `app/Livewire/` (Settings, Sidebar, NotificationBellDropdown, Users/UserModals).
+- **Livewire:** `app/Livewire/` — Settings (Profile, Password, Appearance, DeleteUserForm, TwoFactor), Sidebar (SidebarToggleBadge, OperationsGroup, FinancialsGroup, FulfillmentIndicator, TopupIndicator), NotificationBellDropdown, Users (UserModals, UsersTable), Actions (Logout). Cart: `livewire:cart.dropdown`.
 - **Views:** `resources/views/` — `layouts/` (app, frontend, auth), `pages/` (backend/*, frontend/*), `components/`, `livewire/`, `flux/`, `errors/`, `partials/`.
 - **Routes:** `routes/web.php` (main), `routes/settings.php`, `routes/channels.php`, `routes/console.php`, `routes/ai.php` (MCP).
-- **Config:** `config/` — app, auth, fortify, permission, billing, loyalty, notifications, broadcasting, reverb, livewire, operational_intelligence (anomaly thresholds/windows).
+- **Config:** `config/` — app, auth, fortify, permission, billing, loyalty, notifications, broadcasting, reverb, livewire, operational_intelligence (anomaly thresholds/windows), pwa (manifest, install button, livewire-app).
 - **Lang:** `lang/en/`, `lang/ar/` (main, messages, notifications, validation, pagination).
 - **Tests:** `tests/Feature/`, `tests/Unit/`, `tests/Pest.php`.
 - **Docs:** `Docs/doc.md`, `Docs/DB.md`, `Docs/roles.md`, `NOTIFICATIONS.md`.
@@ -78,13 +78,14 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 ## 7. Frontend structure
 
 - **Layouts:** Guest/frontend: `layouts::frontend` (header with logo, search, cart dropdown, notification bell, user menu). Authenticated backend: `layouts::app` with sidebar (`layouts.app.sidebar`).
-- **Frontend pages (Livewire):** Home (`pages::frontend.main`), Cart, Wallet, Orders, Order details, Loyalty, Notifications. Route names: home, cart, wallet, loyalty, orders.index, orders.show, notifications.index.
-- **Backend pages (Livewire):** Dashboard, Categories, Packages, Products, Pricing rules, Loyalty tiers, Admin orders (index/show), Activities, System events, Users (index/show, audit timeline), Fulfillments, Refunds, Topups, Customer funds, Settlements, Admin notifications. All under `middleware(['auth','verified','backend'])`.
+- **Frontend pages (Livewire):** Home (`pages::frontend.main`), Contact, Cart, Profile (edit), Wallet, Orders, Order details, Loyalty, Notifications. Route names: home, contact, cart, profile, profile.edit-information, wallet, loyalty, orders.index, orders.show, notifications.index.
+- **Backend pages (Livewire):** Dashboard, Categories, Packages, Products, Pricing rules, Loyalty tiers, Admin orders (index/show), Activities, System events, Users (index/show, audit timeline), Fulfillments, Refunds, Topups, Customer funds, Settlements, Admin notifications; **admin-only:** Website settings (`/admin/website-settings`). All under `middleware(['auth','verified','backend'])`; website settings also `admin` role.
 - **Cart (Alpine):** `Alpine.store('cart')` in `resources/js/app.js` — items, requirements_schema, validation, persist to localStorage. Cart dropdown: `livewire:cart.dropdown`. Checkout calls Livewire with cart payload; server validates and runs CheckoutFromPayload.
 - **RTL / locale:** `lang` en | ar; session locale; RTL when `app()->isLocale('ar')`. Header sets `dir` and `lang`. Logout resets to en (see Docs/doc.md).
 - **Tailwind:** v4; `@import 'tailwindcss'`; `@theme` in `resources/css/app.css`. Accent: yellow (--color-accent). Dark mode: `dark:` and `.dark` class. Use gap for spacing in flex/grid.
 - **Flux:** Free components only (avatar, badge, button, callout, checkbox, dropdown, field, heading, icon, input, modal, navbar, select, separator, skeleton, switch, text, textarea, tooltip, etc.). No Pro components.
 - **Assets:** Vite entry: `resources/css/app.css`, `resources/js/app.js`. Echo in `resources/js/echo.js`. Run `npm run build` or `npm run dev` after frontend changes.
+- **PWA:** Manifest from `config/pwa.php`; run `php artisan erag:update-manifest`. Layouts include `@PwaHead` (in head partials) and `@RegisterServiceWorkerScript` (before `@fluxScripts`). Install button configurable in pwa config.
 
 ---
 
@@ -129,7 +130,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 - **Channels:** Database + broadcast (Reverb). User: `private-App.Models.User.{id}`. Admin: admin.fulfillments, admin.topups, admin.activities, admin.system-events (SystemEventCreated).
 - **Trigger:** After DB commit only (DB::afterCommit in Actions/Commands). No notification on rollback. Financial system_event broadcast also in DB::afterCommit.
 - **Types:** Topup (requested, approved, rejected), Refund (requested, approved, rejected), Fulfillment (completed, failed, process failed), Wallet reconciled, Settlement created (if config), Loyalty tier changed, User blocked/unblocked, Payment failed. See NOTIFICATIONS.md.
-- **UI:** Admin: `/admin/notifications`. User: bell dropdown (latest 5), `/notifications`. Sidebar indicators (topups, refunds, fulfillments) use **state counts** (pending/failed), not notification count.
+- **UI:** Admin: `/admin/notifications`. User: bell dropdown (latest 5), `/notifications`. Sidebar: **state counts** for topups, refunds, fulfillments (Livewire: SidebarToggleBadge, TopupIndicator, FulfillmentIndicator, OperationsGroup/FinancialsGroup), not notification count.
 
 ---
 
@@ -166,6 +167,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 - **notifications:** settlement_created_enabled.
 - **operational_intelligence:** wallet_velocity (threshold, window_seconds), refund_abuse (threshold, window_minutes), fulfillment_failure (threshold, window_minutes). Env: OI_WALLET_VELOCITY_*, OI_REFUND_ABUSE_*, OI_FULFILLMENT_FAILURE_*.
 - **broadcasting / reverb:** default connection; Reverb for realtime.
+- **pwa:** manifest (name, theme_color, display, icons, etc.), install-button, livewire-app; `php artisan erag:update-manifest` to regenerate manifest.
 
 ---
 
@@ -185,6 +187,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 - **Docs/DB.md:** Schema notes, orders/order_items, wallet/transaction design.
 - **Docs/roles.md:** Role list (admin, supervisor, salesperson, customer).
 - **Docs/system_events_map.md:** System events map — financial vs informational vs anomaly events, invariant (ledger + mirror), idempotency keys, broadcast, severity.
+- **config/pwa.php:** PWA manifest (name, theme_color, display, icons), install button, livewire-app; erag/laravel-pwa. Layouts: @PwaHead in head partials, @RegisterServiceWorkerScript before body close.
 - **NOTIFICATIONS.md:** Notification triggers, channels, config, safety (afterCommit).
 - **CLAUDE.md / .cursor/rules:** Laravel Boost, Pint, Pest, Livewire, Tailwind, Flux conventions; test enforcement; MCP usage.
 - **User audit timeline:** UserAuditTimelineService (merged timeline, non-financial system_events only); TimelineEntryDTO; type/date filters; index-safe queries. Operational intelligence: OperationalIntelligenceService + config/operational_intelligence.php; anomaly detection in afterCommit only; no ledger mutation.
@@ -200,7 +203,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 
 ## 18. Quick reference — routes (public / auth / backend)
 
-- **Public:** `/` (home), `/cart`, `/404`, `language/{locale}`.
-- **Auth + verified:** `/wallet`, `/loyalty`, `/orders`, `/orders/{order_number}`, `/notifications`, `/topup-proofs/{proof}`.
-- **Backend (auth + verified + backend):** `/dashboard`, `/categories`, `/packages`, `/products`, `/pricing-rules`, `/loyalty-tiers`, `/admin/orders`, `/admin/activities`, `/admin/system-events`, `/admin/users`, `/admin/users/{user}/audit` (user audit timeline), `/fulfillments`, `/refunds`, `/topups`, `/customer-funds`, `/settlements`, `/admin/notifications`.
+- **Public:** `/` (home), `/cart`, `/contact`, `/404`, `language/{locale}`.
+- **Auth + verified:** `/profile`, `/profile/edit`, `/wallet`, `/loyalty`, `/orders`, `/orders/{order_number}`, `/notifications`, `/topup-proofs/{proof}`.
+- **Backend (auth + verified + backend):** `/dashboard`, `/categories`, `/packages`, `/products`, `/pricing-rules`, `/loyalty-tiers`, `/admin/orders`, `/admin/orders/{order}`, `/admin/activities`, `/admin/system-events`, `/admin/users`, `/admin/users/{user}`, `/admin/users/{user}/audit`, `/fulfillments`, `/refunds`, `/topups`, `/customer-funds`, `/settlements`, `/admin/notifications`. **Admin-only:** `/admin/website-settings`.
 - **Settings:** `/settings`, `/settings/profile`, `/settings/password`, `/settings/appearance`, two-factor route by Fortify.
