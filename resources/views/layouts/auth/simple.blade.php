@@ -22,6 +22,7 @@
                 </div>
             </div>
         </div>
+        @RegisterServiceWorkerScript
         @fluxScripts
     </body>
 </html>

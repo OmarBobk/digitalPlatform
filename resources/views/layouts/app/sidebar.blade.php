@@ -250,6 +250,7 @@
 
         <x-toaster-hub />
 
+        @RegisterServiceWorkerScript
         @fluxScripts
     </body>
 </html>
