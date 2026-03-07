@@ -8,6 +8,7 @@ use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Spatie\Activitylog\Models\Activity;
@@ -30,6 +31,14 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->registerAuthActivityHooks();
         $this->registerActivityBroadcasting();
+        $this->registerNotificationChannels();
+    }
+
+    protected function registerNotificationChannels(): void
+    {
+        Notification::extend('fcm', function ($app) {
+            return $app->make(\App\Notifications\Channels\FcmChannel::class);
+        });
     }
 
     protected function configureDefaults(): void

@@ -38,6 +38,8 @@
   - ###DONE: Fulfillments: the requirements should be displayed instead the provider column.
   - ###TODO: Contactus: the messages that come from this form where we should handle them.
   - ###TODO: ###MAJOR### PWA erag/laravel-pwa
+    - ###TODO: Stop rotating screen on phone.
+    - 
   - ###TODO: ###MAJOR### Record website views
 - Frontend:
   - ###DONE wallet transaction in /wallets should be more described

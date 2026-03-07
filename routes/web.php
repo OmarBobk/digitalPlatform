@@ -1,6 +1,7 @@
 <?php
 
 use App\Exports\UsersExport;
+use App\Http\Controllers\Api\PushTokenController;
 use App\Http\Controllers\TopupProofController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
@@ -38,6 +39,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('/notifications', 'pages::frontend.notifications')->name('notifications.index');
     Route::get('/topup-proofs/{proof}', [TopupProofController::class, 'show'])->name('topup-proofs.show');
 });
+
+Route::post('api/admin/push/register-token', [PushTokenController::class, 'register'])
+    ->middleware(['auth', 'verified', 'backend'])
+    ->name('api.admin.push.register-token');
 
 Route::middleware(['auth', 'verified', 'backend'])->group(function () {
     Route::livewire('/dashboard', 'pages::backend.dashboard')->name('dashboard');

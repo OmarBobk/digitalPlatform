@@ -506,3 +506,7 @@ document.addEventListener('alpine:init', () => {
  */
 
 import './echo';
+
+if (window.Laravel?.isAdmin === true) {
+    import('./firebase-push');
+}

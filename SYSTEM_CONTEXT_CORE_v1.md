@@ -85,7 +85,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 - **Tailwind:** v4; `@import 'tailwindcss'`; `@theme` in `resources/css/app.css`. Accent: yellow (--color-accent). Dark mode: `dark:` and `.dark` class. Use gap for spacing in flex/grid.
 - **Flux:** Free components only (avatar, badge, button, callout, checkbox, dropdown, field, heading, icon, input, modal, navbar, select, separator, skeleton, switch, text, textarea, tooltip, etc.). No Pro components.
 - **Assets:** Vite entry: `resources/css/app.css`, `resources/js/app.js`. Echo in `resources/js/echo.js`. Run `npm run build` or `npm run dev` after frontend changes.
-- **PWA:** Manifest from `config/pwa.php`; run `php artisan erag:update-manifest`. Layouts include `@PwaHead` (in head partials) and `@RegisterServiceWorkerScript` (before `@fluxScripts`). Install button configurable in pwa config.
+- **PWA:** erag/laravel-pwa. Manifest from `config/pwa.php` (name, short_name, description, theme_color, background_color, display, orientation, scope, start_url, icons 192+512); run `php artisan erag:update-manifest` after changes. Layouts: `@PwaHead` in head partials, `@RegisterServiceWorkerScript` before `@fluxScripts`. Config: install-button, manifest, debug (env APP_DEBUG), livewire-app.
 
 ---
 
@@ -167,7 +167,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 - **notifications:** settlement_created_enabled.
 - **operational_intelligence:** wallet_velocity (threshold, window_seconds), refund_abuse (threshold, window_minutes), fulfillment_failure (threshold, window_minutes). Env: OI_WALLET_VELOCITY_*, OI_REFUND_ABUSE_*, OI_FULFILLMENT_FAILURE_*.
 - **broadcasting / reverb:** default connection; Reverb for realtime.
-- **pwa:** manifest (name, theme_color, display, icons, etc.), install-button, livewire-app; `php artisan erag:update-manifest` to regenerate manifest.
+- **pwa:** install-button, manifest (name, short_name, description, theme_color, background_color, display, orientation, scope, start_url, icons 192+512), debug (env APP_DEBUG), livewire-app; `php artisan erag:update-manifest` to regenerate manifest.
 
 ---
 
@@ -187,7 +187,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 - **Docs/DB.md:** Schema notes, orders/order_items, wallet/transaction design.
 - **Docs/roles.md:** Role list (admin, supervisor, salesperson, customer).
 - **Docs/system_events_map.md:** System events map — financial vs informational vs anomaly events, invariant (ledger + mirror), idempotency keys, broadcast, severity.
-- **config/pwa.php:** PWA manifest (name, theme_color, display, icons), install button, livewire-app; erag/laravel-pwa. Layouts: @PwaHead in head partials, @RegisterServiceWorkerScript before body close.
+- **config/pwa.php:** PWA (erag/laravel-pwa): install-button, manifest (name, short_name, description, theme_color, background_color, display, orientation, scope, start_url, icons), debug (APP_DEBUG), livewire-app. Layouts: @PwaHead in head partials, @RegisterServiceWorkerScript before body close.
 - **NOTIFICATIONS.md:** Notification triggers, channels, config, safety (afterCommit).
 - **CLAUDE.md / .cursor/rules:** Laravel Boost, Pint, Pest, Livewire, Tailwind, Flux conventions; test enforcement; MCP usage.
 - **User audit timeline:** UserAuditTimelineService (merged timeline, non-financial system_events only); TimelineEntryDTO; type/date filters; index-safe queries. Operational intelligence: OperationalIntelligenceService + config/operational_intelligence.php; anomaly detection in afterCommit only; no ledger mutation.
