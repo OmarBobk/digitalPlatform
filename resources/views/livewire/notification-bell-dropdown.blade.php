@@ -57,7 +57,7 @@
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <flux:text class="font-medium text-zinc-900 dark:text-zinc-100">{{ $title }}</flux:text>
                                     <span
-                                        x-show="{{ $isUnread ? 'true' : 'false' }} || newIds.includes('{{ $notification->id }}')"
+                                        x-show="{{ $isUnread ? 'true' : 'false' }} || (typeof newIds !== 'undefined' && newIds.includes('{{ $notification->id }}'))"
                                         x-transition:enter="transition ease-out duration-200"
                                         x-transition:enter-start="opacity-0 scale-90"
                                         x-transition:enter-end="opacity-100 scale-100"
