@@ -28,6 +28,9 @@ class FcmChannel
             return;
         }
 
-        SendPushNotificationJob::dispatch($tokens, $payload);
+        $notificationType = get_class($notification);
+        $notificationId = method_exists($notification, 'getFcmDedupId') ? $notification->getFcmDedupId() : null;
+
+        SendPushNotificationJob::dispatch($tokens, $payload, $notificationType, $notificationId);
     }
 }

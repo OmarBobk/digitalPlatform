@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AdminDevice;
 use App\Models\User;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -47,4 +48,35 @@ it('requires authentication to register push token', function () {
     ]);
 
     $response->assertUnauthorized();
+});
+
+it('reassigns token to current user when same fcm_token is registered by another admin', function () {
+    $admin1 = User::factory()->create();
+    $admin1->assignRole('admin');
+    $admin1->givePermissionTo('manage_topups');
+    $admin2 = User::factory()->create();
+    $admin2->assignRole('admin');
+    $admin2->givePermissionTo('manage_topups');
+
+    $token = 'shared-fcm-token-'.uniqid();
+
+    actingAs($admin1)->postJson('/api/admin/push/register-token', [
+        'fcm_token' => $token,
+        'device_name' => 'Admin1 Device',
+    ])->assertSuccessful();
+
+    $device = AdminDevice::query()->where('fcm_token', $token)->first();
+    expect($device)->not->toBeNull()
+        ->and($device->user_id)->toBe($admin1->id)
+        ->and($device->device_name)->toBe('Admin1 Device');
+
+    actingAs($admin2)->postJson('/api/admin/push/register-token', [
+        'fcm_token' => $token,
+        'device_name' => 'Admin2 Device',
+    ])->assertSuccessful();
+
+    $device->refresh();
+    expect(AdminDevice::query()->where('fcm_token', $token)->count())->toBe(1)
+        ->and($device->user_id)->toBe($admin2->id)
+        ->and($device->device_name)->toBe('Admin2 Device');
 });

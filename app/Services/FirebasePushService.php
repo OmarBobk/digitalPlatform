@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\AdminDevice;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -20,30 +21,31 @@ class FirebasePushService
 
     /**
      * Send push notification payload to multiple FCM tokens via HTTP v1 API.
-     * Each token is sent one request; failures are logged and do not stop the batch.
+     * Invalid/UNREGISTERED tokens are removed from admin_devices.
      *
      * @param  array<int, string>  $tokens  FCM registration tokens
      * @param  array{title: string, body: string, sound: string, url: string}  $payload
+     * @return array{success_count: int, fail_count: int, last_error: string|null}
      */
-    public function sendToTokens(array $tokens, array $payload): void
+    public function sendToTokens(array $tokens, array $payload): array
     {
         $tokens = array_values(array_filter(array_unique($tokens)));
         if ($tokens === []) {
-            return;
+            return ['success_count' => 0, 'fail_count' => 0, 'last_error' => null];
         }
 
         $accessToken = $this->getAccessToken();
         if ($accessToken === null) {
             Log::warning('Firebase push skipped: no access token');
 
-            return;
+            return ['success_count' => 0, 'fail_count' => count($tokens), 'last_error' => 'no_access_token'];
         }
 
         $projectId = config('firebase.project_id');
         if (! is_string($projectId) || $projectId === '') {
             Log::warning('Firebase push skipped: FIREBASE_PROJECT_ID not set');
 
-            return;
+            return ['success_count' => 0, 'fail_count' => count($tokens), 'last_error' => 'missing_project_id'];
         }
 
         $url = sprintf(self::FCM_SEND_URL_TEMPLATE, $projectId);
@@ -51,6 +53,10 @@ class FirebasePushService
             'Authorization' => 'Bearer '.$accessToken,
             'Content-Type' => 'application/json',
         ];
+
+        $successCount = 0;
+        $failCount = 0;
+        $lastError = null;
 
         foreach ($tokens as $token) {
             $body = [
@@ -67,14 +73,64 @@ class FirebasePushService
 
             $response = Http::withHeaders($headers)->post($url, $body);
 
-            if (! $response->successful()) {
+            if ($response->successful()) {
+                $successCount++;
+            } else {
+                $failCount++;
+                $bodyStr = $response->body();
+                $lastError = $this->parseFcmError($bodyStr);
                 Log::warning('FCM send failed', [
                     'token_preview' => substr($token, 0, 20).'...',
                     'status' => $response->status(),
-                    'body' => $response->body(),
+                    'body' => $bodyStr,
                 ]);
+                if ($this->shouldDeleteToken($bodyStr)) {
+                    AdminDevice::query()->where('fcm_token', $token)->delete();
+                }
             }
         }
+
+        return [
+            'success_count' => $successCount,
+            'fail_count' => $failCount,
+            'last_error' => $lastError,
+        ];
+    }
+
+    private function parseFcmError(string $body): ?string
+    {
+        $data = json_decode($body, true);
+        if (! is_array($data) || ! isset($data['error']['message'])) {
+            return null;
+        }
+
+        return $data['error']['message'];
+    }
+
+    private function shouldDeleteToken(string $body): bool
+    {
+        $data = json_decode($body, true);
+        if (! is_array($data) || ! isset($data['error']['details'])) {
+            $message = is_array($data) ? ($data['error']['message'] ?? '') : '';
+
+            return str_contains($message, 'UNREGISTERED') || str_contains($message, 'INVALID_ARGUMENT');
+        }
+        foreach ((array) $data['error']['details'] as $detail) {
+            $code = is_array($detail) ? ($detail['errorCode'] ?? $detail['error_code'] ?? '') : '';
+            if ($code === 'UNREGISTERED' || $code === 'INVALID_ARGUMENT') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether Firebase credentials are configured and can obtain an access token.
+     */
+    public function hasValidCredentials(): bool
+    {
+        return $this->getAccessToken() !== null;
     }
 
     /**

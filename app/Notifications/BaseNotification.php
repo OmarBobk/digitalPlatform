@@ -59,4 +59,12 @@ abstract class BaseNotification extends Notification implements ShouldBroadcast
             'url' => $this->url,
         ];
     }
+
+    /**
+     * Unique id for FCM push deduplication (same event = same id).
+     */
+    public function getFcmDedupId(): string
+    {
+        return hash('sha256', get_class($this).$this->sourceType.((string) $this->sourceId));
+    }
 }

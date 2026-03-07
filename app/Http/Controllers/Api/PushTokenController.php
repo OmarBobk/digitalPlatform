@@ -30,6 +30,7 @@ class PushTokenController extends Controller
             [
                 'user_id' => $request->user()->id,
                 'device_name' => $validated['device_name'] ?? null,
+                'last_seen_at' => now(),
             ]
         );
 

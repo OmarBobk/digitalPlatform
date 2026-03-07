@@ -16,6 +16,11 @@ return [
     'default' => env('QUEUE_CONNECTION', 'database'),
 
     /*
+    | Push notifications use the "push" queue. Run a worker that processes it:
+    | php artisan queue:work --queue=push,default
+    */
+
+    /*
     |--------------------------------------------------------------------------
     | Queue Connections
     |--------------------------------------------------------------------------
