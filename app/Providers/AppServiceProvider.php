@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Events\ActivityLogChanged;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Foundation\Vite;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -32,6 +33,22 @@ class AppServiceProvider extends ServiceProvider
         $this->registerAuthActivityHooks();
         $this->registerActivityBroadcasting();
         $this->registerNotificationChannels();
+        $this->configureVitePreload();
+    }
+
+    /**
+     * Disable preload for CSS to avoid "preloaded but not used" warnings
+     * when using Livewire wire:navigate (browser can treat preload as unused).
+     */
+    protected function configureVitePreload(): void
+    {
+        app(Vite::class)->usePreloadTagAttributes(function ($src, $url, $chunk, $manifest) {
+            if (isset($chunk['file']) && str_ends_with((string) $chunk['file'], '.css')) {
+                return false;
+            }
+
+            return [];
+        });
     }
 
     protected function registerNotificationChannels(): void

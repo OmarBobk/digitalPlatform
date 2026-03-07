@@ -47,27 +47,25 @@ self.addEventListener('activate', (event) => {
 });
 
 function playNotificationSound(soundUrl) {
-    if (!soundUrl) return Promise.resolve();
-    const url = soundUrl.startsWith('/') ? self.location.origin + soundUrl : soundUrl;
-    return fetch(url)
-        .then((res) => (res.ok ? res.arrayBuffer() : Promise.reject(new Error('fetch failed'))))
-        .then((arrayBuffer) => {
-            try {
-                const ctx = new (self.AudioContext || self.webkitAudioContext)();
-                return ctx.decodeAudioData(arrayBuffer).then((audioBuffer) => {
-                    const source = ctx.createBufferSource();
-                    source.buffer = audioBuffer;
-                    source.connect(ctx.destination);
-                    const resumePromise = ctx.resume ? ctx.resume() : Promise.resolve();
-                    return resumePromise.then(() => {
-                        source.start(0);
-                    });
-                });
-            } catch (e) {
-                return Promise.reject(e);
-            }
-        })
-        .catch(() => {});
+    if (!soundUrl || typeof self.AudioContext === 'undefined' && typeof self.webkitAudioContext === 'undefined') return Promise.resolve();
+    const base = self.location.origin;
+    const url = soundUrl.startsWith('http') ? soundUrl : (soundUrl.startsWith('/') ? base + soundUrl : base + '/' + soundUrl);
+    const Ctor = self.AudioContext || self.webkitAudioContext;
+    const ctx = new Ctor();
+    const resumeFirst = ctx.resume ? ctx.resume() : Promise.resolve();
+    return resumeFirst.then(function () {
+        return fetch(url, { cache: 'no-cache' });
+    }).then(function (res) {
+        if (!res.ok) return Promise.reject(new Error('fetch failed'));
+        return res.arrayBuffer();
+    }).then(function (arrayBuffer) {
+        return ctx.decodeAudioData(arrayBuffer);
+    }).then(function (audioBuffer) {
+        const source = ctx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(ctx.destination);
+        source.start(0);
+    }).catch(function () {});
 }
 
 self.addEventListener('push', (event) => {
@@ -78,7 +76,7 @@ self.addEventListener('push', (event) => {
     } catch {
         return;
     }
-    const data = payload.data || payload;
+    const data = payload.data || (payload.message && payload.message.data) || payload;
     const title = data.title || 'Notification';
     const body = data.body || '';
     const sound = data.sound || '';

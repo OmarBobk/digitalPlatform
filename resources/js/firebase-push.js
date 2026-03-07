@@ -1,7 +1,8 @@
 /**
  * Firebase Cloud Messaging push setup for admin PWA.
  * Only runs when window.Laravel?.isAdmin === true.
- * Requests notification permission, gets FCM token, registers with backend.
+ * Asks for notification permission first (so the prompt shows before/without PWA install),
+ * then gets FCM token and registers with backend.
  */
 
 import { getApps, initializeApp } from 'firebase/app';
@@ -26,6 +27,17 @@ function getConfig() {
 }
 
 async function registerPush() {
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
+
+  // Request permission first so the browser prompt shows (before PWA install or FCM setup).
+  let permission;
+  try {
+    permission = await Notification.requestPermission();
+  } catch {
+    return;
+  }
+  if (permission !== 'granted') return;
+
   const config = getConfig();
   if (!config) return;
 
@@ -34,13 +46,6 @@ async function registerPush() {
 
   const app = getApps().length === 0 ? initializeApp(config) : getApps()[0];
   const messaging = getMessaging(app);
-
-  try {
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return;
-  } catch {
-    return;
-  }
 
   const registration = await navigator.serviceWorker.ready;
   const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
