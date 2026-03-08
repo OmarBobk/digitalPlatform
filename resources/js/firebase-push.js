@@ -27,6 +27,7 @@ function getConfig() {
 }
 
 async function registerPush() {
+  console.log('registerPush started');
   if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
 
   // Request permission first so the browser prompt shows (before PWA install or FCM setup).
@@ -37,23 +38,48 @@ async function registerPush() {
     return;
   }
   if (permission !== 'granted') return;
+  console.log('registerPush permission granted');
 
   const config = getConfig();
-  if (!config) return;
+  if (!config) {
+    console.warn('registerPush: missing Firebase config (VITE_FIREBASE_API_KEY, APP_ID, MESSAGING_SENDER_ID)');
+    return;
+  }
+  console.log('registerPush config ok');
 
   const supported = await isSupported();
-  if (!supported) return;
+  if (!supported) {
+    console.warn('registerPush: FCM not supported in this browser/context');
+    return;
+  }
+  console.log('registerPush FCM supported');
 
   const app = getApps().length === 0 ? initializeApp(config) : getApps()[0];
   const messaging = getMessaging(app);
 
-  const registration = await navigator.serviceWorker.ready;
+  let registration;
+  try {
+    registration = await navigator.serviceWorker.ready;
+  } catch (e) {
+    console.warn('registerPush: service worker not ready', e);
+    return;
+  }
   const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
   const options = { serviceWorkerRegistration: registration };
   if (vapidKey) options.vapidKey = vapidKey;
-  const token = await getToken(messaging, options);
-  if (!token) return;
 
+  let token;
+  try {
+    token = await getToken(messaging, options);
+  } catch (e) {
+    console.warn('registerPush: getToken failed (check VAPID key and SW scope)', e);
+    return;
+  }
+  if (!token) {
+    console.warn('registerPush: getToken returned null');
+    return;
+  }
+  console.log('registerPush token', token);
   const url = '/api/admin/push/register-token';
   const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
   const headers = {
@@ -62,7 +88,7 @@ async function registerPush() {
     'X-Requested-With': 'XMLHttpRequest',
   };
   if (csrfToken) headers['X-CSRF-TOKEN'] = csrfToken;
-
+  console.log('registerPush fetching');
   await fetch(url, {
     method: 'POST',
     headers,
@@ -72,8 +98,9 @@ async function registerPush() {
       device_name: typeof navigator !== 'undefined' ? navigator.userAgent : null,
     }),
   });
+  console.log('registerPush fetched');
 }
 
 if (window.Laravel?.isAdmin === true) {
-  registerPush().catch(() => {});
+  registerPush().catch((e) => console.warn('registerPush error', e));
 }
