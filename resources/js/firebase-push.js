@@ -26,6 +26,31 @@ function getConfig() {
   };
 }
 
+/**
+ * Mirror of checks Firebase's isSupported() uses. Logs which one fails so we can debug.
+ * @returns {Promise<{ ok: boolean, failed: string[] }>}
+ */
+async function checkFcmSupportRequirements() {
+  const failed = [];
+  if (typeof window === 'undefined') failed.push('window');
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) failed.push('serviceWorker');
+  if (typeof window !== 'undefined' && !('Notification' in window)) failed.push('Notification');
+  if (typeof window !== 'undefined' && !('PushManager' in window)) failed.push('PushManager');
+  if (typeof fetch === 'undefined') failed.push('fetch');
+  try {
+    if (typeof indexedDB === 'undefined') failed.push('indexedDB');
+  } catch {
+    failed.push('indexedDB');
+  }
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (reg && typeof reg.showNotification !== 'function') failed.push('ServiceWorkerRegistration.showNotification');
+  } catch {
+    failed.push('serviceWorker.getRegistration');
+  }
+  return { ok: failed.length === 0, failed };
+}
+
 async function registerPush() {
   console.log('registerPush started');
   if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
@@ -48,11 +73,22 @@ async function registerPush() {
   console.log('registerPush config ok');
 
   const supported = await isSupported();
+  const requirementCheck = await checkFcmSupportRequirements();
+
   if (!supported) {
-    console.warn('registerPush: FCM not supported in this browser/context');
-    return;
+    const secure = typeof window !== 'undefined' && window.isSecureContext;
+    console.warn(
+      'registerPush: FCM isSupported()=false. Secure context:',
+      secure,
+      requirementCheck.failed.length ? 'Missing/failed: ' + requirementCheck.failed.join(', ') : '(our API checks passed)'
+    );
+    if (!requirementCheck.ok) {
+      return;
+    }
+    console.log('registerPush: trying getToken anyway (our checks passed)');
+  } else {
+    console.log('registerPush FCM supported');
   }
-  console.log('registerPush FCM supported');
 
   const app = getApps().length === 0 ? initializeApp(config) : getApps()[0];
   const messaging = getMessaging(app);
@@ -72,7 +108,17 @@ async function registerPush() {
   try {
     token = await getToken(messaging, options);
   } catch (e) {
-    console.warn('registerPush: getToken failed (check VAPID key and SW scope)', e);
+    const msg = e?.message ?? String(e);
+    const isVapidError = /applicationServerKey|not valid|VAPID/i.test(msg);
+    if (isVapidError) {
+      console.warn(
+        'registerPush: invalid or missing VAPID key. Set VITE_FIREBASE_VAPID_KEY in .env: ' +
+          'Firebase Console → Project settings → Cloud Messaging → Web Push certificates → Key pair.',
+        e
+      );
+    } else {
+      console.warn('registerPush: getToken failed (check VAPID key and SW scope)', e);
+    }
     return;
   }
   if (!token) {
