@@ -56,10 +56,12 @@ function resolveSoundPath(sound) {
     return DEFAULT_SOUND_PATH;
 }
 
+// Custom sound via Web Audio only works when AudioContext exists in the SW (often not on mobile).
+// We still set options.sound and silent:false on the notification so the device may play system default.
 function playNotificationSound(soundUrl) {
     console.log('[sw] playNotificationSound', { soundUrl: soundUrl });
     if (typeof self.AudioContext === 'undefined' && typeof self.webkitAudioContext === 'undefined') {
-        console.log('[sw] no AudioContext, skip sound');
+        console.log('[sw] AudioContext not available in this service worker (common on mobile) - custom Web Audio skipped. Notification uses options.sound + silent:false.');
         return Promise.resolve();
     }
     const path = resolveSoundPath(soundUrl);
