@@ -386,20 +386,20 @@ new class extends Component
 >
     <div
         class="relative space-y-4"
-        x-data="{ showPackages: @entangle('showPackageProducts') }"
+        x-data
         x-on:open-buy-now.window="$wire.openBuyNow($event.detail.productId, false, $event.detail.quantity)"
         x-on:open-package-overlay.window="$wire.openPackageOverlay($event.detail.packageId)"
     >
         <div class="flex items-center">
             <div class="flex items-center">
-                <template x-if="!showPackages && @js($isPackageOverlayOpen)">
+                @if ($isPackageOverlayOpen && ! $showPackageProducts)
                     <flux:button variant="ghost" size="xs" wire:click="backToPackageProducts">
                         <span class="flex items-center gap-1">
                             <flux:icon icon="chevron-left" class="size-4 rtl:rotate-180" />
                             {{ __('messages.back') }}
                         </span>
                     </flux:button>
-                </template>
+                @endif
             </div>
             <div class="flex flex-col flex-1 min-w-0 pe-12 items-center justify-center gap-0.5 text-center">
                 @php($packageLabel = $selectedPackageName ?? $buyNowPackageName)
@@ -424,16 +424,8 @@ new class extends Component
             </div>
         </div>
 
-        <template x-if="showPackages">
-            <div
-                x-transition:enter="transition ease-out duration-200"
-                x-transition:enter-start="opacity-0 translate-y-1"
-                x-transition:enter-end="opacity-100 translate-y-0"
-                x-transition:leave="transition ease-in duration-150"
-                x-transition:leave-start="opacity-100 translate-y-0"
-                x-transition:leave-end="opacity-0 translate-y-1"
-                class="space-y-4"
-            >
+        @if ($showPackageProducts)
+            <div class="space-y-4">
             @if ($packageProducts === [])
                 <flux:callout variant="subtle" icon="information-circle">
                     {{ __('messages.no_products_yet') }}
@@ -517,20 +509,9 @@ new class extends Component
                 </div>
             </div>
             </div>
-        </template>
-
-
-        {{--Buy Now Modal--}}
-        <template x-if="!showPackages">
-            <div
-                x-transition:enter="transition ease-out duration-200"
-                x-transition:enter-start="opacity-0 translate-y-1"
-                x-transition:enter-end="opacity-100 translate-y-0"
-                x-transition:leave="transition ease-in duration-150"
-                x-transition:leave-start="opacity-100 translate-y-0"
-                x-transition:leave-end="opacity-0 translate-y-1"
-                class="space-y-4"
-            >
+        @else
+            {{-- Buy Now form: scrollable so quantity + requirements + buttons are visible --}}
+            <div class="max-h-[70vh] overflow-y-auto space-y-4">
             <flux:heading size="sm" class="text-zinc-900 dark:text-zinc-100">
                 {{ __('main.buy_now') }}
             </flux:heading>
@@ -615,6 +596,8 @@ new class extends Component
                         </label>
                     @endforeach
                 </div>
+            @else
+                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('messages.no_additional_requirements') }}</p>
             @endif
 
             <div class="flex flex-wrap justify-end gap-2">
@@ -637,6 +620,6 @@ new class extends Component
                 </p>
             @endif
             </div>
-        </template>
+        @endif
     </div>
 </flux:modal>

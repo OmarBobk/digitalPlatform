@@ -70,6 +70,7 @@ return [
     'requirements' => 'Requirements',
     'requirements_intro' => 'Define required fields for this package.',
     'requirements_required_checkout' => 'Complete the required fields to continue.',
+    'no_additional_requirements' => 'No additional fields required.',
     'requirements_payload' => 'Requirements payload',
     'invalid_value' => 'Please enter a valid :field.',
     'invalid_format' => 'Please enter :field in the correct format.',

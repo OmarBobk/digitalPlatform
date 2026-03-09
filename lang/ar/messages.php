@@ -72,6 +72,7 @@ return [
     'requirements' => 'المتطلبات',
     'requirements_intro' => 'حدّد الحقول المطلوبة لهذه الباقة.',
     'requirements_required_checkout' => 'يرجى إكمال الحقول المطلوبة للمتابعة.',
+    'no_additional_requirements' => 'لا توجد حقول إضافية مطلوبة.',
     'requirements_payload' => 'بيانات المتطلبات',
     'invalid_value' => 'يرجى إدخال قيمة صحيحة لـ :field.',
     'invalid_format' => 'يرجى إدخال :field بالتنسيق الصحيح.',
