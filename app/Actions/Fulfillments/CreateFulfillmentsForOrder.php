@@ -12,6 +12,8 @@ use App\Models\Fulfillment;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
+use App\Notifications\FulfillmentCreatedNotification;
+use App\Services\NotificationRecipientService;
 use App\Services\SystemEventService;
 use Illuminate\Support\Facades\DB;
 
@@ -98,6 +100,8 @@ class CreateFulfillmentsForOrder
                                 'info',
                                 false,
                             );
+                            $adminNotification = FulfillmentCreatedNotification::fromFulfillment($fulfillment);
+                            app(NotificationRecipientService::class)->adminUsers()->each(fn ($admin) => $admin->notify($adminNotification));
                         }
                     });
 

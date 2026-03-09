@@ -21,6 +21,9 @@ return [
     'refund_rejected_title' => 'تم رفض الاسترداد',
     'refund_rejected_message' => 'تم رفض استردادك بمبلغ :amount_display للطلب :order_number.',
 
+    'fulfillment_created_title' => 'تنفيذ جديد',
+    'fulfillment_created_message' => 'تنفيذ #:fulfillment_id للطلب #:order_id في قائمة الانتظار.',
+
     'fulfillment_process_failed_title' => 'فشل تنفيذ الطلب',
     'fulfillment_process_failed_message' => 'فشل التنفيذ #:fulfillment_id (الطلب #:order_id). الخطأ: :error',
 

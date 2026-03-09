@@ -12,6 +12,8 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
 use App\Notifications\FulfillmentFailedNotification;
+use App\Notifications\FulfillmentProcessFailedNotification;
+use App\Services\NotificationRecipientService;
 use App\Services\OperationalIntelligenceService;
 use Illuminate\Support\Facades\DB;
 
@@ -87,18 +89,21 @@ class FailFulfillment
             $failedFulfillmentId = $lockedFulfillment->id;
             $failureReason = $reason;
             $orderOwnerId = Order::query()->where('id', $lockedFulfillment->order_id)->value('user_id');
-            if ($orderOwnerId !== null) {
-                DB::afterCommit(function () use ($failedFulfillmentId, $failureReason, $orderOwnerId): void {
-                    $fulfillment = Fulfillment::query()->find($failedFulfillmentId);
-                    if ($fulfillment !== null) {
-                        app(OperationalIntelligenceService::class)->detectFulfillmentFailure($fulfillment);
-                        $owner = User::query()->find($orderOwnerId);
-                        if ($owner !== null) {
-                            $owner->notify(FulfillmentFailedNotification::fromFulfillment($fulfillment, $failureReason));
-                        }
+            DB::afterCommit(function () use ($failedFulfillmentId, $failureReason, $orderOwnerId): void {
+                $fulfillment = Fulfillment::query()->find($failedFulfillmentId);
+                if ($fulfillment === null) {
+                    return;
+                }
+                app(OperationalIntelligenceService::class)->detectFulfillmentFailure($fulfillment);
+                if ($orderOwnerId !== null) {
+                    $owner = User::query()->find($orderOwnerId);
+                    if ($owner !== null) {
+                        $owner->notify(FulfillmentFailedNotification::fromFulfillment($fulfillment, $failureReason));
                     }
-                });
-            }
+                }
+                $adminNotification = FulfillmentProcessFailedNotification::fromFulfillment($fulfillment, $failureReason);
+                app(NotificationRecipientService::class)->adminUsers()->each(fn ($admin) => $admin->notify($adminNotification));
+            });
 
             $fulfillmentId = $lockedFulfillment->id;
             DB::afterCommit(static function () use ($fulfillmentId): void {

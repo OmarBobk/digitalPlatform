@@ -21,6 +21,9 @@ return [
     'refund_rejected_title' => 'Refund rejected',
     'refund_rejected_message' => 'Your refund of :amount_display for order :order_number was rejected.',
 
+    'fulfillment_created_title' => 'New fulfillment',
+    'fulfillment_created_message' => 'Fulfillment #:fulfillment_id for order #:order_id has been queued.',
+
     'fulfillment_process_failed_title' => 'Fulfillment processing failed',
     'fulfillment_process_failed_message' => 'Fulfillment #:fulfillment_id (order #:order_id) failed. Error: :error',
 
