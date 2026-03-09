@@ -39,7 +39,8 @@
   - ###TODO: Contactus: the messages that come from this form where we should handle them.
   - ###TODO: ###MAJOR### PWA erag/laravel-pwa
     - ###TODO: Stop rotating screen on phone.
-    - 
+    - ###TODO: PWA application button should only appear if the user has permission for install_pwa_app
+    - now I am receiving the notification but the sound is still not working  
   - ###TODO: ###MAJOR### Record website views
 - Frontend:
   - ###DONE wallet transaction in /wallets should be more described

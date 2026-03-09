@@ -13,35 +13,53 @@ function resolveSoundPath(sound) {
 }
 
 function playNotificationSound(soundUrl) {
-    if (typeof self.AudioContext === 'undefined' && typeof self.webkitAudioContext === 'undefined') return Promise.resolve();
+    console.log('[push-sw] playNotificationSound called', { soundUrl: soundUrl });
+    if (typeof self.AudioContext === 'undefined' && typeof self.webkitAudioContext === 'undefined') {
+        console.log('[push-sw] no AudioContext/webkitAudioContext, skip sound');
+        return Promise.resolve();
+    }
     var path = resolveSoundPath(soundUrl);
     var base = self.location.origin;
     var url = path.startsWith('http') ? path : base + (path.startsWith('/') ? path : '/' + path);
+    console.log('[push-sw] sound url', { path: path, url: url });
     var Ctor = self.AudioContext || self.webkitAudioContext;
     var ctx = new Ctor();
     var resumeFirst = ctx.resume ? ctx.resume() : Promise.resolve();
     function tryPlay(attemptUrl) {
+        console.log('[push-sw] fetch sound', attemptUrl);
         return fetch(attemptUrl, { cache: 'no-cache' })
             .then(function (res) {
-                if (!res.ok) return Promise.reject(new Error('fetch failed'));
+                console.log('[push-sw] fetch result', { url: attemptUrl, ok: res.ok, status: res.status });
+                if (!res.ok) return Promise.reject(new Error('fetch failed ' + res.status));
                 return res.arrayBuffer();
             })
             .then(function (arrayBuffer) {
+                console.log('[push-sw] decodeAudioData, length=', arrayBuffer.byteLength);
                 return new Promise(function (resolve, reject) {
                     ctx.decodeAudioData(arrayBuffer, resolve, reject);
                 });
             })
             .then(function (audioBuffer) {
+                console.log('[push-sw] playing audio buffer, duration=', audioBuffer.duration);
                 var source = ctx.createBufferSource();
                 source.buffer = audioBuffer;
                 source.connect(ctx.destination);
                 source.start(0);
+                console.log('[push-sw] source.start(0) called');
             });
     }
     return resumeFirst
-        .then(function () { return tryPlay(url); })
-        .catch(function () {
-            if (path !== DEFAULT_SOUND_PATH) return tryPlay(base + DEFAULT_SOUND_PATH);
+        .then(function () {
+            console.log('[push-sw] AudioContext resumed');
+            return tryPlay(url);
+        })
+        .then(function () { console.log('[push-sw] sound played ok'); })
+        .catch(function (err) {
+            console.log('[push-sw] sound play failed', err?.message || err);
+            if (path !== DEFAULT_SOUND_PATH) {
+                console.log('[push-sw] trying fallback', base + DEFAULT_SOUND_PATH);
+                return tryPlay(base + DEFAULT_SOUND_PATH);
+            }
         });
 }
 
@@ -50,11 +68,13 @@ function delay(ms) {
 }
 
 self.addEventListener('push', (event) => {
+    console.log('[push-sw] push event', event.data ? 'has data' : 'no data');
     if (!event.data) return;
     let payload;
     try {
         payload = event.data.json();
-    } catch {
+    } catch (e) {
+        console.log('[push-sw] payload parse error', e);
         return;
     }
     const data = payload.data || (payload.message && payload.message.data) || payload;
@@ -63,16 +83,21 @@ self.addEventListener('push', (event) => {
     const rawSound = data.sound || '';
     const sound = resolveSoundPath(rawSound);
     const url = data.url || '/';
+    console.log('[push-sw] notification', { title: title, rawSound: rawSound, sound: sound });
     const options = {
         body: body,
         tag: 'push-' + (data.url || 'default'),
         data: { url: url },
-        silent: false
+        silent: false,
+        vibrate: [400, 100, 400, 100, 400]
     };
     if (sound) {
         options.sound = sound.startsWith('/') ? self.location.origin + sound : sound;
     }
-    const showPromise = self.registration.showNotification(title, options);
+    console.log('[push-sw] showNotification', { title: title, options: options });
+    const showPromise = self.registration.showNotification(title, options)
+        .then(function () { console.log('[push-sw] showNotification done'); })
+        .catch(function (e) { console.log('[push-sw] showNotification failed', e); });
     var soundPromise = sound
         ? showPromise.then(function () { return delay(150); }).then(function () { return playNotificationSound(sound); })
         : Promise.resolve();
