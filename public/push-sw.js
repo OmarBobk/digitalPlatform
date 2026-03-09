@@ -1,7 +1,7 @@
 "use strict";
 
-// Standalone push worker: use this if erag/laravel-pwa overwrites sw.js.
-// Register in JS: navigator.serviceWorker.register('/push-sw.js', { scope: '/' });
+// NOT REGISTERED. The app registers sw.js via erag/laravel-pwa (@RegisterServiceWorkerScript).
+// Push handling (vibrate, sound, logs) lives in public/sw.js. This file is reference/backup only.
 
 var DEFAULT_SOUND_PATH = '/sounds/topup.mp3';
 

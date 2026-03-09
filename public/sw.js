@@ -46,52 +46,101 @@ self.addEventListener('activate', (event) => {
     );
 });
 
+// --- Push notification (FCM) ---
+const DEFAULT_SOUND_PATH = '/sounds/topup.mp3';
+
+function resolveSoundPath(sound) {
+    if (!sound || sound === 'default') return DEFAULT_SOUND_PATH;
+    if (sound.startsWith('/') && sound.indexOf('.') !== -1) return sound;
+    if (sound.startsWith('http')) return sound;
+    return DEFAULT_SOUND_PATH;
+}
+
 function playNotificationSound(soundUrl) {
-    if (!soundUrl || typeof self.AudioContext === 'undefined' && typeof self.webkitAudioContext === 'undefined') return Promise.resolve();
+    console.log('[sw] playNotificationSound', { soundUrl: soundUrl });
+    if (typeof self.AudioContext === 'undefined' && typeof self.webkitAudioContext === 'undefined') {
+        console.log('[sw] no AudioContext, skip sound');
+        return Promise.resolve();
+    }
+    const path = resolveSoundPath(soundUrl);
     const base = self.location.origin;
-    const url = soundUrl.startsWith('http') ? soundUrl : (soundUrl.startsWith('/') ? base + soundUrl : base + '/' + soundUrl);
+    const url = path.startsWith('http') ? path : base + (path.startsWith('/') ? path : '/' + path);
+    console.log('[sw] sound url', { path: path, url: url });
     const Ctor = self.AudioContext || self.webkitAudioContext;
     const ctx = new Ctor();
     const resumeFirst = ctx.resume ? ctx.resume() : Promise.resolve();
-    return resumeFirst.then(function () {
-        return fetch(url, { cache: 'no-cache' });
-    }).then(function (res) {
-        if (!res.ok) return Promise.reject(new Error('fetch failed'));
-        return res.arrayBuffer();
-    }).then(function (arrayBuffer) {
-        return ctx.decodeAudioData(arrayBuffer);
-    }).then(function (audioBuffer) {
-        const source = ctx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(ctx.destination);
-        source.start(0);
-    }).catch(function () {});
+    function tryPlay(attemptUrl) {
+        console.log('[sw] fetch sound', attemptUrl);
+        return fetch(attemptUrl, { cache: 'no-cache' })
+            .then(function (res) {
+                console.log('[sw] fetch result', { ok: res.ok, status: res.status });
+                if (!res.ok) return Promise.reject(new Error('fetch failed ' + res.status));
+                return res.arrayBuffer();
+            })
+            .then(function (arrayBuffer) {
+                console.log('[sw] decodeAudioData, length=', arrayBuffer.byteLength);
+                return new Promise(function (resolve, reject) {
+                    ctx.decodeAudioData(arrayBuffer, resolve, reject);
+                });
+            })
+            .then(function (audioBuffer) {
+                console.log('[sw] playing, duration=', audioBuffer.duration);
+                const source = ctx.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(ctx.destination);
+                source.start(0);
+                console.log('[sw] source.start(0) done');
+            });
+    }
+    return resumeFirst
+        .then(function () { return tryPlay(url); })
+        .then(function () { console.log('[sw] sound played ok'); })
+        .catch(function (err) {
+            console.log('[sw] sound failed', err && err.message ? err.message : err);
+            if (path !== DEFAULT_SOUND_PATH) {
+                console.log('[sw] fallback', base + DEFAULT_SOUND_PATH);
+                return tryPlay(base + DEFAULT_SOUND_PATH);
+            }
+        });
+}
+
+function delay(ms) {
+    return new Promise(function (r) { setTimeout(r, ms); });
 }
 
 self.addEventListener('push', (event) => {
+    console.log('[sw] push event', event.data ? 'has data' : 'no data');
     if (!event.data) return;
     let payload;
     try {
         payload = event.data.json();
-    } catch {
+    } catch (e) {
+        console.log('[sw] payload parse error', e);
         return;
     }
     const data = payload.data || (payload.message && payload.message.data) || payload;
     const title = data.title || 'Notification';
     const body = data.body || '';
-    const sound = data.sound || '';
+    const rawSound = data.sound || '';
+    const sound = resolveSoundPath(rawSound);
     const url = data.url || '/';
+    console.log('[sw] notification', { title: title, rawSound: rawSound, sound: sound });
     const options = {
         body: body,
         tag: 'push-' + (data.url || 'default'),
-        data: { url: url }
+        data: { url: url },
+        silent: false,
+        vibrate: [400, 100, 400, 100, 400]
     };
     if (sound) {
-        options.silent = false;
         options.sound = sound.startsWith('/') ? self.location.origin + sound : sound;
     }
-    const showPromise = self.registration.showNotification(title, options);
-    const soundPromise = sound ? playNotificationSound(sound) : Promise.resolve();
+    const showPromise = self.registration.showNotification(title, options)
+        .then(function () { console.log('[sw] showNotification done'); })
+        .catch(function (e) { console.log('[sw] showNotification failed', e); });
+    const soundPromise = sound
+        ? showPromise.then(function () { return delay(150); }).then(function () { return playNotificationSound(sound); })
+        : Promise.resolve();
     event.waitUntil(Promise.all([showPromise, soundPromise]));
 });
 
