@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Spatie\Activitylog\Models\Activity;
@@ -33,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
         $this->registerAuthActivityHooks();
         $this->registerActivityBroadcasting();
         $this->registerNotificationChannels();
+        $this->registerPwaInstallButtonPermission();
         $this->configureVitePreload();
     }
 
@@ -55,6 +57,20 @@ class AppServiceProvider extends ServiceProvider
     {
         Notification::extend('fcm', function ($app) {
             return $app->make(\App\Notifications\Channels\FcmChannel::class);
+        });
+    }
+
+    /**
+     * Show PWA install button only to users with install_pwa_app permission.
+     * Runs before head partials render so @PwaHead sees the updated config.
+     */
+    protected function registerPwaInstallButtonPermission(): void
+    {
+        $views = ['partials.head', 'partials.frontend.head'];
+
+        View::composer($views, function (): void {
+            $show = auth()->check() && auth()->user()->can('install_pwa_app');
+            config(['pwa.install-button' => $show]);
         });
     }
 

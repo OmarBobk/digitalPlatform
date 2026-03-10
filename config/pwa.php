@@ -29,7 +29,7 @@ return [
         'theme_color' => '#eab308',
         'background_color' => '#fefce8',
         'display' => 'standalone',
-        'orientation' => 'any',
+        'orientation' => 'portrait',
         'scope' => '/',
         'start_url' => '/',
         'icons' => [
