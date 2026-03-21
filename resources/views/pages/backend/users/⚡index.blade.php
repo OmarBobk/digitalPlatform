@@ -279,7 +279,14 @@ new class extends Component
                                     <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300" dir="ltr">{{ ($u->country_code || $u->phone) ? trim(($u->country_code ?? '') . ' ' . ($u->phone ?? '')) : '—' }}</td>
                                     <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">{{ $u->username }}</td>
                                     <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
-                                        {{ $u->roles->pluck('name')->implode(', ') ?: '—' }}
+                                        {{
+                                            $u->roles
+                                                ->pluck('name')
+                                                ->map(fn ($roleName) => \Illuminate\Support\Facades\Lang::has('messages.role_'.$roleName)
+                                                    ? __('messages.role_'.$roleName)
+                                                    : str_replace('_', ' ', \Illuminate\Support\Str::headline($roleName)))
+                                                ->implode(', ') ?: '—'
+                                        }}
                                     </td>
                                     <td class="px-5 py-4">
                                         @if ($u->blocked_at)

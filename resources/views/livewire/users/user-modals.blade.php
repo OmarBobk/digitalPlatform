@@ -88,7 +88,7 @@
                                 value="{{ $roleName }}"
                                 class="size-4 rounded border-zinc-300 text-(--color-accent) focus:ring-(--color-accent)/40 dark:border-zinc-600"
                             />
-                            <span class="capitalize">{{ $roleName }}</span>
+                            <span>{{ \Illuminate\Support\Facades\Lang::has('messages.role_'.$roleName) ? __('messages.role_'.$roleName) : str_replace('_', ' ', \Illuminate\Support\Str::headline($roleName)) }}</span>
                         </label>
                     @endforeach
                 </div>
@@ -241,7 +241,7 @@
                                 value="{{ $roleName }}"
                                 class="size-4 rounded border-zinc-300 text-(--color-accent) focus:ring-(--color-accent)/40 dark:border-zinc-600"
                             />
-                            <span class="capitalize">{{ $roleName }}</span>
+                            <span>{{ \Illuminate\Support\Facades\Lang::has('messages.role_'.$roleName) ? __('messages.role_'.$roleName) : str_replace('_', ' ', \Illuminate\Support\Str::headline($roleName)) }}</span>
                         </label>
                     @endforeach
                 </div>

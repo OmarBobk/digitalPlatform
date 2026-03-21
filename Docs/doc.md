@@ -37,15 +37,18 @@
   - ###DONE: on the sidebar toggle button should appear the badge count
   - ###DONE: Fulfillments: the requirements should be displayed instead the provider column.
   - ###TODO: Contactus: the messages that come from this form where we should handle them.
-  - ###DOING: ###MAJOR### PWA erag/laravel-pwa
+  - ###TODO: Users Manager: Translate the roles to arabic.
+  - ###TODO: Admin should be able from somewhere to add funds to some user
+  - ###DONE: ###MAJOR### PWA erag/laravel-pwa
     - ###DONE: Stop rotating screen on phone.
-    - ###TODO: PWA application button should only appear if the user has permission for install_pwa_app
+    - ###DONE: PWA application button should only appear if the user has permission for install_pwa_app
   - ###TODO: ###MAJOR### Record website views
 - Frontend:
   - ###DONE wallet transaction in /wallets should be more described
   - ###DONE Wallet /wallet Request topups form borders remove the ring
   - ###DONE /orders Redesign
   - ###DONE Register form: mask the phone number field
+  - ###TODO: Topups: when customer want to request a new topup he should see a toggle button if checked it then he need to upload the proof file if not then he can request the topup without uploading the proof
 
 
 
@@ -62,3 +65,4 @@
 
 
 
+what would do if your boss told that I want to let the admin do this process in less than one minute

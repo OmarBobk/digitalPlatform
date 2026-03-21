@@ -46,7 +46,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 - **Livewire:** `app/Livewire/` — Settings (Profile, Password, Appearance, DeleteUserForm, TwoFactor), Sidebar (SidebarToggleBadge, OperationsGroup, FinancialsGroup, FulfillmentIndicator, TopupIndicator), NotificationBellDropdown, Users (UserModals, UsersTable), Actions (Logout). Cart: `livewire:cart.dropdown`.
 - **Views:** `resources/views/` — `layouts/` (app, frontend, auth), `pages/` (backend/*, frontend/*), `components/`, `livewire/`, `flux/`, `errors/`, `partials/`.
 - **Routes:** `routes/web.php` (main), `routes/settings.php`, `routes/channels.php`, `routes/console.php`, `routes/ai.php` (MCP).
-- **Config:** `config/` — app, auth, fortify, permission, billing, loyalty, notifications, broadcasting, reverb, livewire, operational_intelligence (anomaly thresholds/windows), pwa (manifest, install button, livewire-app).
+- **Config:** `config/` — app, auth, fortify, permission, billing, loyalty, notifications, broadcasting, reverb, livewire, operational_intelligence (anomaly thresholds/windows), pwa (manifest, install button gated by permission install_pwa_app, livewire-app).
 - **Lang:** `lang/en/`, `lang/ar/` (main, messages, notifications, validation, pagination).
 - **Tests:** `tests/Feature/`, `tests/Unit/`, `tests/Pest.php`.
 - **Docs:** `Docs/doc.md`, `Docs/DB.md`, `Docs/roles.md`, `NOTIFICATIONS.md`.
@@ -70,6 +70,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 - **Fortify:** Login/register with **username** (config: `fortify.php` `username` => `username`). Email verification, password reset, 2FA (optional) supported.
 - **Backend access:** Middleware `backend` (EnsureBackendAccess) — user must have at least one of `config('permission.backend_permissions')`. If not, **404** (no 403) so backend routes stay hidden. Middleware `admin` (EnsureAdmin) exists but backend is permission-based.
 - **backend_permissions:** manage_users, manage_sections, manage_products, manage_topups, view_sales, create_orders, edit_orders, delete_orders, view_orders, view_fulfillments, manage_fulfillments, view_refunds, process_refunds, view_activities, manage_settlements.
+- **Other permissions:** `install_pwa_app` — admin only; controls whether the PWA “Install app” button is shown. View composer in AppServiceProvider (for `partials.head` and `partials.frontend.head`) sets `config('pwa.install-button')` from `auth()->user()?->can('install_pwa_app')` so erag/laravel-pwa only shows the button when the user has this permission.
 - **Roles:** admin (all permissions), salesperson, supervisor, customer. Spatie middleware: `role`, `permission`, `role_or_permission`.
 - **User model:** username, email, is_active, blocked_at, timezone, profile_photo, loyalty_tier (bronze/silver/gold), etc. Blocked users: BlockUser / UnblockUser actions + notifications.
 
@@ -85,7 +86,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 - **Tailwind:** v4; `@import 'tailwindcss'`; `@theme` in `resources/css/app.css`. Accent: yellow (--color-accent). Dark mode: `dark:` and `.dark` class. Use gap for spacing in flex/grid.
 - **Flux:** Free components only (avatar, badge, button, callout, checkbox, dropdown, field, heading, icon, input, modal, navbar, select, separator, skeleton, switch, text, textarea, tooltip, etc.). No Pro components.
 - **Assets:** Vite entry: `resources/css/app.css`, `resources/js/app.js`. Echo in `resources/js/echo.js`. Run `npm run build` or `npm run dev` after frontend changes.
-- **PWA:** erag/laravel-pwa. Manifest from `config/pwa.php` (name, short_name, description, theme_color, background_color, display, orientation, scope, start_url, icons 192+512); run `php artisan erag:update-manifest` after changes. Layouts: `@PwaHead` in head partials, `@RegisterServiceWorkerScript` before `@fluxScripts`. Config: install-button, manifest, debug (env APP_DEBUG), livewire-app.
+- **PWA:** erag/laravel-pwa. Manifest from `config/pwa.php` (name, short_name, description, theme_color, background_color, display, orientation, scope, start_url, icons 192+512); run `php artisan erag:update-manifest` after changes. Layouts: `@PwaHead` in head partials, `@RegisterServiceWorkerScript` before `@fluxScripts`. Config: install-button (overridden at runtime by `install_pwa_app` permission — only admins see the install button), manifest, debug (env APP_DEBUG), livewire-app.
 
 ---
 
@@ -167,7 +168,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 - **notifications:** settlement_created_enabled.
 - **operational_intelligence:** wallet_velocity (threshold, window_seconds), refund_abuse (threshold, window_minutes), fulfillment_failure (threshold, window_minutes). Env: OI_WALLET_VELOCITY_*, OI_REFUND_ABUSE_*, OI_FULFILLMENT_FAILURE_*.
 - **broadcasting / reverb:** default connection; Reverb for realtime.
-- **pwa:** install-button, manifest (name, short_name, description, theme_color, background_color, display, orientation, scope, start_url, icons 192+512), debug (env APP_DEBUG), livewire-app; `php artisan erag:update-manifest` to regenerate manifest.
+- **pwa:** install-button (default true; overridden at render time by permission `install_pwa_app` — only users with this permission see the install button; admin only), manifest (name, short_name, description, theme_color, background_color, display, orientation, scope, start_url, icons 192+512), debug (env APP_DEBUG), livewire-app; `php artisan erag:update-manifest` to regenerate manifest.
 
 ---
 
@@ -187,7 +188,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 - **Docs/DB.md:** Schema notes, orders/order_items, wallet/transaction design.
 - **Docs/roles.md:** Role list (admin, supervisor, salesperson, customer).
 - **Docs/system_events_map.md:** System events map — financial vs informational vs anomaly events, invariant (ledger + mirror), idempotency keys, broadcast, severity.
-- **config/pwa.php:** PWA (erag/laravel-pwa): install-button, manifest (name, short_name, description, theme_color, background_color, display, orientation, scope, start_url, icons), debug (APP_DEBUG), livewire-app. Layouts: @PwaHead in head partials, @RegisterServiceWorkerScript before body close.
+- **config/pwa.php:** PWA (erag/laravel-pwa): install-button (gated by permission `install_pwa_app` via view composer in AppServiceProvider — admin only), manifest (name, short_name, description, theme_color, background_color, display, orientation, scope, start_url, icons), debug (APP_DEBUG), livewire-app. Layouts: @PwaHead in head partials, @RegisterServiceWorkerScript before body close.
 - **NOTIFICATIONS.md:** Notification triggers, channels, config, safety (afterCommit).
 - **CLAUDE.md / .cursor/rules:** Laravel Boost, Pint, Pest, Livewire, Tailwind, Flux conventions; test enforcement; MCP usage.
 - **User audit timeline:** UserAuditTimelineService (merged timeline, non-financial system_events only); TimelineEntryDTO; type/date filters; index-safe queries. Operational intelligence: OperationalIntelligenceService + config/operational_intelligence.php; anomaly detection in afterCommit only; no ledger mutation.
