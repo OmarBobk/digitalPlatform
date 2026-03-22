@@ -138,6 +138,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Admin-defined custom prices for this user (per product).
+     *
+     * @return HasMany<UserProductPrice, $this>
+     */
+    public function userProductPrices(): HasMany
+    {
+        return $this->hasMany(UserProductPrice::class);
+    }
+
+    /**
      * Whether the user's loyalty tier is currently locked (override active).
      */
     public function isLoyaltyLocked(): bool

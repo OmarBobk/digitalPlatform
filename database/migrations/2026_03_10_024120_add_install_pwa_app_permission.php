@@ -14,9 +14,14 @@ return new class extends Migration
     {
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        $permission = Permission::firstOrCreate(['name' => 'install_pwa_app']);
-        $admin = Role::findByName('admin');
-        if ($admin && ! $admin->hasPermissionTo($permission)) {
+        $permission = Permission::firstOrCreate(
+            ['name' => 'install_pwa_app', 'guard_name' => 'web'],
+        );
+        $admin = Role::query()
+            ->where('name', 'admin')
+            ->where('guard_name', 'web')
+            ->first();
+        if ($admin !== null && ! $admin->hasPermissionTo($permission)) {
             $admin->givePermissionTo($permission);
         }
     }
@@ -27,6 +32,10 @@ return new class extends Migration
     public function down(): void
     {
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
-        Permission::findByName('install_pwa_app')?->delete();
+        Permission::query()
+            ->where('name', 'install_pwa_app')
+            ->where('guard_name', 'web')
+            ->first()
+            ?->delete();
     }
 };

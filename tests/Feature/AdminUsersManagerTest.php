@@ -42,6 +42,18 @@ test('users index loads for user with manage_users', function () {
         ->assertSee('data-test="admin-users-page"', false);
 });
 
+test('user detail page loads for admin with manage_users', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+    $target = User::factory()->create(['name' => 'Show Target', 'email' => 'show@example.com']);
+
+    $this->actingAs($admin)
+        ->get(route('admin.users.show', $target))
+        ->assertOk()
+        ->assertSee('data-test="admin-user-show-page"', false)
+        ->assertSee('Show Target');
+});
+
 test('users list shows search and pagination', function () {
     $admin = User::factory()->create();
     $admin->assignRole('admin');

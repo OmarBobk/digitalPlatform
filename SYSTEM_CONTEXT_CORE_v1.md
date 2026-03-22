@@ -15,7 +15,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 
 ## 2. Tech stack & versions
 
-- **PHP:** 8.4+ (CI runs 8.4, 8.5).
+- **PHP:** 8.2.12 (project runtime baseline; align local/runtime expectations to this version).
 - **Laravel:** 12.
 - **Livewire:** 4.
 - **Frontend:** Alpine.js, Tailwind CSS 4, Vite 7. Flux UI **free** components only (no Pro).
@@ -43,7 +43,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 ## 4. Directory layout (important paths)
 
 - **App logic:** `app/Actions/` (by domain: Orders, Fulfillments, Topups, Refunds, Users, Categories, Packages, Products, PricingRules, Loyalty, Fortify), `app/Services/` (SystemEventService, UserAuditTimelineService, OperationalIntelligenceService, etc.), `app/DTOs/` (e.g. TimelineEntryDTO), `app/Models/`, `app/Enums/`, `app/Notifications/`, `app/Events/`, `app/Console/Commands/`, `app/Http/Middleware/`, `app/Policies/`.
-- **Livewire:** `app/Livewire/` — Settings (Profile, Password, Appearance, DeleteUserForm, TwoFactor), Sidebar (SidebarToggleBadge, OperationsGroup, FinancialsGroup, FulfillmentIndicator, TopupIndicator), NotificationBellDropdown, Users (UserModals, UsersTable), Actions (Logout). Cart: `livewire:cart.dropdown`.
+- **Livewire:** `app/Livewire/` — Settings (Profile, Password, Appearance, DeleteUserForm, TwoFactor), Sidebar (SidebarToggleBadge, OperationsGroup, FinancialsGroup), NotificationBellDropdown, Users (UserModals, UsersTable), Actions (Logout). Cart: `livewire:cart.dropdown`.
 - **Views:** `resources/views/` — `layouts/` (app, frontend, auth), `pages/` (backend/*, frontend/*), `components/`, `livewire/`, `flux/`, `errors/`, `partials/`.
 - **Routes:** `routes/web.php` (main), `routes/settings.php`, `routes/channels.php`, `routes/console.php`, `routes/ai.php` (MCP).
 - **Config:** `config/` — app, auth, fortify, permission, billing, loyalty, notifications, broadcasting, reverb, livewire, operational_intelligence (anomaly thresholds/windows), pwa (manifest, install button gated by permission install_pwa_app, livewire-app).
@@ -81,6 +81,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 - **Layouts:** Guest/frontend: `layouts::frontend` (header with logo, search, cart dropdown, notification bell, user menu). Authenticated backend: `layouts::app` with sidebar (`layouts.app.sidebar`).
 - **Frontend pages (Livewire):** Home (`pages::frontend.main`), Contact, Cart, Profile (edit), Wallet, Orders, Order details, Loyalty, Notifications. Route names: home, contact, cart, profile, profile.edit-information, wallet, loyalty, orders.index, orders.show, notifications.index.
 - **Backend pages (Livewire):** Dashboard, Categories, Packages, Products, Pricing rules, Loyalty tiers, Admin orders (index/show), Activities, System events, Users (index/show, audit timeline), Fulfillments, Refunds, Topups, Customer funds, Settlements, Admin notifications; **admin-only:** Website settings (`/admin/website-settings`). All under `middleware(['auth','verified','backend'])`; website settings also `admin` role.
+- **Recent backend UI updates:** Fulfillments table now shows compact **requirements** context from `orderItem.requirements_payload` (fallback `fulfillment.meta.requirements_payload`) in the list view, and Users Manager role labels are localized via translation keys (not raw role slugs).
 - **Cart (Alpine):** `Alpine.store('cart')` in `resources/js/app.js` — items, requirements_schema, validation, persist to localStorage. Cart dropdown: `livewire:cart.dropdown`. Checkout calls Livewire with cart payload; server validates and runs CheckoutFromPayload.
 - **RTL / locale:** `lang` en | ar; session locale; RTL when `app()->isLocale('ar')`. Header sets `dir` and `lang`. Logout resets to en (see Docs/doc.md).
 - **Tailwind:** v4; `@import 'tailwindcss'`; `@theme` in `resources/css/app.css`. Accent: yellow (--color-accent). Dark mode: `dark:` and `.dark` class. Use gap for spacing in flex/grid.
@@ -131,7 +132,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 - **Channels:** Database + broadcast (Reverb). User: `private-App.Models.User.{id}`. Admin: admin.fulfillments, admin.topups, admin.activities, admin.system-events (SystemEventCreated).
 - **Trigger:** After DB commit only (DB::afterCommit in Actions/Commands). No notification on rollback. Financial system_event broadcast also in DB::afterCommit.
 - **Types:** Topup (requested, approved, rejected), Refund (requested, approved, rejected), Fulfillment (completed, failed, process failed), Wallet reconciled, Settlement created (if config), Loyalty tier changed, User blocked/unblocked, Payment failed. See NOTIFICATIONS.md.
-- **UI:** Admin: `/admin/notifications`. User: bell dropdown (latest 5), `/notifications`. Sidebar: **state counts** for topups, refunds, fulfillments (Livewire: SidebarToggleBadge, TopupIndicator, FulfillmentIndicator, OperationsGroup/FinancialsGroup), not notification count.
+- **UI:** Admin: `/admin/notifications`. User: bell dropdown (latest 5), `/notifications`. Sidebar: **state badges** for topups/refunds/fulfillments via Operations/Financials indicators and mobile toggle dot; these indicate operational state, not notification count.
 
 ---
 
@@ -139,6 +140,7 @@ Use this document to restore project context in long chat sessions (e.g. ChatGPT
 
 - **Locales:** en, ar. Session-driven; switch via route `language.switch` (`language/{locale}`).
 - **Lang files:** main, messages, notifications, validation, pagination in `lang/en/` and `lang/ar/`. Use `__('key')` or `@lang`; never hardcode user-facing strings.
+- **Role label convention:** Keep role slugs canonical in DB (`admin`, `supervisor`, `salesperson`, `customer`) and render UI labels through `messages.role_{slug}` with humanized fallback.
 
 ---
 

@@ -39,6 +39,7 @@
   - ###TODO: Contactus: the messages that come from this form where we should handle them.
   - ###TODO: Users Manager: Translate the roles to arabic.
   - ###TODO: Admin should be able from somewhere to add funds to some user
+  - ###TODO: Right now there are general price rules that are applied, this should be the default, but admin should be able to apply a different price  for a certain user.
   - ###DONE: ###MAJOR### PWA erag/laravel-pwa
     - ###DONE: Stop rotating screen on phone.
     - ###DONE: PWA application button should only appear if the user has permission for install_pwa_app

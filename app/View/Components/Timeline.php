@@ -19,6 +19,7 @@ class Timeline extends Component
     public function __construct(
         public Model $entity,
         public int $limit = 50,
+        public bool $showHeading = true,
     ) {}
 
     /**

@@ -20,8 +20,8 @@ use Spatie\Permission\Models\Role;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    Role::firstOrCreate(['name' => 'customer']);
-    Role::firstOrCreate(['name' => 'salesperson']);
+    Role::firstOrCreate(['name' => 'customer', 'guard_name' => 'web']);
+    Role::firstOrCreate(['name' => 'salesperson', 'guard_name' => 'web']);
     foreach (['customer', 'salesperson'] as $role) {
         LoyaltyTierConfig::query()->upsert(
             [

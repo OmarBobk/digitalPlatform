@@ -78,6 +78,9 @@ class CreateOrderFromCartPayload
             $lineItems = [];
             $subtotal = 0.0;
 
+            $priceService = app(CustomerPriceService::class);
+            $priceOverrides = $priceService->getUserOverridesFor($user);
+
             foreach ($normalizedItems as $index => $item) {
                 $product = $products->get($item['product_id']);
 
@@ -96,7 +99,7 @@ class CreateOrderFromCartPayload
                 $requirements = $item['requirements'] ?? [];
                 $this->validateRequirements($product->package?->requirements ?? collect(), $requirements, $index);
 
-                $unitPrice = app(CustomerPriceService::class)->finalPrice($product, $user);
+                $unitPrice = $priceService->finalPrice($product, $user, $priceOverrides);
                 $lineTotal = round($unitPrice * $item['quantity'], 2);
                 $entryPrice = $product->entry_price !== null ? (float) $product->entry_price : null;
 

@@ -5,9 +5,11 @@
 @endphp
 
 <div class="timeline-entity rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900" {{ $attributes }}>
-    <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-        {{ __('messages.system_events') }}
-    </h3>
+    @if ($showHeading)
+        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            {{ __('messages.system_events') }}
+        </h3>
+    @endif
     @if ($events->isEmpty())
         <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('messages.no_system_events_hint') }}</p>
     @else

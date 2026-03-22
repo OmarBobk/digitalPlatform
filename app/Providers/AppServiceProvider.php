@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Events\ActivityLogChanged;
+use App\Services\CustomerPriceService;
+use App\Services\PriceCalculator;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Foundation\Vite;
@@ -22,7 +24,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(CustomerPriceService::class, function ($app): CustomerPriceService {
+            return new CustomerPriceService($app->make(PriceCalculator::class));
+        });
     }
 
     /**

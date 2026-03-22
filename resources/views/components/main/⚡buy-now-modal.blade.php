@@ -201,9 +201,10 @@ new class extends Component
         $resolver = app(ResolvePackageRequirements::class);
         $priceService = app(CustomerPriceService::class);
         $user = auth()->user();
+        $overrides = $user !== null ? $priceService->getUserOverridesFor($user) : [];
 
         $this->packageProducts = $package->products
-            ->map(fn (Product $product): array => $this->mapProduct($product, $resolver, $priceService, $user, $placeholderImage))
+            ->map(fn (Product $product): array => $this->mapProduct($product, $resolver, $priceService, $user, $placeholderImage, $overrides))
             ->all();
         $this->selectedPackageId = $package->id;
         $this->selectedPackageName = $package->name;
@@ -346,14 +347,18 @@ new class extends Component
         $resolver = app(ResolvePackageRequirements::class);
         $priceService = app(CustomerPriceService::class);
         $user = auth()->user();
+        $overrides = $user !== null ? $priceService->getUserOverridesFor($user) : [];
 
-        return $this->mapProduct($product, $resolver, $priceService, $user, $placeholderImage);
+        return $this->mapProduct($product, $resolver, $priceService, $user, $placeholderImage, $overrides);
     }
 
-    private function mapProduct(Product $product, ResolvePackageRequirements $resolver, CustomerPriceService $priceService, ?\App\Models\User $user, string $placeholderImage): array
+    /**
+     * @param  array<int, float>  $overrides
+     */
+    private function mapProduct(Product $product, ResolvePackageRequirements $resolver, CustomerPriceService $priceService, ?\App\Models\User $user, string $placeholderImage, array $overrides): array
     {
         $resolved = $resolver->handle($product->package?->requirements ?? collect());
-        $prices = $priceService->priceFor($product, $user);
+        $prices = $priceService->priceFor($product, $user, $overrides);
 
         return [
             'id' => $product->id,
