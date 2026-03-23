@@ -51,4 +51,7 @@ return [
     'payment_failed_title' => 'Payment failed',
     'payment_failed_message' => 'Payment for order :order_number could not be completed. :reason',
     'payment_failed_message_no_order' => 'Payment could not be completed. :reason',
+
+    'bug_recorded_title' => 'New bug report',
+    'bug_recorded_message' => 'Bug #:id (:scenario, :severity) was submitted.',
 ];

@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Events\ActivityLogChanged;
+use App\Events\BugInboxChanged;
+use App\Listeners\SendBugRecordedAdminNotifications;
 use App\Services\CustomerPriceService;
 use App\Services\PriceCalculator;
 use Carbon\CarbonImmutable;
@@ -37,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->registerAuthActivityHooks();
         $this->registerActivityBroadcasting();
+        $this->registerBugNotifications();
         $this->registerNotificationChannels();
         $this->registerPwaInstallButtonPermission();
         $this->configureVitePreload();
@@ -134,6 +137,11 @@ class AppServiceProvider extends ServiceProvider
                     ->log('User logout');
             }
         });
+    }
+
+    protected function registerBugNotifications(): void
+    {
+        Event::listen(BugInboxChanged::class, SendBugRecordedAdminNotifications::class);
     }
 
     protected function registerActivityBroadcasting(): void

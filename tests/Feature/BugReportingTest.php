@@ -4,8 +4,10 @@ use App\Events\BugInboxChanged;
 use App\Models\Bug;
 use App\Models\BugAttachment;
 use App\Models\User;
+use App\Notifications\BugRecordedNotification;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -157,6 +159,60 @@ it('refreshes bug detail when bug inbox realtime event targets this bug', functi
     $component->dispatch('bug-inbox-updated', bug_id: $bug->id, reason: 'created');
 
     expect($component->get('bug')->attachments)->toHaveCount(1);
+});
+
+it('notifies admins when a new bug is recorded', function () {
+    Notification::fake();
+
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $reporter = User::factory()->create();
+    $reporter->assignRole('customer');
+    $reporter->givePermissionTo('manage_bugs');
+    actingAs($reporter);
+
+    Storage::fake('public');
+
+    Livewire::test('bugs.bug-report-form')
+        ->set('scenario', 'topup_payment')
+        ->set('subtype', 'request_failed')
+        ->set('severity', 'medium')
+        ->set('description', 'Test.')
+        ->set('steps', ['Open wallet page', 'Submit topup form'])
+        ->set('screenshots', [UploadedFile::fake()->image('bug.png')])
+        ->call('submit')
+        ->assertHasNoErrors();
+
+    Notification::assertSentTo($admin, BugRecordedNotification::class);
+    Notification::assertNotSentTo($reporter, BugRecordedNotification::class);
+});
+
+it('does not notify an admin reporter for their own bug report', function () {
+    Notification::fake();
+
+    $otherAdmin = User::factory()->create();
+    $otherAdmin->assignRole('admin');
+
+    $reporterAdmin = User::factory()->create();
+    $reporterAdmin->assignRole('admin');
+    $reporterAdmin->givePermissionTo('manage_bugs');
+    actingAs($reporterAdmin);
+
+    Storage::fake('public');
+
+    Livewire::test('bugs.bug-report-form')
+        ->set('scenario', 'topup_payment')
+        ->set('subtype', 'request_failed')
+        ->set('severity', 'medium')
+        ->set('description', 'Test.')
+        ->set('steps', ['Open wallet page', 'Submit topup form'])
+        ->set('screenshots', [UploadedFile::fake()->image('bug.png')])
+        ->call('submit')
+        ->assertHasNoErrors();
+
+    Notification::assertSentTo($otherAdmin, BugRecordedNotification::class);
+    Notification::assertNotSentTo($reporterAdmin, BugRecordedNotification::class);
 });
 
 it('bumps bug inbox realtime version on admin index when bug inbox event fires', function () {

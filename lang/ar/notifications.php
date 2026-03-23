@@ -51,4 +51,7 @@ return [
     'payment_failed_title' => 'فشل الدفع',
     'payment_failed_message' => 'تعذر إتمام الدفع للطلب :order_number. :reason',
     'payment_failed_message_no_order' => 'تعذر إتمام الدفع. :reason',
+
+    'bug_recorded_title' => 'بلاغ خطأ جديد',
+    'bug_recorded_message' => 'تم إرسال بلاغ رقم :id (:scenario، :severity).',
 ];
