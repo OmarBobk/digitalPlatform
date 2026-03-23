@@ -193,7 +193,12 @@ class QuickReportButton extends Component
                 ]);
             }
 
-            $links = app(BugLinkDetectionService::class)->detect(request());
+            $links = app(BugLinkDetectionService::class)->detectForSubmit(
+                request(),
+                $this->currentUrl,
+                [],
+                [],
+            );
             foreach ($links as $link) {
                 $bug->links()->create($link);
             }

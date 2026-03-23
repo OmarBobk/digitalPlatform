@@ -175,6 +175,10 @@ new class extends Component
             ->latest('id')
             ->value('id');
 
+        $pageUrlForLinks = is_string($clientMetadata['current_url'] ?? null) && $clientMetadata['current_url'] !== ''
+            ? (string) $clientMetadata['current_url']
+            : $this->currentUrl;
+
         $bug = DB::transaction(function () use (
             $validated,
             $user,
@@ -184,7 +188,8 @@ new class extends Component
             $traceId,
             $hasToken,
             $recentPushLogs,
-            $potentialDuplicateId
+            $potentialDuplicateId,
+            $pageUrlForLinks
         ): Bug {
             $bug = Bug::query()->create([
                 'user_id' => $user->id,
@@ -194,7 +199,7 @@ new class extends Component
                 'severity' => $validated['severity'],
                 'status' => Bug::STATUS_OPEN,
                 'trace_id' => $traceId,
-                'current_url' => $this->currentUrl,
+                'current_url' => $pageUrlForLinks,
                 'route_name' => $this->routeName,
                 'description' => $validated['description'] ?? null,
                 'metadata' => [
@@ -236,7 +241,12 @@ new class extends Component
                 ]);
             }
 
-            $links = app(BugLinkDetectionService::class)->detect(request());
+            $links = app(BugLinkDetectionService::class)->detectForSubmit(
+                request(),
+                $pageUrlForLinks,
+                is_array($clientMetadata['last_pages'] ?? null) ? $clientMetadata['last_pages'] : [],
+                is_array($clientMetadata['last_notifications'] ?? null) ? $clientMetadata['last_notifications'] : [],
+            );
             foreach ($links as $link) {
                 $bug->links()->create($link);
             }
@@ -347,7 +357,13 @@ new class extends Component
 
     @if ($currentStep === 5)
         <div class="space-y-2">
-            <flux:input type="file" wire:model="screenshots" accept="image/*" multiple />
+            <div class="relative" wire:loading.class="pointer-events-none opacity-60" wire:target="screenshots">
+                <flux:input type="file" wire:model="screenshots" accept="image/*" multiple />
+            </div>
+            <div wire:loading.flex wire:target="screenshots" class="items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                <flux:icon.loading variant="micro" class="text-zinc-500" />
+                {{ __('Uploading screenshots…') }}
+            </div>
             <flux:text class="text-xs text-zinc-500">{{ __('Upload 1 to 5 screenshots (max 5MB each).') }}</flux:text>
             @error('screenshots') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
             @error('screenshots.*') <p class="text-xs text-red-500">{{ $message }}</p> @enderror
@@ -355,7 +371,14 @@ new class extends Component
     @endif
 
     <div class="flex items-center justify-between pt-2">
-        <flux:button type="button" variant="ghost" wire:click="previousStep" :disabled="$currentStep === 1">
+        <flux:button
+            type="button"
+            variant="ghost"
+            wire:click="previousStep"
+            :disabled="$currentStep === 1"
+            wire:loading.attr="disabled"
+            wire:target="screenshots"
+        >
             {{ __('Back') }}
         </flux:button>
 
@@ -364,8 +387,24 @@ new class extends Component
                 {{ __('Next') }}
             </flux:button>
         @else
-            <flux:button type="button" variant="primary" wire:click="submit">
-                {{ __('Submit bug report') }}
+            <flux:button
+                type="button"
+                variant="primary"
+                wire:click="submit"
+                wire:loading.attr="disabled"
+                wire:target="screenshots,submit"
+            >
+                <span wire:loading.remove wire:target="screenshots,submit" class="inline-flex items-center justify-center gap-2">
+                    {{ __('Submit bug report') }}
+                </span>
+                <span wire:loading.flex wire:target="screenshots" class="inline-flex items-center justify-center gap-2">
+                    <flux:icon.loading variant="micro" />
+                    {{ __('Uploading screenshots…') }}
+                </span>
+                <span wire:loading.flex wire:target="submit" class="inline-flex items-center justify-center gap-2">
+                    <flux:icon.loading variant="micro" />
+                    {{ __('Submitting…') }}
+                </span>
             </flux:button>
         @endif
     </div>

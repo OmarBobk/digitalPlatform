@@ -56,8 +56,8 @@ new class extends Component
 };
 ?>
 
-<div class="flex h-full w-full flex-1 flex-col gap-6">
-    <section class="relative overflow-hidden rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+<div class="flex h-full min-w-0 w-full flex-1 flex-col gap-6">
+    <section class="relative min-w-0 overflow-hidden rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
         <div class="pointer-events-none absolute -end-24 -top-24 h-56 w-56 rounded-full bg-red-500/10 blur-3xl dark:bg-red-400/10"></div>
         <div class="pointer-events-none absolute -bottom-24 -start-24 h-56 w-56 rounded-full bg-sky-500/10 blur-3xl dark:bg-sky-400/10"></div>
 
@@ -106,12 +106,12 @@ new class extends Component
             </div>
         </form>
 
-        <div class="relative mt-4 overflow-hidden rounded-2xl border border-zinc-100 dark:border-zinc-800">
+        <div class="relative mt-4 min-w-0 overflow-x-auto overscroll-x-contain rounded-2xl border border-zinc-100 [-webkit-overflow-scrolling:touch] dark:border-zinc-800">
             <div wire:loading.flex wire:target="applyFilters" class="absolute inset-0 z-10 items-center justify-center bg-white/70 backdrop-blur-sm dark:bg-zinc-900/70">
                 <flux:text class="text-sm text-zinc-600 dark:text-zinc-300">{{ __('Loading bugs...') }}</flux:text>
             </div>
 
-            <table class="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
+            <table class="min-w-[44rem] w-full table-auto divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
                 <thead class="bg-zinc-50 dark:bg-zinc-800/50">
                     <tr>
                         <th class="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('ID') }}</th>
