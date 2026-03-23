@@ -1,0 +1,3 @@
+{"sessionId":"a00579","runId":"pre-fix-php","hypothesisId":"H2","location":"bug-report-form.blade.php:mount","message":"bug-report-form mounted","data":{"componentId":"xeAHFsenYEyNTQIFixcF","route":"home"},"timestamp":1774281301061}
+{"sessionId":"a00579","runId":"pre-fix-php","hypothesisId":"H2","location":"bug-report-form.blade.php:mount","message":"bug-report-form mounted","data":{"componentId":"LjDv23eSDJkipMmlFx5M","route":"admin.bugs.index"},"timestamp":1774281301064}
+{"sessionId":"a00579","runId":"pre-fix-php","hypothesisId":"H5","location":"bug-report-form.blade.php:syncClientMetadata","message":"syncClientMetadata invoked","data":{"componentId":"LjDv23eSDJkipMmlFx5M","payloadLength":537},"timestamp":1774281302754}

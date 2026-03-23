@@ -220,5 +220,6 @@ return [
         'process_refunds',
         'view_activities',
         'manage_settlements',
+        'manage_bugs',
     ],
 ];

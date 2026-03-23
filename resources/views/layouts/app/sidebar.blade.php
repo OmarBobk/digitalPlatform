@@ -134,13 +134,21 @@
                     @endcan
                 </flux:sidebar.group>
 
-                @role('admin')
                 <flux:sidebar.group :heading="__('messages.nav_website_settings')" class="grid">
+                    @can('manage_bugs')
+                        <flux:sidebar.item icon="bug-ant" :href="route('admin.bugs.index')" :current="request()->routeIs('admin.bugs.*')" wire:navigate>
+                            <span class="flex items-center gap-2">
+                                {{ __('Bug Reports') }}
+                                <livewire:sidebar.bug-reports-indicator :key="'sidebar-bug-reports-indicator'" />
+                            </span>
+                        </flux:sidebar.item>
+                    @endcan
+                    @role('admin')
                     <flux:sidebar.item icon="globe-alt" :href="route('admin.website-settings')" :current="request()->routeIs('admin.website-settings')" wire:navigate>
                         {{ __('messages.website_settings') }}
                     </flux:sidebar.item>
+                    @endrole
                 </flux:sidebar.group>
-                @endrole
             </flux:sidebar.nav>
 
             <flux:spacer />
@@ -224,6 +232,8 @@
         </flux:header>
 
         {{ $slot }}
+
+        <livewire:bugs.quick-report-button :key="'quick-report-backend-'.auth()->id()" />
 
         <x-toaster-hub />
 

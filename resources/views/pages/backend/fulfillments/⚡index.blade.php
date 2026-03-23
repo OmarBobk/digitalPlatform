@@ -270,9 +270,10 @@ new class extends Component
 ?>
 
 <div class="flex h-full w-full flex-1 flex-col gap-6">
-    <section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+    <section class="relative overflow-hidden rounded-3xl border border-zinc-200/80 bg-white p-5 shadow-sm shadow-zinc-200/60 dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-none">
+        <div class="pointer-events-none absolute inset-x-0 top-0 h-24 bg-linear-to-r from-emerald-500/10 via-cyan-500/10 to-blue-500/10 dark:from-emerald-400/5 dark:via-cyan-400/5 dark:to-blue-400/5"></div>
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="space-y-1">
+            <div class="relative space-y-1">
                 <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
                     {{ __('messages.fulfillments') }}
                 </flux:heading>
@@ -282,8 +283,39 @@ new class extends Component
             </div>
         </div>
 
+        @php
+            $pageFulfillments = $this->fulfillments->getCollection();
+            $queuedCount = $pageFulfillments->where('status', \App\Enums\FulfillmentStatus::Queued)->count();
+            $processingCount = $pageFulfillments->where('status', \App\Enums\FulfillmentStatus::Processing)->count();
+            $completedCount = $pageFulfillments->where('status', \App\Enums\FulfillmentStatus::Completed)->count();
+            $failedCount = $pageFulfillments->where('status', \App\Enums\FulfillmentStatus::Failed)->count();
+        @endphp
+
+        <div class="relative mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <div class="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-3 backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/70">
+                <div class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{{ __('messages.total') }}</div>
+                <div class="mt-1 text-xl font-semibold text-zinc-900 dark:text-zinc-100">{{ number_format($this->fulfillments->total()) }}</div>
+            </div>
+            <div class="rounded-2xl border border-zinc-200 bg-zinc-50/90 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800/70">
+                <div class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{{ __('messages.fulfillment_status_queued') }}</div>
+                <div class="mt-1 text-xl font-semibold text-zinc-900 dark:text-zinc-100">{{ $queuedCount }}</div>
+            </div>
+            <div class="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 dark:border-amber-500/40 dark:bg-amber-500/10">
+                <div class="text-[11px] uppercase tracking-wide text-amber-700 dark:text-amber-300">{{ __('messages.fulfillment_status_processing') }}</div>
+                <div class="mt-1 text-xl font-semibold text-amber-800 dark:text-amber-200">{{ $processingCount }}</div>
+            </div>
+            <div class="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 dark:border-emerald-500/40 dark:bg-emerald-500/10">
+                <div class="text-[11px] uppercase tracking-wide text-emerald-700 dark:text-emerald-300">{{ __('messages.fulfillment_status_completed') }}</div>
+                <div class="mt-1 text-xl font-semibold text-emerald-800 dark:text-emerald-200">{{ $completedCount }}</div>
+            </div>
+            <div class="rounded-2xl border border-red-200 bg-red-50/80 px-4 py-3 dark:border-red-500/40 dark:bg-red-500/10">
+                <div class="text-[11px] uppercase tracking-wide text-red-700 dark:text-red-300">{{ __('messages.fulfillment_status_failed') }}</div>
+                <div class="mt-1 text-xl font-semibold text-red-800 dark:text-red-200">{{ $failedCount }}</div>
+            </div>
+        </div>
+
         <form
-            class="mt-4 rounded-xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-800/60"
+            class="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-800/60"
             wire:submit.prevent="applyFilters"
         >
             <div class="grid gap-4 lg:grid-cols-4">
@@ -326,7 +358,7 @@ new class extends Component
             </div>
         </form>
 
-        <div class="mt-4 overflow-hidden rounded-2xl border border-zinc-100 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div class="mt-4 overflow-hidden rounded-2xl border border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-900">
             <div class="overflow-x-auto">
                 @if ($this->fulfillments->isEmpty())
                     <div class="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
@@ -339,7 +371,7 @@ new class extends Component
                     </div>
                 @else
                     <table class="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800" data-test="fulfillments-table">
-                        <thead class="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400">
+                        <thead class="bg-zinc-50/90 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-800/80 dark:text-zinc-400">
                             <tr>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.order_number') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.user') }}</th>
@@ -352,7 +384,7 @@ new class extends Component
                         </thead>
                         <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
                             @foreach ($this->fulfillments as $fulfillment)
-                                <tr class="transition hover:bg-zinc-50 dark:hover:bg-zinc-800/60" wire:key="fulfillment-{{ $fulfillment->id }}">
+                                <tr class="transition duration-150 hover:bg-zinc-50 dark:hover:bg-zinc-800/60" wire:key="fulfillment-{{ $fulfillment->id }}">
                                     <td class="px-5 py-4">
                                         <div class="font-semibold text-zinc-900 dark:text-zinc-100">
                                             {{ $fulfillment->order?->order_number ?? '—' }}
@@ -438,7 +470,7 @@ new class extends Component
                                     </td>
                                     <td class="px-5 py-4 text-end">
                                         <flux:dropdown position="bottom" align="end">
-                                            <flux:button variant="ghost" icon="ellipsis-vertical" />
+                                            <flux:button variant="ghost" icon="ellipsis-vertical" class="!rounded-lg !border !border-zinc-200/80 !bg-white !px-2.5 hover:!bg-zinc-100 dark:!border-zinc-700 dark:!bg-zinc-800 dark:hover:!bg-zinc-700" />
                                             <flux:menu>
                                                 @if ($isRefundPending)
                                                     <flux:menu.item icon="eye" wire:click="openDetails({{ $fulfillment->id }})">
@@ -485,7 +517,7 @@ new class extends Component
             </div>
         </div>
 
-        <div class="mt-4 border-t border-zinc-100 px-5 py-4 dark:border-zinc-800">
+        <div class="mt-4 border-t border-zinc-200 px-5 py-4 dark:border-zinc-800">
             {{ $this->fulfillments->links() }}
         </div>
     </section>

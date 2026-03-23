@@ -388,6 +388,7 @@
         </flux:header>
 
         {{ $slot }}
+        <livewire:bugs.quick-report-button :key="'quick-report-frontend-'.auth()->id()" />
 
         <x-toaster-hub />
 

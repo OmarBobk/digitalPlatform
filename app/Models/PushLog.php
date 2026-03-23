@@ -13,6 +13,7 @@ class PushLog extends Model
     protected $fillable = [
         'notification_type',
         'notification_id',
+        'trace_id',
         'token_count',
         'status',
         'error',

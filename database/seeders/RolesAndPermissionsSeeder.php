@@ -34,6 +34,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'process_refunds',
             'view_activities',
             'manage_settlements',
+            'manage_bugs',
             'install_pwa_app',
             'manage_user_prices',
         ];

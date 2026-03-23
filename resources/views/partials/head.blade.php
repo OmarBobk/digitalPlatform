@@ -16,6 +16,7 @@
     window.Laravel = window.Laravel || {};
     window.Laravel.userId = {{ auth()->id() }};
     window.Laravel.isAdmin = @json(auth()->user()?->hasRole('admin'));
+    window.Laravel.canManageBugs = @json(auth()->user()?->can('manage_bugs'));
 </script>
 @endauth
 @vite(['resources/css/app.css', 'resources/js/app.js'])

@@ -2,6 +2,7 @@
 
 use App\Exports\UsersExport;
 use App\Http\Controllers\Api\PushTokenController;
+use App\Http\Controllers\BugAttachmentController;
 use App\Http\Controllers\TopupProofController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
@@ -38,6 +39,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('/orders/{order:order_number}', 'pages::frontend.order-details')->name('orders.show');
     Route::livewire('/notifications', 'pages::frontend.notifications')->name('notifications.index');
     Route::get('/topup-proofs/{proof}', [TopupProofController::class, 'show'])->name('topup-proofs.show');
+    Route::get('/bug-attachments/{attachment}', [BugAttachmentController::class, 'show'])->name('bug-attachments.show');
 });
 
 Route::post('api/admin/push/register-token', [PushTokenController::class, 'register'])
@@ -69,6 +71,11 @@ Route::middleware(['auth', 'verified', 'backend'])->group(function () {
     Route::livewire('/customer-funds', 'pages::backend.customer-funds.index')->name('customer-funds');
     Route::livewire('/settlements', 'pages::backend.settlements.index')->name('settlements');
     Route::livewire('/admin/notifications', 'pages::backend.notifications.index')->name('admin.notifications.index');
+});
+
+Route::middleware(['auth', 'verified', 'backend', 'can:manage_bugs'])->group(function () {
+    Route::livewire('/admin/bugs', 'bugs.admin-index')->name('admin.bugs.index');
+    Route::livewire('/admin/bugs/{bug}', 'bugs.admin-show')->name('admin.bugs.show');
 });
 
 Route::middleware(['auth', 'verified', 'backend', 'admin'])->group(function () {

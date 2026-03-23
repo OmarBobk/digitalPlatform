@@ -6,6 +6,7 @@ namespace App\Notifications;
 
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Str;
 
 abstract class BaseNotification extends Notification implements ShouldBroadcast
 {
@@ -17,8 +18,11 @@ abstract class BaseNotification extends Notification implements ShouldBroadcast
         protected int $sourceId,
         protected string $title,
         protected string $message,
-        protected ?string $url = null
-    ) {}
+        protected ?string $url = null,
+        protected ?string $traceId = null
+    ) {
+        $this->traceId ??= (string) Str::uuid();
+    }
 
     /**
      * Use broadcast channel only when a non-null driver is configured (e.g. reverb).
@@ -54,6 +58,7 @@ abstract class BaseNotification extends Notification implements ShouldBroadcast
         return [
             'source_type' => $this->sourceType,
             'source_id' => $this->sourceId,
+            'trace_id' => $this->traceId,
             'title' => $this->title,
             'message' => $this->message,
             'url' => $this->url,
@@ -66,5 +71,10 @@ abstract class BaseNotification extends Notification implements ShouldBroadcast
     public function getFcmDedupId(): string
     {
         return hash('sha256', get_class($this).$this->sourceType.((string) $this->sourceId));
+    }
+
+    public function getTraceId(): string
+    {
+        return (string) $this->traceId;
     }
 }

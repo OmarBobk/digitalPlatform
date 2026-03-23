@@ -1,0 +1,39 @@
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H2","location":"quick-report-button.blade.php:58","message":"modal content initialized","data":{},"timestamp":1774281118749}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H2","location":"quick-report-button.blade.php:58","message":"modal content initialized","data":{},"timestamp":1774281118887}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H2","location":"quick-report-button.blade.php:58","message":"modal content initialized","data":{},"timestamp":1774281128501}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H5","location":"bug-report-form.blade.php:216","message":"bug-report-form root initialized","data":{"route":"/"},"timestamp":1774281128501}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H5","location":"bug-report-form.blade.php:220","message":"syncClientMetadata called","data":{"hasCollector":true},"timestamp":1774281128502}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H2","location":"quick-report-button.blade.php:58","message":"modal content initialized","data":{},"timestamp":1774281128551}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H5","location":"bug-report-form.blade.php:216","message":"bug-report-form root initialized","data":{"route":"/admin/bugs"},"timestamp":1774281128554}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H5","location":"bug-report-form.blade.php:220","message":"syncClientMetadata called","data":{"hasCollector":true},"timestamp":1774281128556}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H2","location":"quick-report-button.blade.php:58","message":"modal content initialized","data":{},"timestamp":1774281179753}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H5","location":"bug-report-form.blade.php:220","message":"syncClientMetadata called","data":{"hasCollector":true},"timestamp":1774281179756}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H5","location":"bug-report-form.blade.php:216","message":"bug-report-form root initialized","data":{"route":"/"},"timestamp":1774281179755}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H2","location":"quick-report-button.blade.php:58","message":"modal content initialized","data":{},"timestamp":1774281193790}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H5","location":"bug-report-form.blade.php:216","message":"bug-report-form root initialized","data":{"route":"/"},"timestamp":1774281193792}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H5","location":"bug-report-form.blade.php:220","message":"syncClientMetadata called","data":{"hasCollector":true},"timestamp":1774281193794}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H2","location":"quick-report-button.blade.php:58","message":"modal content initialized","data":{},"timestamp":1774281292617}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H5","location":"bug-report-form.blade.php:216","message":"bug-report-form root initialized","data":{"route":"/admin/bugs"},"timestamp":1774281292619}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H5","location":"bug-report-form.blade.php:220","message":"syncClientMetadata called","data":{"hasCollector":true},"timestamp":1774281292620}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H2","location":"quick-report-button.blade.php:58","message":"modal content initialized","data":{},"timestamp":1774281293000}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H5","location":"bug-report-form.blade.php:216","message":"bug-report-form root initialized","data":{"route":"/"},"timestamp":1774281293002}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H5","location":"bug-report-form.blade.php:220","message":"syncClientMetadata called","data":{"hasCollector":true},"timestamp":1774281293003}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H2","location":"quick-report-button.blade.php:58","message":"modal content initialized","data":{},"timestamp":1774281301652}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H5","location":"bug-report-form.blade.php:216","message":"bug-report-form root initialized","data":{"route":"/admin/bugs"},"timestamp":1774281301655}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H5","location":"bug-report-form.blade.php:220","message":"syncClientMetadata called","data":{"hasCollector":true},"timestamp":1774281301656}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H2","location":"quick-report-button.blade.php:58","message":"modal content initialized","data":{},"timestamp":1774281301989}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H5","location":"bug-report-form.blade.php:216","message":"bug-report-form root initialized","data":{"route":"/"},"timestamp":1774281301992}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H5","location":"bug-report-form.blade.php:220","message":"syncClientMetadata called","data":{"hasCollector":true},"timestamp":1774281301993}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H2","location":"quick-report-button.blade.php:58","message":"modal content initialized","data":{},"timestamp":1774281346921}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H5","location":"bug-report-form.blade.php:216","message":"bug-report-form root initialized","data":{"route":"/"},"timestamp":1774281346923}
+{"sessionId":"a00579","runId":"pre-fix","hypothesisId":"H5","location":"bug-report-form.blade.php:220","message":"syncClientMetadata called","data":{"hasCollector":true},"timestamp":1774281346924}
+{"sessionId":"a00579","runId":"post-fix","hypothesisId":"H2","location":"quick-report-button.blade.php:modal","message":"unified modal content initialized","data":{},"timestamp":1774281448637}
+{"sessionId":"a00579","runId":"post-fix","hypothesisId":"H2","location":"quick-report-button.blade.php:modal","message":"unified modal content initialized","data":{},"timestamp":1774281448729}
+{"sessionId":"a00579","runId":"post-fix","hypothesisId":"H2","location":"quick-report-button.blade.php:modal","message":"unified modal content initialized","data":{},"timestamp":1774281557685}
+{"sessionId":"a00579","runId":"post-fix-2","hypothesisId":"H6","location":"quick-report-button.blade.php:hidden-input","message":"client metadata synced via hidden input (no $wire in modal)","data":{"hasCollector":true},"timestamp":1774281628731}
+{"sessionId":"a00579","runId":"post-fix-2","hypothesisId":"H6","location":"quick-report-button.blade.php:hidden-input","message":"client metadata synced via hidden input (no $wire in modal)","data":{"hasCollector":true},"timestamp":1774281628820}
+{"sessionId":"a00579","runId":"post-fix-2","hypothesisId":"H6","location":"quick-report-button.blade.php:hidden-input","message":"client metadata synced via hidden input (no $wire in modal)","data":{"hasCollector":true},"timestamp":1774281655521}
+{"sessionId":"a00579","runId":"post-fix-2","hypothesisId":"H6","location":"quick-report-button.blade.php:hidden-input","message":"client metadata synced via hidden input (no $wire in modal)","data":{"hasCollector":true},"timestamp":1774281671009}
+{"sessionId":"a00579","runId":"post-fix-2","hypothesisId":"H6","location":"quick-report-button.blade.php:hidden-input","message":"client metadata synced via hidden input (no $wire in modal)","data":{"hasCollector":true},"timestamp":1774281722876}
+{"sessionId":"a00579","runId":"post-fix-2","hypothesisId":"H6","location":"quick-report-button.blade.php:hidden-input","message":"client metadata synced via hidden input (no $wire in modal)","data":{"hasCollector":true},"timestamp":1774281767574}
+{"sessionId":"a00579","runId":"post-fix-2","hypothesisId":"H6","location":"quick-report-button.blade.php:hidden-input","message":"client metadata synced via hidden input (no $wire in modal)","data":{"hasCollector":true},"timestamp":1774281767604}

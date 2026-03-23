@@ -31,3 +31,7 @@ Broadcast::channel('admin.activities', function ($user) {
 Broadcast::channel('admin.system-events', function ($user) {
     return $user !== null && $user->hasRole('admin');
 });
+
+Broadcast::channel('admin.bugs', function ($user) {
+    return $user !== null && $user->can('manage_bugs');
+});

@@ -31,7 +31,12 @@ class FcmChannel
         $notificationType = get_class($notification);
         $eventId = method_exists($notification, 'getFcmDedupId') ? $notification->getFcmDedupId() : null;
         $notificationId = $eventId !== null ? $eventId.'.'.($notifiable->getKey() ?? '') : null;
+        $traceId = method_exists($notification, 'getTraceId') ? $notification->getTraceId() : null;
 
-        SendPushNotificationJob::dispatch($tokens, $payload, $notificationType, $notificationId);
+        if ($traceId !== null && $traceId !== '') {
+            $payload['trace_id'] = $traceId;
+        }
+
+        SendPushNotificationJob::dispatch($tokens, $payload, $notificationType, $notificationId, $traceId);
     }
 }

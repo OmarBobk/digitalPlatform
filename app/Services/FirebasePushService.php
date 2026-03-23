@@ -24,7 +24,7 @@ class FirebasePushService
      * Invalid/UNREGISTERED tokens are removed from admin_devices.
      *
      * @param  array<int, string>  $tokens  FCM registration tokens
-     * @param  array{title: string, body: string, sound: string, url: string}  $payload
+     * @param  array{title: string, body: string, sound: string, url: string, trace_id?: string}  $payload
      * @return array{success_count: int, fail_count: int, last_error: string|null}
      */
     public function sendToTokens(array $tokens, array $payload): array
@@ -67,6 +67,7 @@ class FirebasePushService
                         'body' => $payload['body'] ?? '',
                         'sound' => $payload['sound'] ?? 'default',
                         'url' => $payload['url'] ?? '/',
+                        'trace_id' => (string) ($payload['trace_id'] ?? ''),
                     ],
                 ],
             ];

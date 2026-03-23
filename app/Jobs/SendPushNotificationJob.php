@@ -24,13 +24,14 @@ class SendPushNotificationJob implements ShouldQueue
 
     /**
      * @param  array<int, string>  $tokens
-     * @param  array{title: string, body: string, sound: string, url: string}  $payload
+     * @param  array{title: string, body: string, sound: string, url: string, trace_id?: string}  $payload
      */
     public function __construct(
         public array $tokens,
         public array $payload,
         public ?string $notificationType = null,
-        public ?string $notificationId = null
+        public ?string $notificationId = null,
+        public ?string $traceId = null
     ) {
         $this->onQueue('push');
     }
@@ -54,6 +55,7 @@ class SendPushNotificationJob implements ShouldQueue
             PushLog::query()->create([
                 'notification_type' => $this->notificationType,
                 'notification_id' => $this->notificationId,
+                'trace_id' => $this->traceId,
                 'token_count' => count($this->tokens),
                 'status' => $status,
                 'error' => $result['last_error'],

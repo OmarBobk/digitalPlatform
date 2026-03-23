@@ -56,3 +56,14 @@ if (import.meta.env.VITE_REVERB_APP_KEY && window.Laravel?.isAdmin) {
         window.dispatchEvent(new CustomEvent('system-event-created', { detail: payload || {} }));
     });
 }
+
+if (import.meta.env.VITE_REVERB_APP_KEY && window.Laravel?.canManageBugs) {
+    window.Echo.private('admin.bugs').listen('.BugInboxChanged', (payload) => {
+        if (window.Livewire?.dispatch) {
+            window.Livewire.dispatch('bug-inbox-updated', payload ?? {});
+            return;
+        }
+
+        window.dispatchEvent(new CustomEvent('bug-inbox-updated', { detail: payload || {} }));
+    });
+}

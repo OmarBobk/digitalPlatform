@@ -36,14 +36,18 @@
   - ###DONE: Fulfillments: when the fulfillment status is "Failed Refunded"
   - ###DONE: on the sidebar toggle button should appear the badge count
   - ###DONE: Fulfillments: the requirements should be displayed instead the provider column.
-  - ###TODO: Contactus: the messages that come from this form where we should handle them.
-  - ###TODO: Users Manager: Translate the roles to arabic.
-  - ###TODO: Admin should be able from somewhere to add funds to some user
-  - ###TODO: Right now there are general price rules that are applied, this should be the default, but admin should be able to apply a different price  for a certain user.
+  - ###DONE: Right now there are general price rules that are applied, this should be the default, but admin should be able to apply a different price  for a certain user.
+  - ###DONE: Users Manager: Translate the roles to arabic.
   - ###DONE: ###MAJOR### PWA erag/laravel-pwa
     - ###DONE: Stop rotating screen on phone.
     - ###DONE: PWA application button should only appear if the user has permission for install_pwa_app
+  - ###DONE: ###MAJOR### Record bug system.
+  - ###TODO: Contactus: the messages that come from this form where we should handle them.
+  - ###TODO: Admin should be able from somewhere to add funds to some user
   - ###TODO: ###MAJOR### Record website views
+  - ###TODO: ###MAJOR### Users hierarchy. 
+  - ###TODO:
+  - 
 - Frontend:
   - ###DONE wallet transaction in /wallets should be more described
   - ###DONE Wallet /wallet Request topups form borders remove the ring
@@ -62,8 +66,12 @@
 
 **🔒 Ticket → Audit → Fix → Lock**
 
+Ask → Plan → Agent → Review → Fix
+
+1. Ask → understand system
+2. Ask (Plan Mode) → generate implementation plan
+3. You refine the plan
+4. Agent → implement
+5. Review → fix issues
 
 
-
-
-what would do if your boss told that I want to let the admin do this process in less than one minute

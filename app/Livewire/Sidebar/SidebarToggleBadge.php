@@ -7,6 +7,7 @@ namespace App\Livewire\Sidebar;
 use App\Enums\FulfillmentStatus;
 use App\Enums\TopupRequestStatus;
 use App\Enums\WalletTransactionType;
+use App\Models\Bug;
 use App\Models\Fulfillment;
 use App\Models\TopupRequest;
 use App\Models\WalletTransaction;
@@ -24,6 +25,7 @@ class SidebarToggleBadge extends Component
 
     #[On('fulfillment-list-updated')]
     #[On('topup-list-updated')]
+    #[On('bug-inbox-updated')]
     public function refreshBadge(): void
     {
         if (! auth()->check()) {
@@ -53,7 +55,10 @@ class SidebarToggleBadge extends Component
                 ->where('status', TopupRequestStatus::Pending)
                 ->exists();
 
-        $this->hasBadge = $operationsBadge || $financialsBadge;
+        $bugsBadge = $user->can('manage_bugs')
+            && Bug::query()->openOrInProgress()->exists();
+
+        $this->hasBadge = $operationsBadge || $financialsBadge || $bugsBadge;
     }
 
     public function render()
