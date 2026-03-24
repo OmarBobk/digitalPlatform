@@ -91,6 +91,12 @@ new class extends Component
         <div class="pointer-events-none absolute -end-24 -top-24 h-56 w-56 rounded-full bg-red-500/10 blur-3xl dark:bg-red-400/10"></div>
         <div class="pointer-events-none absolute -bottom-24 -start-24 h-56 w-56 rounded-full bg-sky-500/10 blur-3xl dark:bg-sky-400/10"></div>
 
+        <div class="relative mb-4">
+            <flux:button variant="ghost" size="sm" icon="arrow-left" :href="route('admin.bugs.index')" wire:navigate>
+                {{ __('Back') }}
+            </flux:button>
+        </div>
+
         <div class="relative flex flex-wrap items-start justify-between gap-4">
             <div class="space-y-2">
                 <div class="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium uppercase tracking-wide text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
