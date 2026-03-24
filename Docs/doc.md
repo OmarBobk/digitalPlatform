@@ -43,7 +43,7 @@
     - ###DONE: PWA application button should only appear if the user has permission for install_pwa_app
   - ###DONE: ###MAJOR### Record bug system.
   - ###TODO: Contactus: the messages that come from this form where we should handle them.
-  - ###TODO: ###MAJOR### Record website views
+  - ###TODO: ###MAJOR### Record website views and how many users are logged in and who are they
   - ###TODO: ###MAJOR### Users hierarchy. 
   - ###TODO:
   - 
@@ -52,7 +52,7 @@
   - ###DONE Wallet /wallet Request topups form borders remove the ring
   - ###DONE /orders Redesign
   - ###DONE Register form: mask the phone number field
-  - ###TODO: Topups: when customer want to request a new topup he should see a toggle button if checked it then he need to upload the proof file if not then he can request the topup without uploading the proof
+  - ###DONE: Topups: when customer want to request a new topup he should see a toggle button if checked it then he need to upload the proof file if not then he can request the topup without uploading the proof
 
 
 
@@ -75,3 +75,7 @@ Ask → Plan → Agent → Review → Fix
 
 
 
+
+
+[2026-03-24 03:34:51] production.WARNING: SendPushNotificationJob: PushLog create failed (push was sent) {"notification_id":"becb79d2a22812af93a438dd85473b7b>
+<d549c4630.18, eb602e90-72c5-4c19-9078-7bffe9eaf456, 1, success, ?))"}

@@ -90,6 +90,32 @@ it('logs failed status when all tokens fail', function () {
         ->and($log->error)->toBe('UNREGISTERED');
 });
 
+it('stores long notification ids when push log is created', function () {
+    $this->mock(FirebasePushService::class, function ($mock) {
+        $mock->shouldReceive('sendToTokens')
+            ->once()
+            ->andReturn(['success_count' => 1, 'fail_count' => 0, 'last_error' => null]);
+    });
+
+    $notificationId = hash('sha256', 'event-key').'.18';
+
+    $job = new SendPushNotificationJob(
+        ['token1'],
+        ['title' => 'Test', 'body' => 'Body', 'sound' => 'default', 'url' => '/'],
+        'App\Notifications\SomeNotification',
+        $notificationId
+    );
+    $job->handle(
+        app(FirebasePushService::class),
+        app(\App\Services\PushRateLimiter::class)
+    );
+
+    $log = PushLog::query()->first();
+    expect($log)->not()->toBeNull()
+        ->and($log->notification_id)->toBe($notificationId)
+        ->and(strlen((string) $log->notification_id))->toBeGreaterThan(64);
+});
+
 it('removes invalid token from admin_devices when FCM returns UNREGISTERED', function () {
     \Illuminate\Support\Facades\Cache::put('firebase_fcm_access_token', 'fake-token', 60);
     config(['firebase.project_id' => 'test-project']);
