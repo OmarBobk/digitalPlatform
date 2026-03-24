@@ -357,6 +357,8 @@ return [
     'submit_topup' => 'Submit top-up request',
     'please_wait' => 'Please wait…',
     'proof_of_payment' => 'Proof of payment',
+    'topup_attach_proof_toggle' => 'Attach proof of payment',
+    'topup_attach_proof_hint' => 'Turn this on to upload a receipt or screenshot. You can submit without a file when it is off.',
     'view_proof' => 'View proof',
     'topup_request_created' => 'Request created, wait for approval.',
     'topup_request_pending' => 'You already have a pending top-up request.',

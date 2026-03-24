@@ -29,6 +29,7 @@ test('user can create a topup request with proof from wallet page', function () 
         ->test('pages::frontend.wallet')
         ->set('topupAmount', '25')
         ->set('topupMethod', TopupMethod::ShamCash->value)
+        ->set('attachProof', true)
         ->set('proofFile', UploadedFile::fake()->image('proof.jpg'))
         ->call('submitTopup')
         ->assertSet('noticeMessage', __('messages.topup_request_created'));
@@ -51,6 +52,24 @@ test('user can create a topup request with proof from wallet page', function () 
     expect($transaction->status)->toBe(WalletTransaction::STATUS_PENDING);
 });
 
+test('user can create a topup request without proof when attach proof is off', function () {
+    Storage::fake('local');
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('pages::frontend.wallet')
+        ->set('topupAmount', '25')
+        ->set('topupMethod', TopupMethod::ShamCash->value)
+        ->set('attachProof', false)
+        ->call('submitTopup')
+        ->assertSet('noticeMessage', __('messages.topup_request_created'))
+        ->assertHasNoErrors();
+
+    $topupRequest = TopupRequest::query()->first();
+    expect($topupRequest)->not->toBeNull();
+    expect(TopupProof::query()->where('topup_request_id', $topupRequest->id)->count())->toBe(0);
+});
+
 test('creating a topup request broadcasts change event', function () {
     Storage::fake('local');
     Event::fake([TopupRequestsChanged::class]);
@@ -61,6 +80,7 @@ test('creating a topup request broadcasts change event', function () {
         ->test('pages::frontend.wallet')
         ->set('topupAmount', '40')
         ->set('topupMethod', TopupMethod::ShamCash->value)
+        ->set('attachProof', true)
         ->set('proofFile', UploadedFile::fake()->image('proof.jpg'))
         ->call('submitTopup');
 
@@ -91,6 +111,7 @@ test('user cannot create a second pending topup request', function () {
         ->test('pages::frontend.wallet')
         ->set('topupAmount', '30')
         ->set('topupMethod', TopupMethod::ShamCash->value)
+        ->set('attachProof', true)
         ->set('proofFile', UploadedFile::fake()->image('proof.jpg'))
         ->call('submitTopup')
         ->assertSet('noticeMessage', __('messages.topup_request_pending'));
@@ -98,26 +119,28 @@ test('user cannot create a second pending topup request', function () {
     expect(TopupRequest::query()->where('user_id', $user->id)->count())->toBe(1);
 });
 
-test('submit topup without proof fails validation', function () {
+test('submit topup without proof fails when attach proof is on', function () {
     $user = User::factory()->create();
 
     Livewire::actingAs($user)
         ->test('pages::frontend.wallet')
         ->set('topupAmount', '25')
         ->set('topupMethod', TopupMethod::ShamCash->value)
+        ->set('attachProof', true)
         ->call('submitTopup')
         ->assertHasErrors('proofFile');
 
     expect(TopupRequest::query()->count())->toBe(0);
 });
 
-test('submit topup with invalid file type fails validation', function () {
+test('submit topup with invalid file type fails validation when attach proof is on', function () {
     $user = User::factory()->create();
 
     Livewire::actingAs($user)
         ->test('pages::frontend.wallet')
         ->set('topupAmount', '25')
         ->set('topupMethod', TopupMethod::ShamCash->value)
+        ->set('attachProof', true)
         ->set('proofFile', UploadedFile::fake()->create('proof.txt', 100, 'text/plain'))
         ->call('submitTopup')
         ->assertHasErrors('proofFile');
@@ -125,7 +148,7 @@ test('submit topup with invalid file type fails validation', function () {
     expect(TopupRequest::query()->count())->toBe(0);
 });
 
-test('submit topup with file exceeding max size fails validation', function () {
+test('submit topup with file exceeding max size fails validation when attach proof is on', function () {
     $user = User::factory()->create();
 
     $oversizedFile = UploadedFile::fake()->create('proof.pdf', 6 * 1024 * 1024, 'application/pdf');
@@ -134,6 +157,7 @@ test('submit topup with file exceeding max size fails validation', function () {
         ->test('pages::frontend.wallet')
         ->set('topupAmount', '25')
         ->set('topupMethod', TopupMethod::ShamCash->value)
+        ->set('attachProof', true)
         ->set('proofFile', $oversizedFile)
         ->call('submitTopup')
         ->assertHasErrors('proofFile');
@@ -149,6 +173,7 @@ test('valid proof creates request and single proof record', function () {
         ->test('pages::frontend.wallet')
         ->set('topupAmount', '10')
         ->set('topupMethod', TopupMethod::EftTransfer->value)
+        ->set('attachProof', true)
         ->set('proofFile', UploadedFile::fake()->create('proof.pdf', 100, 'application/pdf'))
         ->call('submitTopup')
         ->assertSet('noticeMessage', __('messages.topup_request_created'));

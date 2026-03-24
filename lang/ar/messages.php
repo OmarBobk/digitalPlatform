@@ -359,6 +359,8 @@ return [
     'submit_topup' => 'إرسال طلب الشحن',
     'please_wait' => 'يرجى الانتظار…',
     'proof_of_payment' => 'إثبات الدفع',
+    'topup_attach_proof_toggle' => 'إرفاق إثبات الدفع',
+    'topup_attach_proof_hint' => 'فعّل هذا الخيار لرفع إيصال أو لقطة شاشة. يمكنك الإرسال بدون ملف عند إيقافه.',
     'view_proof' => 'عرض الإثبات',
     'topup_request_created' => 'تم إنشاء الطلب، يرجى انتظار الموافقة.',
     'topup_request_pending' => 'لديك طلب شحن معلّق بالفعل.',

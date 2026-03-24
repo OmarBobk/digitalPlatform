@@ -42,6 +42,8 @@ new #[Layout('layouts::frontend')] class extends Component
     /** @var \Illuminate\Http\UploadedFile|null */
     public $proofFile = null;
 
+    public bool $attachProof = false;
+
     public ?string $noticeMessage = null;
     public ?string $noticeVariant = null;
 
@@ -59,11 +61,26 @@ new #[Layout('layouts::frontend')] class extends Component
      */
     protected function rules(): array
     {
-        return [
+        $rules = [
             'topupAmount' => ['required', 'numeric', 'min:0.01'],
             'topupMethod' => ['required', Rule::in(TopupMethod::values())],
-            'proofFile' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'attachProof' => ['boolean'],
         ];
+
+        if ($this->attachProof) {
+            $rules['proofFile'] = ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'];
+        } else {
+            $rules['proofFile'] = ['nullable'];
+        }
+
+        return $rules;
+    }
+
+    public function updatedAttachProof(bool $value): void
+    {
+        if (! $value) {
+            $this->reset('proofFile');
+        }
     }
 
     public function submitTopup(): void
@@ -97,27 +114,29 @@ new #[Layout('layouts::frontend')] class extends Component
                 'status' => TopupRequestStatus::Pending,
             ]);
 
-            $ext = $this->proofFile->getClientOriginalExtension() ?: $this->proofFile->guessExtension() ?? 'bin';
-            $filename = Str::uuid()->toString().'.'.$ext;
-            $dir = 'topups/proofs/'.$topupRequest->id;
+            if ($this->attachProof && $this->proofFile !== null) {
+                $ext = $this->proofFile->getClientOriginalExtension() ?: $this->proofFile->guessExtension() ?? 'bin';
+                $filename = Str::uuid()->toString().'.'.$ext;
+                $dir = 'topups/proofs/'.$topupRequest->id;
 
-            $fileOriginalName = $this->proofFile->getClientOriginalName();
-            $mimeType = $this->proofFile->getMimeType();
-            $sizeBytes = $this->proofFile->getSize();
+                $fileOriginalName = $this->proofFile->getClientOriginalName();
+                $mimeType = $this->proofFile->getMimeType();
+                $sizeBytes = $this->proofFile->getSize();
 
-            $path = $this->proofFile->storeAs($dir, $filename, 'local');
+                $path = $this->proofFile->storeAs($dir, $filename, 'local');
 
-            if ($path === false) {
-                throw new \RuntimeException('Failed to store top-up proof file.');
+                if ($path === false) {
+                    throw new \RuntimeException('Failed to store top-up proof file.');
+                }
+
+                TopupProof::create([
+                    'topup_request_id' => $topupRequest->id,
+                    'file_path' => $path,
+                    'file_original_name' => $fileOriginalName,
+                    'mime_type' => $mimeType,
+                    'size_bytes' => $sizeBytes,
+                ]);
             }
-
-            TopupProof::create([
-                'topup_request_id' => $topupRequest->id,
-                'file_path' => $path,
-                'file_original_name' => $fileOriginalName,
-                'mime_type' => $mimeType,
-                'size_bytes' => $sizeBytes,
-            ]);
 
             activity()
                 ->inLog('payments')
@@ -148,7 +167,7 @@ new #[Layout('layouts::frontend')] class extends Component
             });
         });
 
-        $this->reset('topupAmount', 'proofFile');
+        $this->reset('topupAmount', 'proofFile', 'attachProof');
         $this->topupMethod = TopupMethod::ShamCash->value;
 
         $this->noticeVariant = 'success';
@@ -512,21 +531,33 @@ new #[Layout('layouts::frontend')] class extends Component
                             @endforeach
                         </flux:select>
                     </div>
-                    <div class="grid gap-2">
-                        <flux:field>
-                            <flux:label>{{ __('messages.proof_of_payment') }}</flux:label>
-                            <input
-                                type="file"
-                                name="proofFileMobile"
-                                accept=".jpg,.jpeg,.png,.webp,.pdf"
-                                wire:model.defer="proofFile"
-                                class="block w-full text-sm text-zinc-600 file:mr-4 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-zinc-800 hover:file:bg-zinc-200 dark:text-zinc-400 dark:file:bg-zinc-700 dark:file:text-zinc-200 dark:hover:file:bg-zinc-600"
-                            />
-                        </flux:field>
-                        @error('proofFile')
-                            <flux:text class="text-xs text-red-600">{{ $message }}</flux:text>
-                        @enderror
+                    <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3 dark:border-zinc-800 dark:bg-zinc-800/60">
+                        <div class="min-w-0 flex-1 space-y-1 pe-2">
+                            <flux:text class="text-sm font-medium text-zinc-800 dark:text-zinc-200">{{ __('messages.topup_attach_proof_toggle') }}</flux:text>
+                            <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.topup_attach_proof_hint') }}</flux:text>
+                        </div>
+                        <flux:switch
+                            class="shrink-0 focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                            wire:model.live="attachProof"
+                        />
                     </div>
+                    @if ($attachProof)
+                        <div class="grid gap-2">
+                            <flux:field>
+                                <flux:label>{{ __('messages.proof_of_payment') }}</flux:label>
+                                <input
+                                    type="file"
+                                    name="proofFileMobile"
+                                    accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                    wire:model.defer="proofFile"
+                                    class="block w-full text-sm text-zinc-600 file:mr-4 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-zinc-800 hover:file:bg-zinc-200 dark:text-zinc-400 dark:file:bg-zinc-700 dark:file:text-zinc-200 dark:hover:file:bg-zinc-600"
+                                />
+                            </flux:field>
+                            @error('proofFile')
+                                <flux:text class="text-xs text-red-600">{{ $message }}</flux:text>
+                            @enderror
+                        </div>
+                    @endif
                     <flux:button
                         type="submit"
                         variant="primary"
@@ -769,21 +800,33 @@ new #[Layout('layouts::frontend')] class extends Component
                         @enderror
                     </div>
 
-                    <div class="grid gap-2">
-                        <flux:field>
-                            <flux:label>{{ __('messages.proof_of_payment') }}</flux:label>
-                            <input
-                                type="file"
-                                name="proofFile"
-                                accept=".jpg,.jpeg,.png,.webp,.pdf"
-                                wire:model.defer="proofFile"
-                                class="block w-full text-sm text-zinc-600 file:mr-4 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-zinc-800 hover:file:bg-zinc-200 dark:text-zinc-400 dark:file:bg-zinc-700 dark:file:text-zinc-200 dark:hover:file:bg-zinc-600"
-                            />
-                        </flux:field>
-                        @error('proofFile')
-                            <flux:text class="text-xs text-red-600">{{ $message }}</flux:text>
-                        @enderror
+                    <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3 dark:border-zinc-800 dark:bg-zinc-800/60">
+                        <div class="min-w-0 flex-1 space-y-1 pe-2">
+                            <flux:text class="text-sm font-medium text-zinc-800 dark:text-zinc-200">{{ __('messages.topup_attach_proof_toggle') }}</flux:text>
+                            <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.topup_attach_proof_hint') }}</flux:text>
+                        </div>
+                        <flux:switch
+                            class="shrink-0 focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                            wire:model.live="attachProof"
+                        />
                     </div>
+                    @if ($attachProof)
+                        <div class="grid gap-2">
+                            <flux:field>
+                                <flux:label>{{ __('messages.proof_of_payment') }}</flux:label>
+                                <input
+                                    type="file"
+                                    name="proofFile"
+                                    accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                    wire:model.defer="proofFile"
+                                    class="block w-full text-sm text-zinc-600 file:mr-4 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-zinc-800 hover:file:bg-zinc-200 dark:text-zinc-400 dark:file:bg-zinc-700 dark:file:text-zinc-200 dark:hover:file:bg-zinc-600"
+                                />
+                            </flux:field>
+                            @error('proofFile')
+                                <flux:text class="text-xs text-red-600">{{ $message }}</flux:text>
+                            @enderror
+                        </div>
+                    @endif
 
                     <flux:button
                         type="submit"

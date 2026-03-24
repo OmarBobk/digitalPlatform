@@ -43,7 +43,6 @@
     - ###DONE: PWA application button should only appear if the user has permission for install_pwa_app
   - ###DONE: ###MAJOR### Record bug system.
   - ###TODO: Contactus: the messages that come from this form where we should handle them.
-  - ###TODO: Admin should be able from somewhere to add funds to some user
   - ###TODO: ###MAJOR### Record website views
   - ###TODO: ###MAJOR### Users hierarchy. 
   - ###TODO:
