@@ -30,7 +30,7 @@ class CreateUserProductPrice
                     fn ($query) => $query->where('user_id', $targetUser->id)
                 ),
             ],
-            'price' => ['required', 'numeric', 'min:0'],
+            'price' => ['required', 'numeric'],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
 

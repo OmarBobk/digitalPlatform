@@ -60,17 +60,26 @@ class CustomerPriceService
         if ($user !== null && $productOrEntryPrice instanceof Product) {
             $productId = $productOrEntryPrice->getKey();
             if ($productId !== null && isset($overrides[(int) $productId])) {
-                $overridePrice = $this->round((float) $overrides[(int) $productId]);
+                $delta = $this->round((float) $overrides[(int) $productId]);
+                $basePrice = $this->resolveBasePrice($productOrEntryPrice, $user);
+                $adjustedBasePrice = $this->round($basePrice + $delta);
+
+                $tierConfig = $this->tierConfigForUser($user);
+                $discountPercent = $tierConfig !== null ? (float) $tierConfig->discount_percentage : 0.0;
+                $discountAmount = $this->round($adjustedBasePrice * $discountPercent / 100);
+                $finalPrice = $this->round($adjustedBasePrice - $discountAmount);
+                $tierName = $tierConfig?->name;
+
                 $entryPrice = $productOrEntryPrice->entry_price !== null
                     ? (float) $productOrEntryPrice->entry_price
                     : null;
-                $isBelowCost = $entryPrice !== null && $overridePrice < $entryPrice;
+                $isBelowCost = $entryPrice !== null && $finalPrice < $entryPrice;
 
                 return [
-                    'base_price' => $overridePrice,
-                    'discount_amount' => 0.0,
-                    'final_price' => $overridePrice,
-                    'tier_name' => null,
+                    'base_price' => $adjustedBasePrice,
+                    'discount_amount' => $discountAmount,
+                    'final_price' => $finalPrice,
+                    'tier_name' => $tierName,
                     'meta' => [
                         'is_override' => true,
                         'is_below_cost' => $isBelowCost,

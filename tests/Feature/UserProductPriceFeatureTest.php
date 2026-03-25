@@ -45,7 +45,7 @@ beforeEach(function (): void {
     Permission::firstOrCreate(['name' => 'manage_user_prices', 'guard_name' => 'web']);
 });
 
-test('override applies exact price with meta and zero discount', function (): void {
+test('user product price applies fixed adjustment (delta) before loyalty discount', function (): void {
     $user = User::factory()->create(['loyalty_tier' => LoyaltyTier::Gold]);
     $user->assignRole('customer');
     $product = Product::factory()->create(['entry_price' => 100]);
@@ -53,7 +53,7 @@ test('override applies exact price with meta and zero discount', function (): vo
     UserProductPrice::query()->create([
         'user_id' => $user->id,
         'product_id' => $product->id,
-        'price' => 14.99,
+        'price' => -5.00,
         'created_by' => null,
     ]);
 
@@ -61,15 +61,15 @@ test('override applies exact price with meta and zero discount', function (): vo
     $overrides = $service->getUserOverridesFor($user);
     $result = $service->priceFor($product, $user, $overrides);
 
-    expect($result['final_price'])->toBe(14.99);
-    expect($result['base_price'])->toBe(14.99);
-    expect($result['discount_amount'])->toBe(0.0);
-    expect($result['tier_name'])->toBeNull();
+    expect($result['base_price'])->toBe(105.0);
+    expect($result['discount_amount'])->toBe(10.5);
+    expect($result['final_price'])->toBe(94.5);
+    expect($result['tier_name'])->toBe('gold');
     expect($result['meta']['is_override'])->toBeTrue();
     expect($result['meta']['is_below_cost'])->toBeTrue();
 });
 
-test('override bypasses loyalty and pricing rule margins', function (): void {
+test('user product price adjustment follows derived base price changes (entry price updates)', function (): void {
     $user = User::factory()->create(['loyalty_tier' => LoyaltyTier::Gold]);
     $user->assignRole('customer');
     $product = Product::factory()->create(['entry_price' => 100]);
@@ -77,18 +77,23 @@ test('override bypasses loyalty and pricing rule margins', function (): void {
     UserProductPrice::query()->create([
         'user_id' => $user->id,
         'product_id' => $product->id,
-        'price' => 50.00,
+        'price' => -5.00,
         'created_by' => null,
     ]);
 
     $service = app(CustomerPriceService::class);
-    $result = $service->priceFor($product, $user);
+    $resultBefore = $service->priceFor($product, $user);
 
-    expect($result['final_price'])->toBe(50.0);
-    expect($result['meta']['is_override'])->toBeTrue();
+    expect($resultBefore['base_price'])->toBe(105.0);
+
+    $product->update(['entry_price' => 150]);
+
+    $resultAfter = app(CustomerPriceService::class)->priceFor($product->refresh(), $user);
+    expect($resultAfter['base_price'])->toBe(160.0);
+    expect($resultAfter['meta']['is_override'])->toBeTrue();
 });
 
-test('override above entry is not below cost', function (): void {
+test('user product price above entry is not below cost', function (): void {
     $user = User::factory()->create();
     $user->assignRole('customer');
     $product = Product::factory()->create(['entry_price' => 100]);
@@ -118,7 +123,7 @@ test('no override falls back to existing customer price logic', function (): voi
     expect($result['meta']['is_override'])->toBeFalse();
 });
 
-test('order item uses override unit price from create order payload', function (): void {
+test('order item uses user product price adjustment when creating order', function (): void {
     $user = User::factory()->create();
     $package = Package::factory()->create();
     $product = Product::factory()->create([
@@ -143,8 +148,8 @@ test('order item uses override unit price from create order payload', function (
 
     $item = $order->items->first();
     expect($item)->not->toBeNull();
-    expect((float) $item->unit_price)->toBe(42.5);
-    expect((float) $item->line_total)->toBe(127.5);
+    expect((float) $item->unit_price)->toBe(152.5);
+    expect((float) $item->line_total)->toBe(457.5);
 });
 
 test('create duplicate user product price fails validation', function (): void {

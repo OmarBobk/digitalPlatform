@@ -3,7 +3,7 @@
         <flux:heading size="sm" class="text-zinc-900 dark:text-zinc-100">{{ __('messages.custom_prices') }}</flux:heading>
         <flux:button variant="primary" size="sm" wire:click="openCreate">{{ __('messages.add_custom_price') }}</flux:button>
     </div>
-    <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('messages.custom_prices_intro') }}</flux:text>
+        <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('messages.custom_prices_intro') }}</flux:text>
 
     @if ($rows->isEmpty())
         <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('messages.no_custom_prices_yet') }}</flux:text>
@@ -13,7 +13,7 @@
                 <thead class="bg-zinc-50 dark:bg-zinc-800/80">
                     <tr>
                         <th class="px-4 py-3 text-start font-semibold text-zinc-900 dark:text-zinc-100">{{ __('messages.product') }}</th>
-                        <th class="px-4 py-3 text-start font-semibold text-zinc-900 dark:text-zinc-100">{{ __('messages.custom_price') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold text-zinc-900 dark:text-zinc-100">{{ __('messages.user_product_price_adjustment') }}</th>
                         <th class="px-4 py-3 text-start font-semibold text-zinc-900 dark:text-zinc-100">{{ __('messages.note') }}</th>
                         <th class="px-4 py-3 text-start font-semibold text-zinc-900 dark:text-zinc-100">{{ __('messages.set_by') }}</th>
                         <th class="px-4 py-3 text-end font-semibold text-zinc-900 dark:text-zinc-100">{{ __('messages.options') }}</th>
@@ -22,9 +22,7 @@
                 <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
                     @foreach ($rows as $row)
                         @php
-                            $belowCost = $row->product
-                                && $row->product->entry_price !== null
-                                && (float) $row->price < (float) $row->product->entry_price;
+                            $belowCost = false;
                         @endphp
                         <tr wire:key="upp-{{ $row->id }}">
                             <td class="px-4 py-3 text-zinc-900 dark:text-zinc-100">
@@ -36,7 +34,7 @@
                                 </div>
                             </td>
                             <td class="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100" dir="ltr">
-                                {{ config('billing.currency_symbol', '$') }}{{ number_format((float) $row->price, 2) }}
+                                {{ (float) $row->price > 0 ? '+' : '' }}{{ config('billing.currency_symbol', '$') }}{{ number_format((float) $row->price, 2) }}
                             </td>
                             <td class="max-w-xs truncate px-4 py-3 text-zinc-600 dark:text-zinc-300">{{ $row->note ?? '—' }}</td>
                             <td class="px-4 py-3 text-zinc-600 dark:text-zinc-300">{{ $row->creator?->name ?? '—' }}</td>
@@ -145,8 +143,9 @@
             @endif
 
             <flux:field>
-                <flux:label>{{ __('messages.custom_price') }}</flux:label>
-                <flux:input type="number" step="0.01" min="0" wire:model="price" dir="ltr" />
+                <flux:label>{{ __('messages.user_product_price_adjustment') }}</flux:label>
+                <flux:input type="number" step="0.01" wire:model="price" dir="ltr" />
+                <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.user_product_price_adjustment_hint') }}</flux:text>
                 @error('price')
                     <flux:text color="red">{{ $message }}</flux:text>
                 @enderror

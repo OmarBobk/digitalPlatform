@@ -28,7 +28,7 @@ class UpdateUserProductPrice
         $oldPrice = (float) $row->price;
 
         $validator = Validator::make($data, [
-            'price' => ['required', 'numeric', 'min:0'],
+            'price' => ['required', 'numeric'],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
 

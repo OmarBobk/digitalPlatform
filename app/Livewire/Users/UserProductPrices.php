@@ -85,7 +85,7 @@ class UserProductPrices extends Component
             if ($this->editingRowId === null) {
                 $this->validate([
                     'selectedProductId' => ['required', 'integer', 'exists:products,id'],
-                    'price' => ['required', 'numeric', 'min:0'],
+                    'price' => ['required', 'numeric'],
                     'note' => ['nullable', 'string', 'max:1000'],
                 ]);
                 $create->handle($this->user, [
@@ -96,7 +96,7 @@ class UserProductPrices extends Component
                 $this->success(__('messages.user_product_price_saved'));
             } else {
                 $this->validate([
-                    'price' => ['required', 'numeric', 'min:0'],
+                    'price' => ['required', 'numeric'],
                     'note' => ['nullable', 'string', 'max:1000'],
                 ]);
                 $update->handle($this->editingRowId, $this->user, [
