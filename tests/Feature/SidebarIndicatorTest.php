@@ -6,6 +6,7 @@ use App\Enums\OrderStatus;
 use App\Enums\TopupMethod;
 use App\Enums\TopupRequestStatus;
 use App\Livewire\Sidebar\FulfillmentIndicator;
+use App\Livewire\Sidebar\NotificationIndicator;
 use App\Livewire\Sidebar\TopupIndicator;
 use App\Models\Fulfillment;
 use App\Models\Order;
@@ -114,6 +115,28 @@ test('topup indicator updates when pending topups exist', function () {
         'currency' => 'USD',
         'status' => TopupRequestStatus::Pending,
     ]);
+
+    $component->call('refreshCount')
+        ->assertSet('count', 1)
+        ->assertSee('bg-amber-500')
+        ->assertSee('1');
+});
+
+test('notification indicator shows unread notifications count', function () {
+    actingAs($this->admin);
+    Livewire::actingAs($this->admin);
+
+    $component = Livewire::test(NotificationIndicator::class);
+    $component->assertSet('count', 0)
+        ->assertDontSee('bg-amber-500');
+
+    $this->admin->notify(new \App\Notifications\PaymentFailedNotification(
+        sourceType: User::class,
+        sourceId: $this->admin->id,
+        title: 'Price floor alert',
+        message: 'A line item price was clamped to entry price.',
+        url: '/admin/orders'
+    ));
 
     $component->call('refreshCount')
         ->assertSet('count', 1)

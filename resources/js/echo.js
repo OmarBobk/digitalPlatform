@@ -15,6 +15,9 @@ window.Echo = new Echo({
 
 if (import.meta.env.VITE_REVERB_APP_KEY && window.Laravel?.userId) {
     window.Echo.private('App.Models.User.' + window.Laravel.userId).notification((payload) => {
+        if (window.Livewire?.dispatch) {
+            window.Livewire.dispatch('notification-received', payload ?? {});
+        }
         window.dispatchEvent(new CustomEvent('notification-received', { detail: payload || {} }));
     });
 }

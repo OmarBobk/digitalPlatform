@@ -59,7 +59,10 @@
                     :key="'sidebar-operations-group'"
                 >
                     <flux:sidebar.item icon="bell" :href="route('admin.notifications.index')" :current="request()->routeIs('admin.notifications.index')" wire:navigate>
-                        {{ __('messages.notifications') }}
+                        <span class="flex items-center gap-2">
+                            {{ __('messages.notifications') }}
+                            <livewire:sidebar.notification-indicator :key="'sidebar-notification-indicator'" />
+                        </span>
                     </flux:sidebar.item>
                     @can('view_fulfillments')
                     <flux:sidebar.item icon="list-bullet" :href="route('fulfillments')" :current="request()->routeIs('fulfillments')" wire:navigate>
