@@ -25,6 +25,7 @@ class OperationsGroup extends Component
     }
 
     #[On('fulfillment-list-updated')]
+    #[On('notification-received')]
     public function refreshBadge(): void
     {
         if (! auth()->check()) {
@@ -47,7 +48,10 @@ class OperationsGroup extends Component
                 ->count();
         }
 
-        $this->hasBadge = $fulfillmentCount > 0 || $refundCount > 0;
+        $user = auth()->user();
+        $unreadNotificationsCount = $user !== null ? $user->unreadNotifications()->count() : 0;
+
+        $this->hasBadge = $fulfillmentCount > 0 || $refundCount > 0 || $unreadNotificationsCount > 0;
     }
 
     public function render()

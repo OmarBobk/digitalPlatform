@@ -26,6 +26,7 @@ class SidebarToggleBadge extends Component
     #[On('fulfillment-list-updated')]
     #[On('topup-list-updated')]
     #[On('bug-inbox-updated')]
+    #[On('notification-received')]
     public function refreshBadge(): void
     {
         if (! auth()->check()) {
@@ -58,7 +59,9 @@ class SidebarToggleBadge extends Component
         $bugsBadge = $user->can('manage_bugs')
             && Bug::query()->openOrInProgress()->exists();
 
-        $this->hasBadge = $operationsBadge || $financialsBadge || $bugsBadge;
+        $notificationsBadge = $user->unreadNotifications()->exists();
+
+        $this->hasBadge = $operationsBadge || $financialsBadge || $bugsBadge || $notificationsBadge;
     }
 
     public function render()
