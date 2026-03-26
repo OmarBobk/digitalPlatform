@@ -51,7 +51,7 @@ class CustomerPriceService
     /**
      * Resolve customer price for a product or raw entry price.
      *
-     * @return array{base_price: float, discount_amount: float, final_price: float, tier_name: string|null, meta: array{is_override: bool, is_below_cost?: bool}}
+     * @return array{base_price: float, discount_amount: float, final_price: float, tier_name: string|null, meta: array{is_override: bool, is_below_cost?: bool, is_floor_applied?: bool}}
      */
     public function priceFor(Product|float $productOrEntryPrice, ?User $user = null, ?array $overridesByProductId = null): array
     {
@@ -73,6 +73,12 @@ class CustomerPriceService
                 $entryPrice = $productOrEntryPrice->entry_price !== null
                     ? (float) $productOrEntryPrice->entry_price
                     : null;
+                $isFloorApplied = false;
+                if ($entryPrice !== null && $finalPrice < $entryPrice) {
+                    $finalPrice = $this->round($entryPrice);
+                    $discountAmount = $this->round($adjustedBasePrice - $finalPrice);
+                    $isFloorApplied = true;
+                }
                 $isBelowCost = $entryPrice !== null && $finalPrice < $entryPrice;
 
                 return [
@@ -83,6 +89,7 @@ class CustomerPriceService
                     'meta' => [
                         'is_override' => true,
                         'is_below_cost' => $isBelowCost,
+                        'is_floor_applied' => $isFloorApplied,
                     ],
                 ];
             }
@@ -94,6 +101,13 @@ class CustomerPriceService
         $discountAmount = $this->round($basePrice * $discountPercent / 100);
         $finalPrice = $this->round($basePrice - $discountAmount);
         $tierName = $tierConfig?->name;
+        $isFloorApplied = false;
+
+        if ($productOrEntryPrice instanceof Product && $productOrEntryPrice->entry_price !== null && $finalPrice < (float) $productOrEntryPrice->entry_price) {
+            $finalPrice = $this->round((float) $productOrEntryPrice->entry_price);
+            $discountAmount = $this->round($basePrice - $finalPrice);
+            $isFloorApplied = true;
+        }
 
         return [
             'base_price' => $basePrice,
@@ -102,6 +116,7 @@ class CustomerPriceService
             'tier_name' => $tierName,
             'meta' => [
                 'is_override' => false,
+                'is_floor_applied' => $isFloorApplied,
             ],
         ];
     }

@@ -10,7 +10,9 @@ use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use App\Notifications\OrderPriceFlooredNotification;
 use App\Services\CustomerPriceService;
+use App\Services\NotificationRecipientService;
 use App\Services\SystemEventService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -77,6 +79,7 @@ class CreateOrderFromCartPayload
 
             $lineItems = [];
             $subtotal = 0.0;
+            $flooredItemsCount = 0;
 
             $priceService = app(CustomerPriceService::class);
             $priceOverrides = $priceService->getUserOverridesFor($user);
@@ -99,9 +102,13 @@ class CreateOrderFromCartPayload
                 $requirements = $item['requirements'] ?? [];
                 $this->validateRequirements($product->package?->requirements ?? collect(), $requirements, $index);
 
-                $unitPrice = $priceService->finalPrice($product, $user, $priceOverrides);
+                $price = $priceService->priceFor($product, $user, $priceOverrides);
+                $unitPrice = $price['final_price'];
                 $lineTotal = round($unitPrice * $item['quantity'], 2);
                 $entryPrice = $product->entry_price !== null ? (float) $product->entry_price : null;
+                if (($price['meta']['is_floor_applied'] ?? false) === true) {
+                    $flooredItemsCount++;
+                }
 
                 $lineItems[] = [
                     'product_id' => $product->id,
@@ -177,6 +184,18 @@ class CreateOrderFromCartPayload
                     );
                 }
             });
+            if ($flooredItemsCount > 0) {
+                DB::afterCommit(function () use ($orderId, $flooredItemsCount): void {
+                    $createdOrder = Order::query()->find($orderId);
+                    if ($createdOrder === null) {
+                        return;
+                    }
+                    $notification = OrderPriceFlooredNotification::fromOrder($createdOrder, $flooredItemsCount);
+                    app(NotificationRecipientService::class)
+                        ->adminUsers()
+                        ->each(fn (User $admin): mixed => $admin->notify($notification));
+                });
+            }
 
             return $order->load('items');
         };

@@ -54,4 +54,6 @@ return [
 
     'bug_recorded_title' => 'New bug report',
     'bug_recorded_message' => 'Bug #:id (:scenario, :severity) was submitted.',
+    'order_price_floored_title' => 'Order price hit entry-price floor',
+    'order_price_floored_message' => 'Order :order_number had :count item(s) clamped to entry price to prevent loss.',
 ];

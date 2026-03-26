@@ -10,6 +10,7 @@ use App\Models\PricingRule;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\UserProductPrice;
+use App\Notifications\OrderPriceFlooredNotification;
 use App\Services\CustomerPriceService;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -30,6 +31,7 @@ beforeEach(function (): void {
 
     Role::firstOrCreate(['name' => 'customer', 'guard_name' => 'web']);
     Role::firstOrCreate(['name' => 'salesperson', 'guard_name' => 'web']);
+    Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
     foreach (['customer', 'salesperson'] as $role) {
         LoyaltyTierConfig::query()->upsert(
             [
@@ -62,11 +64,12 @@ test('user product price applies fixed adjustment (delta) before loyalty discoun
     $result = $service->priceFor($product, $user, $overrides);
 
     expect($result['base_price'])->toBe(105.0);
-    expect($result['discount_amount'])->toBe(10.5);
-    expect($result['final_price'])->toBe(94.5);
+    expect($result['discount_amount'])->toBe(5.0);
+    expect($result['final_price'])->toBe(100.0);
     expect($result['tier_name'])->toBe('gold');
     expect($result['meta']['is_override'])->toBeTrue();
-    expect($result['meta']['is_below_cost'])->toBeTrue();
+    expect($result['meta']['is_floor_applied'])->toBeTrue();
+    expect($result['meta']['is_below_cost'])->toBeFalse();
 });
 
 test('user product price adjustment follows derived base price changes (entry price updates)', function (): void {
@@ -118,9 +121,10 @@ test('no override falls back to existing customer price logic', function (): voi
     $result = app(CustomerPriceService::class)->priceFor($product, $user);
 
     expect($result['base_price'])->toBe(110.0);
-    expect($result['discount_amount'])->toBe(11.0);
-    expect($result['final_price'])->toBe(99.0);
+    expect($result['discount_amount'])->toBe(10.0);
+    expect($result['final_price'])->toBe(100.0);
     expect($result['meta']['is_override'])->toBeFalse();
+    expect($result['meta']['is_floor_applied'])->toBeTrue();
 });
 
 test('order item uses user product price adjustment when creating order', function (): void {
@@ -150,6 +154,40 @@ test('order item uses user product price adjustment when creating order', functi
     expect($item)->not->toBeNull();
     expect((float) $item->unit_price)->toBe(152.5);
     expect((float) $item->line_total)->toBe(457.5);
+});
+
+test('sends admin notification when order item price is clamped to entry price floor', function (): void {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $user = User::factory()->create(['loyalty_tier' => LoyaltyTier::Gold]);
+    $user->assignRole('customer');
+    $package = Package::factory()->create();
+    $product = Product::factory()->create([
+        'package_id' => $package->id,
+        'entry_price' => 100,
+    ]);
+
+    UserProductPrice::query()->create([
+        'user_id' => $user->id,
+        'product_id' => $product->id,
+        'price' => -5.00,
+        'created_by' => null,
+    ]);
+
+    app(CreateOrderFromCartPayload::class)->handle($user, [
+        [
+            'product_id' => $product->id,
+            'package_id' => $package->id,
+            'quantity' => 1,
+        ],
+    ]);
+
+    $admin->refresh();
+    $notification = $admin->notifications()->latest()->first();
+
+    expect($notification)->not->toBeNull()
+        ->and($notification->type)->toBe(OrderPriceFlooredNotification::class);
 });
 
 test('create duplicate user product price fails validation', function (): void {

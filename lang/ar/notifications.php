@@ -54,4 +54,6 @@ return [
 
     'bug_recorded_title' => 'بلاغ خطأ جديد',
     'bug_recorded_message' => 'تم إرسال بلاغ رقم :id (:scenario، :severity).',
+    'order_price_floored_title' => 'تم تطبيق حد سعر التكلفة على الطلب',
+    'order_price_floored_message' => 'الطلب :order_number يحتوي على :count عنصر/عناصر تم تثبيت سعرها عند سعر الدخول لمنع الخسارة.',
 ];

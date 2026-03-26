@@ -71,9 +71,10 @@ test('customer price service applies tier discount for user with gold tier', fun
     $result = $service->priceFor($product, $user);
 
     expect($result['base_price'])->toBe(100.0);
-    expect($result['discount_amount'])->toBe(10.0);
-    expect($result['final_price'])->toBe(90.0);
+    expect($result['discount_amount'])->toBe(0.0);
+    expect($result['final_price'])->toBe(100.0);
     expect($result['tier_name'])->toBe('gold');
+    expect($result['meta']['is_floor_applied'])->toBeTrue();
 });
 
 test('customer price service uses wholesale price for salesperson role', function (): void {
