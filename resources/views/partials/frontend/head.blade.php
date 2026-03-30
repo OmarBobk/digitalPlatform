@@ -17,6 +17,14 @@
         'silver' => __('messages.loyalty_tier_silver'),
         'gold' => __('messages.loyalty_tier_gold'),
     ];
+    $localeTag = str_replace('_', '-', app()->getLocale());
+    $amountMaskEnglishStyle = str_starts_with($localeTag, 'en');
+    $amountIntegerMask = [
+        'decimal' => $amountMaskEnglishStyle ? '.' : ',',
+        'thousands' => $amountMaskEnglishStyle ? ',' : '.',
+        'precision' => 0,
+        'intlLocale' => $localeTag,
+    ];
 @endphp
 <script>
     window.Laravel = window.Laravel || {};
@@ -26,6 +34,7 @@
     window.Laravel.canManageBugs = @json(auth()->user()?->can('manage_bugs'));
     @endauth
     window.Laravel.loyaltyTierLabels = @json($loyaltyTierLabels);
+    window.Laravel.amountIntegerMask = @json($amountIntegerMask);
 </script>
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 @fluxAppearance

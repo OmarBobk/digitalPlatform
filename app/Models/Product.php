@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ProductAmountMode;
 use App\Services\PriceCalculator;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -33,6 +34,11 @@ class Product extends Model
         'package_id',
         'serial',
         'name',
+        'amount_mode',
+        'amount_unit_label',
+        'custom_amount_min',
+        'custom_amount_max',
+        'custom_amount_step',
         'slug',
         'entry_price',
         'retail_price',
@@ -50,7 +56,11 @@ class Product extends Model
     {
         return [
             'package_id' => 'integer',
-            'entry_price' => 'decimal:2',
+            'amount_mode' => ProductAmountMode::class,
+            'custom_amount_min' => 'integer',
+            'custom_amount_max' => 'integer',
+            'custom_amount_step' => 'integer',
+            'entry_price' => 'decimal:8',
             'retail_price' => 'decimal:2',
             'wholesale_price' => 'decimal:2',
             'is_active' => 'boolean',

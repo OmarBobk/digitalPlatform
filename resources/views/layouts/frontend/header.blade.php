@@ -15,7 +15,19 @@
     <head>
         @include('partials.frontend.head')
     </head>
-    <body class="min-h-screen bg-white dark:bg-zinc-900" style="--bg-pattern: url('{{ asset('images/background-pattern.jpg') }}'); --bg-pattern-dark: url('{{ asset('images/background-pattern-dark.jpg') }}');">
+    <body
+        class="min-h-screen bg-white dark:bg-zinc-900"
+        style="--bg-pattern: url('{{ asset('images/background-pattern.jpg') }}'); --bg-pattern-dark: url('{{ asset('images/background-pattern-dark.jpg') }}');"
+        x-data
+        x-on:cart-custom-amount-priced.window="
+            if ($store.cart) {
+                if ($event.detail?.price !== undefined) {
+                    $store.cart.applyCustomAmountPrice($event.detail);
+                }
+                $store.cart.setCustomAmountError($event.detail);
+            }
+        "
+    >
         <script>window.__addToCartMessageTemplate = @json(__('main.add_to_cart_for'));</script>
         <flux:header
             sticky class="!block !px-3 !py-3 border-b border-zinc-200  dark:border-zinc-700 dark:!bg-zinc-900 "

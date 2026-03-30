@@ -65,7 +65,18 @@
 
 **🔒 Ticket → Audit → Fix → Lock**
 
-Ask → Plan → Agent → Review → Fix
+
+You a senior prompt Generator with 20+ years exp
+first you can scan the uploaded file to understand my system.
+second lets go Ask → Plan → Agent → Review → Fix to Make Cursor implements this feature as a senior Laravel 12, Livewire 4, Tailwind and Alpinejs
+now sometime cursor is overengineering so tell him what you to tell to not do that.
+and by there are a lot of places where there a better path for performance for high quality code and fast and even best practices that cursor doesn't take let give you an example 
+"that day we where had a unit price and an amount field and what we need is when user type in the amount at the sametime he should  the Estimated Total which is (unit price * amount)
+there is a lot of choices to make it happened but what cursor did he used wire:model.live so when ever user change the amount the estimated will be updated
+now Cursor did give the right result but the most expensive way I mean when ever user change the amount livewire will resend a sup-request
+while we can get the unit price in one request and do the math and display the Estimated Total using alpine and this way would cost us only one request.
+Now I want Cursor to do it like that take the best approach in everything code readability, maintance, high quality, better performance and all what Expert Developer are care about
+"
 
 1. Ask → understand system
 2. Ask (Plan Mode) → generate implementation plan
@@ -75,7 +86,23 @@ Ask → Plan → Agent → Review → Fix
 
 
 
+General Engineering Rules:
 
+* Prefer SIMPLE over FLEXIBLE
+* Prefer CLEAR over ABSTRACT
+* Prefer LOCAL logic over GLOBAL systems
+* Avoid premature optimization patterns (queues, events, microservices)
+* Avoid unnecessary layers (Repositories, Services if Action is enough)
 
-[2026-03-24 03:34:51] production.WARNING: SendPushNotificationJob: PushLog create failed (push was sent) {"notification_id":"becb79d2a22812af93a438dd85473b7b>
-<d549c4630.18, eb602e90-72c5-4c19-9078-7bffe9eaf456, 1, success, ?))"}
+Frontend:
+
+* Use Alpine for calculations, UI state, instant updates
+* Avoid Livewire reactivity for simple UI interactions
+
+Backend:
+
+* Use Actions directly
+* Avoid creating extra classes without strong reason
+
+Golden Rule:
+If a feature can be built in 1 simple way, DO NOT build 3 "future-proof" ways

@@ -212,7 +212,7 @@ new #[Layout('layouts::frontend')] class extends Component
 
     /**
      * @param  array<string, mixed>|null  $payload
-     * @return array<int, array{key: string, value: string}>
+     * @return array<int, array{key: string, label: string, value: string}>
      */
     protected function requirementsEntries(?array $payload): array
     {
@@ -223,13 +223,28 @@ new #[Layout('layouts::frontend')] class extends Component
         $entries = [];
 
         foreach ($payload as $key => $value) {
+            $keyString = is_string($key) ? $key : (string) $key;
             $entries[] = [
-                'key' => is_string($key) ? $key : (string) $key,
+                'key' => $keyString,
+                'label' => $this->humanizeRequirementKey($keyString),
                 'value' => $this->stringifyPayloadValue($value),
             ];
         }
 
         return $entries;
+    }
+
+    protected function humanizeRequirementKey(string $key): string
+    {
+        return match (strtolower($key)) {
+            'id' => __('messages.requirement_label_id'),
+            'email' => __('messages.requirement_label_email'),
+            'username' => __('messages.requirement_label_username'),
+            'password' => __('messages.requirement_label_password'),
+            'phone' => __('messages.requirement_label_phone'),
+            'notes' => __('messages.requirement_label_notes'),
+            default => $key,
+        };
     }
 };
 ?>
@@ -307,8 +322,17 @@ new #[Layout('layouts::frontend')] class extends Component
                             <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                                 {{ $item->product?->name ?? $item->name }}
                             </div>
-                            <div class="text-xs text-zinc-500 dark:text-zinc-400">
-                                {{ __('messages.quantity') }}: {{ $item->quantity }}
+                            <div class="space-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                @if (($item->amount_mode ?? \App\Enums\ProductAmountMode::Fixed) === \App\Enums\ProductAmountMode::Custom && $item->requested_amount !== null)
+                                    <div class="text-zinc-600 dark:text-zinc-300">
+                                        <span class="text-zinc-500 dark:text-zinc-400">{{ __('messages.order_item_purchased_amount') }}:</span>
+                                        <span class="ms-0.5 font-medium tabular-nums text-zinc-800 dark:text-zinc-100" dir="ltr">{{ number_format((int) $item->requested_amount) }}</span>
+                                        @if ($item->amount_unit_label)
+                                            <span class="ms-1">{{ $item->amount_unit_label }}</span>
+                                        @endif
+                                    </div>
+                                @endif
+                                <div>{{ __('messages.quantity') }}: {{ $item->quantity }}</div>
                             </div>
                             @if ($item->package?->name)
                                 <div class="text-xs text-zinc-500 dark:text-zinc-400">
@@ -358,7 +382,7 @@ new #[Layout('layouts::frontend')] class extends Component
                             <div class="mt-2 grid gap-2">
                                 @foreach ($requirementsEntries as $entry)
                                     <div class="flex flex-wrap items-center justify-between gap-2">
-                                        <span class="text-zinc-500 dark:text-zinc-400">{{ $entry['key'] }}</span>
+                                        <span class="text-zinc-500 dark:text-zinc-400">{{ $entry['label'] }}</span>
                                         <span class="font-semibold text-zinc-900 dark:text-zinc-100">
                                             {{ $entry['value'] }}
                                         </span>

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Packages\ResolvePackageRequirements;
+use App\Enums\ProductAmountMode;
 use App\Models\Product;
 use App\Services\CustomerPriceService;
 use Livewire\Component;
@@ -20,7 +21,20 @@ new class extends Component
         $overrides = $user !== null ? $priceService->getUserOverridesFor($user) : [];
 
         $this->products = Product::query()
-            ->select(['id', 'package_id', 'name', 'slug', 'entry_price', 'retail_price', 'order'])
+            ->select([
+                'id',
+                'package_id',
+                'name',
+                'slug',
+                'entry_price',
+                'retail_price',
+                'order',
+                'amount_mode',
+                'amount_unit_label',
+                'custom_amount_min',
+                'custom_amount_max',
+                'custom_amount_step',
+            ])
             ->with([
                 'package:id,name,image,is_active',
                 'package.requirements:id,package_id,key,label,type,is_required,validation_rules,order',
@@ -52,6 +66,11 @@ new class extends Component
             'base_price' => $prices['base_price'],
             'discount_amount' => $prices['discount_amount'],
             'tier_name' => $prices['tier_name'],
+            'amount_mode' => ($product->amount_mode ?? ProductAmountMode::Fixed)->value,
+            'amount_unit_label' => $product->amount_unit_label,
+            'custom_amount_min' => $product->custom_amount_min,
+            'custom_amount_max' => $product->custom_amount_max,
+            'custom_amount_step' => $product->custom_amount_step,
             'href' => '#',
             'image' => filled($product->package?->image)
                 ? asset($product->package->image)
@@ -121,6 +140,11 @@ new class extends Component
                                         >
                                             ${{ number_format((float) $product['price'], 2) }}
                                         </span>
+                                        @if (($product['amount_mode'] ?? '') === 'custom')
+                                            <span class="w-full text-[10px] leading-tight text-zinc-500 dark:text-zinc-400">
+                                                {{ __('messages.custom_amount_see_live_price') }}
+                                            </span>
+                                        @endif
                                     @endif
                                 </div>
                                 <div class="flex shrink-0 items-center justify-between gap-1.5 sm:gap-2">
@@ -138,7 +162,19 @@ new class extends Component
                                         variant="ghost"
                                         icon="shopping-cart"
                                         class="!h-9 !min-h-9 !w-9 !min-w-9 !p-0 touch-manipulation [&>div>svg]:size-4 !text-zinc-700 dark:!text-zinc-300 hover:!bg-zinc-100 dark:hover:!bg-zinc-700/60 rounded-md sm:!h-8 sm:!min-h-0 sm:!w-8 sm:!min-w-0"
-                                        x-on:click="$store.cart.add(product)"
+                                        x-on:click="
+                                            $store.cart.add(product);
+                                            if (product.amount_mode === 'custom' && window.Livewire?.dispatchTo) {
+                                                const step = Math.max(1, parseInt(product.custom_amount_step ?? 1, 10));
+                                                const minRaw = product.custom_amount_min;
+                                                const min = minRaw !== null && minRaw !== undefined ? Math.max(1, parseInt(minRaw, 10)) : null;
+                                                const amt = min !== null ? min : step;
+                                                window.Livewire.dispatchTo('cart.dropdown', 'cart-reprice-after-quick-add', {
+                                                    productId: product.id,
+                                                    requestedAmount: amt,
+                                                });
+                                            }
+                                        "
                                         data-test="cart-add"
                                         aria-label="{{ __('main.add_to_cart_for', ['name' => $product['name']]) }}"
                                     />

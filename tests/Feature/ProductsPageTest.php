@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ProductAmountMode;
 use App\Models\Package;
 use App\Models\Product;
 use App\Models\User;
@@ -63,5 +64,62 @@ test('product can be created from manager form', function () {
         'slug' => 'starter-product',
         'serial' => 'SER-10001',
         'entry_price' => 10.50,
+        'amount_mode' => ProductAmountMode::Fixed->value,
     ]);
+});
+
+test('product can be created as custom amount from manager form', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+    $package = Package::factory()->create();
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::backend.products.index')
+        ->set('productPackageId', $package->id)
+        ->set('productSerial', 'CUS-10001')
+        ->set('productName', 'Data pack')
+        ->set('productAmountMode', ProductAmountMode::Custom->value)
+        ->set('productAmountUnitLabel', 'GB')
+        ->set('productCustomAmountMin', 1)
+        ->set('productCustomAmountMax', 500)
+        ->set('productCustomAmountStep', 5)
+        ->set('productEntryPrice', '0.50')
+        ->set('productOrder', 5)
+        ->set('productIsActive', true)
+        ->call('saveProduct')
+        ->assertHasNoErrors();
+
+    $this->assertDatabaseHas('products', [
+        'name' => 'Data pack',
+        'slug' => 'data-pack',
+        'serial' => 'CUS-10001',
+        'amount_mode' => ProductAmountMode::Custom->value,
+        'amount_unit_label' => 'GB',
+        'custom_amount_min' => 1,
+        'custom_amount_max' => 500,
+        'custom_amount_step' => 5,
+        'entry_price' => 0.50,
+    ]);
+});
+
+test('custom amount product rejects zero entry price', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+    $package = Package::factory()->create();
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::backend.products.index')
+        ->set('productPackageId', $package->id)
+        ->set('productName', 'Bad custom')
+        ->set('productAmountMode', ProductAmountMode::Custom->value)
+        ->set('productAmountUnitLabel', 'GB')
+        ->set('productCustomAmountMin', 1)
+        ->set('productCustomAmountMax', 100)
+        ->set('productEntryPrice', '0')
+        ->set('productOrder', 1)
+        ->set('productIsActive', true)
+        ->call('saveProduct')
+        ->assertHasErrors(['productEntryPrice']);
 });

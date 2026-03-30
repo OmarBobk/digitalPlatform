@@ -8,6 +8,7 @@ use App\Models\LoyaltyTierConfig;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\UserProductPrice;
+use InvalidArgumentException;
 
 /**
  * Single source of customer-facing price including loyalty discount.
@@ -130,6 +131,29 @@ class CustomerPriceService
     }
 
     /**
+     * Resolve customer price for amount-based products.
+     * Uses BCMath for entry total multiplication and preserves normal pricing pipeline.
+     *
+     * @return array{base_price: float, discount_amount: float, final_price: float, tier_name: string|null, meta: array{is_override: bool, is_below_cost?: bool, is_floor_applied?: bool}}
+     */
+    public function finalPriceForAmount(Product $product, int $amount, User $user, ?array $overridesByProductId = null): array
+    {
+        $entryPrice = $product->entry_price !== null
+            ? (float) $product->entry_price
+            : null;
+
+        if ($entryPrice === null || $entryPrice <= 0) {
+            throw new InvalidArgumentException('Invalid entry price for custom amount product.');
+        }
+
+        $computedEntryTotal = $this->multiplyAmountByEntryPrice($amount, $entryPrice);
+        $pricingProduct = clone $product;
+        $pricingProduct->setAttribute('entry_price', $computedEntryTotal);
+
+        return $this->priceFor($pricingProduct, $user, $overridesByProductId);
+    }
+
+    /**
      * Base price before loyalty discount: wholesale for salesperson role, retail otherwise.
      */
     private function resolveBasePrice(Product|float $productOrEntryPrice, ?User $user = null): float
@@ -176,6 +200,14 @@ class CustomerPriceService
     private function round(float $value): float
     {
         return round($value, 2, PHP_ROUND_HALF_EVEN);
+    }
+
+    private function multiplyAmountByEntryPrice(int $amount, float $entryPrice): float
+    {
+        $entryAsDecimal = number_format($entryPrice, 6, '.', '');
+        $computed = bcmul((string) $amount, $entryAsDecimal, 6);
+
+        return (float) $computed;
     }
 
     /**

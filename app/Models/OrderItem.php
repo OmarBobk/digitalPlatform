@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\FulfillmentStatus;
 use App\Enums\OrderItemStatus;
+use App\Enums\ProductAmountMode;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -33,6 +34,10 @@ class OrderItem extends Model
         'unit_price',
         'entry_price',
         'quantity',
+        'amount_mode',
+        'requested_amount',
+        'amount_unit_label',
+        'pricing_meta',
         'line_total',
         'requirements_payload',
         'status',
@@ -52,6 +57,9 @@ class OrderItem extends Model
             'unit_price' => 'decimal:2',
             'entry_price' => 'decimal:2',
             'quantity' => 'integer',
+            'amount_mode' => ProductAmountMode::class,
+            'requested_amount' => 'integer',
+            'pricing_meta' => 'array',
             'line_total' => 'decimal:2',
             'requirements_payload' => 'array',
             'status' => OrderItemStatus::class,

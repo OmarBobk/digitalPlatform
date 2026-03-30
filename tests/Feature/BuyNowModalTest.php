@@ -1,13 +1,63 @@
 <?php
 
+use App\Enums\ProductAmountMode;
 use App\Models\Package;
 use App\Models\PackageRequirement;
+use App\Models\PricingRule;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
+
+it('loads custom amount mode and pricing fields for package overlay products', function (): void {
+    PricingRule::create([
+        'min_price' => 0,
+        'max_price' => 999999.99,
+        'wholesale_percentage' => 0,
+        'retail_percentage' => 0,
+        'priority' => 0,
+        'is_active' => true,
+    ]);
+
+    $user = User::factory()->create();
+    $package = Package::factory()->create([
+        'is_active' => true,
+        'name' => 'Overlay Package',
+    ]);
+
+    Product::factory()->for($package)->create([
+        'name' => 'Custom Amount Row',
+        'is_active' => true,
+        'order' => 1,
+        'amount_mode' => ProductAmountMode::Custom,
+        'amount_unit_label' => 'Crystal',
+        'custom_amount_min' => 1000,
+        'custom_amount_max' => 500_000,
+        'custom_amount_step' => 500,
+        'entry_price' => 0.01,
+    ]);
+
+    $component = Livewire::actingAs($user)
+        ->test('main.buy-now-modal')
+        ->call('openPackageOverlay', $package->id);
+
+    $rows = $component->get('packageProducts');
+    expect($rows)->toHaveCount(1)
+        ->and($rows[0]['amount_mode'])->toBe('custom')
+        ->and($rows[0]['custom_amount_min'])->toBe(1000);
+
+    $live = $component->get('packageOverlayLivePrices');
+    $productId = (int) $rows[0]['id'];
+    expect($live[$productId]['final'] ?? null)->not->toBeNull()
+        ->and($live[$productId]['per_unit'] ?? null)->not->toBeNull();
+
+    $component->assertSee('Custom Amount Row')
+        ->assertSee(__('messages.amount'))
+        ->assertSee(__('messages.unit_price'))
+        ->assertSee(__('messages.estimated_total'));
+});
 
 it('shows package products list when opening package overlay', function () {
     $package = Package::factory()->create([
@@ -74,6 +124,102 @@ it('shows requirement fields when opening buy now from package overlay', functio
         ->assertSet('buyNowProductId', $product->id)
         ->assertSee('Player ID')
         ->assertSee('Product One');
+});
+
+it('computes live line total when opening buy now for custom amount product', function (): void {
+    PricingRule::create([
+        'min_price' => 0,
+        'max_price' => 999999.99,
+        'wholesale_percentage' => 0,
+        'retail_percentage' => 0,
+        'priority' => 0,
+        'is_active' => true,
+    ]);
+
+    $user = User::factory()->create();
+    $package = Package::factory()->create(['is_active' => true]);
+    $product = Product::factory()->for($package)->create([
+        'is_active' => true,
+        'amount_mode' => ProductAmountMode::Custom,
+        'amount_unit_label' => 'Crystal',
+        'custom_amount_min' => 500,
+        'custom_amount_max' => 1_000_000,
+        'custom_amount_step' => 500,
+        'entry_price' => 0.01,
+    ]);
+
+    $component = Livewire::actingAs($user)
+        ->test('main.buy-now-modal')
+        ->call('openBuyNow', $product->id, false, 1);
+
+    $component->assertSet('buyNowRequestedAmount', 500);
+    $component->assertSet('buyNowRequestedAmountInput', '500');
+    expect($component->get('buyNowLineFinalPrice'))->toBe(5.0);
+    expect($component->get('buyNowFinalPerUnitRate'))->toBe(0.01);
+});
+
+it('uses overlay custom amount when opening buy now from package list if valid', function (): void {
+    PricingRule::create([
+        'min_price' => 0,
+        'max_price' => 999999.99,
+        'wholesale_percentage' => 0,
+        'retail_percentage' => 0,
+        'priority' => 0,
+        'is_active' => true,
+    ]);
+
+    $user = User::factory()->create();
+    $package = Package::factory()->create(['is_active' => true]);
+    $product = Product::factory()->for($package)->create([
+        'is_active' => true,
+        'amount_mode' => ProductAmountMode::Custom,
+        'amount_unit_label' => 'Crystal',
+        'custom_amount_min' => 500,
+        'custom_amount_max' => 1_000_000,
+        'custom_amount_step' => 500,
+        'entry_price' => 0.01,
+    ]);
+
+    $component = Livewire::actingAs($user)
+        ->test('main.buy-now-modal')
+        ->call('openBuyNow', $product->id, true, 1, 2500);
+
+    $component->assertSet('buyNowRequestedAmount', 2500)
+        ->assertSet('showPackageProducts', false);
+
+    expect((float) $component->get('buyNowLineFinalPrice'))->toBe(25.0);
+});
+
+it('falls back to minimum custom amount when overlay amount fails validation', function (): void {
+    PricingRule::create([
+        'min_price' => 0,
+        'max_price' => 999999.99,
+        'wholesale_percentage' => 0,
+        'retail_percentage' => 0,
+        'priority' => 0,
+        'is_active' => true,
+    ]);
+
+    $user = User::factory()->create();
+    $package = Package::factory()->create(['is_active' => true]);
+    $product = Product::factory()->for($package)->create([
+        'is_active' => true,
+        'amount_mode' => ProductAmountMode::Custom,
+        'custom_amount_min' => 500,
+        'custom_amount_max' => 1_000_000,
+        'custom_amount_step' => 500,
+        'entry_price' => 0.01,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test('main.buy-now-modal')
+        ->call('openBuyNow', $product->id, true, 1, 499)
+        ->assertSet('buyNowRequestedAmount', 500);
+
+    Livewire::actingAs($user)
+        ->test('main.buy-now-modal')
+        ->call('openBuyNow', $product->id, true, 1, 501)
+        ->assertSet('buyNowRequestedAmount', 500);
 });
 
 it('shows no additional requirements message when package has no requirements', function () {

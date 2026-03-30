@@ -2,6 +2,7 @@
 
 use App\Enums\FulfillmentStatus;
 use App\Enums\OrderStatus;
+use App\Enums\ProductAmountMode;
 use App\Enums\WalletTransactionDirection;
 use App\Enums\WalletTransactionType;
 use App\Enums\WalletType;
@@ -14,6 +15,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -50,7 +52,6 @@ test('checkout creates paid order and fulfillments from cart payload', function 
     $order = Order::query()->first();
 
     expect($order)->not->toBeNull();
-    $component->assertSet('lastOrderNumber', $order?->order_number);
     expect($order->status)->toBe(OrderStatus::Paid);
     expect((float) $order->subtotal)->toBe(240.0);
     expect((float) $order->total)->toBe(240.0);
@@ -104,4 +105,124 @@ test('checkout fails when wallet balance is insufficient', function () {
     expect(Wallet::where('type', WalletType::Customer)->count())->toBe(1);
     expect(Order::count())->toBe(0);
     expect(WalletTransaction::count())->toBe(0);
+});
+
+test('checkout creates single fulfillment for custom amount products', function () {
+    $user = User::factory()->create();
+    Wallet::create([
+        'user_id' => $user->id,
+        'type' => WalletType::Customer,
+        'balance' => 10000,
+        'currency' => 'USD',
+    ]);
+
+    $package = Package::factory()->create();
+    $product = Product::factory()->create([
+        'package_id' => $package->id,
+        'name' => 'Custom Crystals',
+        'entry_price' => 0.01,
+        'amount_mode' => ProductAmountMode::Custom,
+        'amount_unit_label' => 'crystals',
+        'custom_amount_min' => 100,
+        'custom_amount_max' => 20000,
+        'custom_amount_step' => 1,
+    ]);
+
+    $payload = [[
+        'id' => $product->id,
+        'quantity' => 5,
+        'requested_amount' => 9539,
+    ]];
+
+    Livewire::actingAs($user)
+        ->test('pages::frontend.cart')
+        ->call('checkout', $payload);
+
+    $order = Order::query()->firstOrFail();
+    $orderItem = OrderItem::query()->firstOrFail();
+
+    expect($order->status)->toBe(OrderStatus::Paid);
+    expect($orderItem->amount_mode)->toBe(ProductAmountMode::Custom);
+    expect($orderItem->quantity)->toBe(1);
+    expect($orderItem->requested_amount)->toBe(9539);
+    expect((float) $orderItem->line_total)->toBe((float) $orderItem->unit_price);
+    expect(data_get($orderItem->pricing_meta, 'mode'))->toBe(ProductAmountMode::Custom->value);
+    expect(data_get($orderItem->pricing_meta, 'requested_amount'))->toBe(9539);
+
+    $fulfillments = Fulfillment::query()
+        ->where('order_item_id', $orderItem->id)
+        ->get();
+
+    expect($fulfillments)->toHaveCount(1);
+    expect($fulfillments->pluck('status')->unique()->all())->toBe([FulfillmentStatus::Queued]);
+    expect($fulfillments->first()->meta)->toBe([
+        'type' => 'custom_amount',
+        'amount' => 9539,
+        'unit' => 'crystals',
+    ]);
+});
+
+test('custom amount pricing keeps precision for large amount and small entry price', function () {
+    $user = User::factory()->create();
+    $package = Package::factory()->create();
+    $product = Product::factory()->create([
+        'package_id' => $package->id,
+        'name' => 'Precision Crystals',
+        'entry_price' => 0.01,
+        'amount_mode' => ProductAmountMode::Custom,
+        'amount_unit_label' => 'crystals',
+        'custom_amount_min' => 1,
+        'custom_amount_max' => 200000,
+        'custom_amount_step' => 1,
+    ]);
+
+    $order = app(\App\Actions\Orders\CreateOrderFromCartPayload::class)->handle($user, [[
+        'product_id' => $product->id,
+        'quantity' => 99,
+        'requested_amount' => 9539,
+    ]], null, false);
+
+    $item = $order->items->first();
+
+    expect($item)->not->toBeNull();
+    expect($item->quantity)->toBe(1);
+    expect($item->requested_amount)->toBe(9539);
+    expect(data_get($item->pricing_meta, 'computed_entry_total'))->toBe(95.39);
+    expect((float) $item->unit_price)->toBe((float) $item->line_total);
+});
+
+test('custom amount hard limit rejects oversized requested amount', function () {
+    $user = User::factory()->create();
+    $package = Package::factory()->create();
+    $product = Product::factory()->create([
+        'package_id' => $package->id,
+        'entry_price' => 1.25,
+        'amount_mode' => ProductAmountMode::Custom,
+        'custom_amount_min' => 1,
+        'custom_amount_max' => 1000000,
+        'custom_amount_step' => 1,
+    ]);
+
+    expect(fn () => app(\App\Actions\Orders\CreateOrderFromCartPayload::class)->handle($user, [[
+        'product_id' => $product->id,
+        'requested_amount' => 100001,
+    ]], null, false))->toThrow(ValidationException::class);
+});
+
+test('custom amount rejects non-positive entry price products', function () {
+    $user = User::factory()->create();
+    $package = Package::factory()->create();
+    $product = Product::factory()->create([
+        'package_id' => $package->id,
+        'entry_price' => 0,
+        'amount_mode' => ProductAmountMode::Custom,
+        'custom_amount_min' => 1,
+        'custom_amount_max' => 10000,
+        'custom_amount_step' => 1,
+    ]);
+
+    expect(fn () => app(\App\Actions\Orders\CreateOrderFromCartPayload::class)->handle($user, [[
+        'product_id' => $product->id,
+        'requested_amount' => 10,
+    ]], null, false))->toThrow(ValidationException::class);
 });

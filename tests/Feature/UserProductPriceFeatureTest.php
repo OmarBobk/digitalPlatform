@@ -3,6 +3,7 @@
 use App\Actions\Orders\CreateOrderFromCartPayload;
 use App\Actions\UserProductPrices\CreateUserProductPrice;
 use App\Enums\LoyaltyTier;
+use App\Enums\ProductAmountMode;
 use App\Livewire\Users\UserProductPrices;
 use App\Models\LoyaltyTierConfig;
 use App\Models\Package;
@@ -125,6 +126,28 @@ test('no override falls back to existing customer price logic', function (): voi
     expect($result['final_price'])->toBe(100.0);
     expect($result['meta']['is_override'])->toBeFalse();
     expect($result['meta']['is_floor_applied'])->toBeTrue();
+});
+
+test('finalPriceForAmount returns expected structure and pricing values', function (): void {
+    $user = User::factory()->create(['loyalty_tier' => LoyaltyTier::Gold]);
+    $user->assignRole('customer');
+
+    $product = Product::factory()->create([
+        'entry_price' => 0.01,
+        'amount_mode' => ProductAmountMode::Custom,
+        'custom_amount_min' => 1,
+        'custom_amount_max' => 200000,
+        'custom_amount_step' => 1,
+    ]);
+
+    $result = app(CustomerPriceService::class)->finalPriceForAmount($product, 9539, $user);
+
+    expect($result)->toHaveKeys(['base_price', 'discount_amount', 'final_price', 'tier_name', 'meta']);
+    expect($result['base_price'])->toBe(104.93);
+    expect($result['discount_amount'])->toBe(9.54);
+    expect($result['final_price'])->toBe(95.39);
+    expect($result['tier_name'])->toBe('gold');
+    expect(data_get($result, 'meta.is_floor_applied'))->toBeTrue();
 });
 
 test('order item uses user product price adjustment when creating order', function (): void {

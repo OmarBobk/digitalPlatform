@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\PricingRule;
+use Illuminate\Support\Facades\Cache;
 use InvalidArgumentException;
 
 /**
@@ -20,7 +21,7 @@ class PriceCalculator
     /**
      * @return array{retail_price: float, wholesale_price: float}
      */
-    public function calculate(float $entryPrice): array
+    public function calculate(float $entryPrice, int $roundingScale = 2): array
     {
         $rule = $this->resolveRule($entryPrice);
 
@@ -31,11 +32,15 @@ class PriceCalculator
             );
         }
 
+        $roundingScale = max(0, min(8, $roundingScale));
+
         $retailPrice = $this->applyBankersRounding(
-            $entryPrice * (1 + (float) $rule->retail_percentage / 100)
+            $entryPrice * (1 + (float) $rule->retail_percentage / 100),
+            $roundingScale
         );
         $wholesalePrice = $this->applyBankersRounding(
-            $entryPrice * (1 + (float) $rule->wholesale_percentage / 100)
+            $entryPrice * (1 + (float) $rule->wholesale_percentage / 100),
+            $roundingScale
         );
 
         return [
@@ -47,18 +52,23 @@ class PriceCalculator
     /**
      * Bankers rounding: round half to even (PHP_ROUND_HALF_EVEN).
      */
-    private function applyBankersRounding(float $value): float
+    private function applyBankersRounding(float $value, int $decimals = 2): float
     {
-        return round($value, 2, PHP_ROUND_HALF_EVEN);
+        return round($value, $decimals, PHP_ROUND_HALF_EVEN);
     }
 
     private function resolveRule(float $entryPrice): ?PricingRule
     {
-        return PricingRule::query()
-            ->where('is_active', true)
-            ->where('min_price', '<=', $entryPrice)
-            ->where('max_price', '>', $entryPrice)
-            ->orderBy('priority')
-            ->first();
+        $entryKey = number_format($entryPrice, 6, '.', '');
+        $cacheKey = 'pricing_rule_'.$entryKey;
+
+        return Cache::remember($cacheKey, 60, function () use ($entryPrice): ?PricingRule {
+            return PricingRule::query()
+                ->where('is_active', true)
+                ->where('min_price', '<=', $entryPrice)
+                ->where('max_price', '>', $entryPrice)
+                ->orderBy('priority')
+                ->first();
+        });
     }
 }

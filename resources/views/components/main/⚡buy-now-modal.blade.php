@@ -5,9 +5,11 @@ declare(strict_types=1);
 use App\Actions\Orders\CheckoutFromPayload;
 use App\Actions\Packages\ResolvePackageRequirements;
 use App\Enums\OrderStatus;
+use App\Enums\ProductAmountMode;
 use App\Models\Package;
 use App\Models\Product;
 use App\Services\CustomerPriceService;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Masmerise\Toaster\Toastable;
@@ -19,6 +21,19 @@ new class extends Component
     public ?int $buyNowProductId = null;
     public ?string $buyNowProductName = null;
     public ?string $buyNowPackageName = null;
+    public string $buyNowAmountMode = ProductAmountMode::Fixed->value;
+    public ?string $buyNowAmountUnitLabel = null;
+    /** @var int|string Livewire can send empty string from number input; we normalize to int. */
+    public int|string|null $buyNowRequestedAmount = null;
+
+    /**
+     * Grouped display string for the custom amount field (wire:model). Livewire round-trips would strip Alpine masks,
+     * so formatting is applied server-side after each sync.
+     */
+    public ?string $buyNowRequestedAmountInput = null;
+    public ?int $buyNowCustomAmountMin = null;
+    public ?int $buyNowCustomAmountMax = null;
+    public int $buyNowCustomAmountStep = 1;
     /** @var int|string Livewire can send empty string from number input; we normalize to int. */
     public int|string $buyNowQuantity = 1;
     public array $buyNowRequirements = [];
@@ -34,7 +49,23 @@ new class extends Component
     public ?string $selectedPackageName = null;
     public array $packageProducts = [];
 
-    public function openBuyNow(int $productId, bool $fromPackageOverlay = false, ?int $quantity = null): void
+    public ?float $buyNowLineFinalPrice = null;
+
+    public ?string $buyNowPriceError = null;
+
+    /**
+     * Final line price ÷ amount at open (custom products). Client multiplies by typed amount for instant estimate; checkout still validates server-side.
+     */
+    public ?float $buyNowFinalPerUnitRate = null;
+
+    /**
+     * Live line totals for custom-amount rows in the package overlay (product id => quote).
+     *
+     * @var array<int, array{final: ?float, per_unit: ?float, error: ?string}>
+     */
+    public array $packageOverlayLivePrices = [];
+
+    public function openBuyNow(int $productId, bool $fromPackageOverlay = false, ?int $quantity = null, ?int $overlayCustomAmount = null): void
     {
         if (! auth()->check()) {
             $this->redirectRoute('login');
@@ -53,7 +84,39 @@ new class extends Component
         $this->buyNowProductId = $product['id'];
         $this->buyNowProductName = $product['name'] ?? null;
         $this->buyNowPackageName = $product['package_name'] ?? $this->selectedPackageName;
-        $this->buyNowQuantity = max(1, (int) ($quantity ?? 1));
+        $this->buyNowAmountMode = (string) ($product['amount_mode'] ?? ProductAmountMode::Fixed->value);
+        $this->buyNowAmountUnitLabel = $product['amount_unit_label'] ?? null;
+        $this->buyNowCustomAmountMin = isset($product['custom_amount_min']) ? (int) $product['custom_amount_min'] : null;
+        $this->buyNowCustomAmountMax = isset($product['custom_amount_max']) ? (int) $product['custom_amount_max'] : null;
+        $this->buyNowCustomAmountStep = max(1, (int) ($product['custom_amount_step'] ?? 1));
+
+        if ($this->buyNowAmountMode === ProductAmountMode::Custom->value) {
+            $initialAmount = (int) ($this->buyNowCustomAmountMin ?? 1);
+            if ($overlayCustomAmount !== null && $overlayCustomAmount > 0) {
+                $productForAmountCheck = Product::query()
+                    ->select([
+                        'id',
+                        'entry_price',
+                        'custom_amount_min',
+                        'custom_amount_max',
+                        'custom_amount_step',
+                    ])
+                    ->whereKey($productId)
+                    ->where('is_active', true)
+                    ->first();
+                if ($productForAmountCheck !== null && $this->validateCustomAmountAgainstProduct($productForAmountCheck, $overlayCustomAmount) === null) {
+                    $initialAmount = $overlayCustomAmount;
+                }
+            }
+            $this->buyNowRequestedAmount = $initialAmount;
+            $this->buyNowRequestedAmountInput = $this->formatGroupedIntegerForDisplay($initialAmount);
+        } else {
+            $this->buyNowRequestedAmount = null;
+            $this->buyNowRequestedAmountInput = null;
+        }
+        $this->buyNowQuantity = $this->buyNowAmountMode === ProductAmountMode::Custom->value
+            ? 1
+            : max(1, (int) ($quantity ?? 1));
         $this->buyNowRequirementsSchema = $product['requirements_schema'] ?? [];
         $this->buyNowRequirementsRules = $product['requirements_rules'] ?? [];
         $this->buyNowRequirementsAttributes = $product['requirements_attributes'] ?? [];
@@ -74,6 +137,9 @@ new class extends Component
             $this->selectedPackageName = null;
             $this->packageProducts = [];
         }
+
+        $this->buyNowPriceError = null;
+        $this->seedBuyNowPricingOnOpen();
     }
 
     public function closeBuyNow(): void
@@ -96,14 +162,239 @@ new class extends Component
             'selectedPackageId',
             'selectedPackageName',
             'packageProducts',
+            'buyNowLineFinalPrice',
+            'buyNowPriceError',
+            'buyNowFinalPerUnitRate',
+            'packageOverlayLivePrices',
         ]);
         $this->resetValidation();
     }
 
+    /**
+     * Runs once when the buy-now sheet opens: loads final price (fixed qty) or per-unit rate at the default amount (custom).
+     */
+    public function seedBuyNowPricingOnOpen(): void
+    {
+        $this->buyNowPriceError = null;
+        $this->buyNowLineFinalPrice = null;
+        $this->buyNowFinalPerUnitRate = null;
+
+        if (! auth()->check() || $this->buyNowProductId === null || $this->showPackageProducts) {
+            return;
+        }
+
+        $product = Product::query()
+            ->select([
+                'id',
+                'entry_price',
+                'amount_mode',
+                'custom_amount_min',
+                'custom_amount_max',
+                'custom_amount_step',
+            ])
+            ->whereKey($this->buyNowProductId)
+            ->where('is_active', true)
+            ->first();
+
+        if ($product === null) {
+            return;
+        }
+
+        $priceService = app(CustomerPriceService::class);
+        $user = auth()->user();
+        $overrides = $user !== null ? $priceService->getUserOverridesFor($user) : [];
+
+        if ($this->buyNowAmountMode === ProductAmountMode::Custom->value) {
+            $amount = (int) $this->buyNowRequestedAmount;
+            $error = $this->validateCustomAmountAgainstProduct($product, $amount);
+
+            if ($error !== null) {
+                $this->buyNowPriceError = $error;
+
+                return;
+            }
+
+            try {
+                $prices = $priceService->finalPriceForAmount($product, $amount, $user, $overrides);
+                $final = $prices['final_price'];
+                $this->buyNowLineFinalPrice = $final;
+                $this->buyNowFinalPerUnitRate = $amount > 0 ? $final / $amount : null;
+            } catch (\InvalidArgumentException $exception) {
+                $this->buyNowLineFinalPrice = null;
+                $this->buyNowFinalPerUnitRate = null;
+                $this->buyNowPriceError = $this->buyNowPriceErrorFromAmountException(
+                    $exception,
+                    $product->entry_price !== null ? (float) $product->entry_price : null
+                );
+            }
+
+            return;
+        }
+
+        $qty = max(1, (int) $this->buyNowQuantity);
+        $this->buyNowLineFinalPrice = round(
+            $priceService->finalPrice($product, $user, $overrides) * $qty,
+            2,
+            PHP_ROUND_HALF_EVEN
+        );
+    }
+
+    public function refreshBuyNowLinePrice(): void
+    {
+        if ($this->buyNowAmountMode === ProductAmountMode::Custom->value) {
+            return;
+        }
+
+        $this->buyNowPriceError = null;
+
+        if (! auth()->check() || $this->buyNowProductId === null || $this->showPackageProducts) {
+            $this->buyNowLineFinalPrice = null;
+
+            return;
+        }
+
+        $userId = (string) (auth()->id() ?? request()->ip() ?? 'guest');
+        $rateLimitKey = sprintf('buy-now-reprice:%s:%d', $userId, $this->buyNowProductId);
+        $allowed = RateLimiter::attempt($rateLimitKey, 20, fn (): bool => true, 60);
+
+        if (! $allowed) {
+            $this->buyNowPriceError = __('messages.something_went_wrong_checkout');
+
+            return;
+        }
+
+        $product = Product::query()
+            ->select([
+                'id',
+                'entry_price',
+                'amount_mode',
+                'custom_amount_min',
+                'custom_amount_max',
+                'custom_amount_step',
+            ])
+            ->whereKey($this->buyNowProductId)
+            ->where('is_active', true)
+            ->first();
+
+        if ($product === null) {
+            $this->buyNowLineFinalPrice = null;
+
+            return;
+        }
+
+        $priceService = app(CustomerPriceService::class);
+        $user = auth()->user();
+        $overrides = $user !== null ? $priceService->getUserOverridesFor($user) : [];
+
+        $qty = max(1, (int) $this->buyNowQuantity);
+        $this->buyNowLineFinalPrice = round(
+            $priceService->finalPrice($product, $user, $overrides) * $qty,
+            2,
+            PHP_ROUND_HALF_EVEN
+        );
+    }
+
+    public function repriceCustomAmount(int $productId, mixed $requestedAmount): void
+    {
+        $userId = auth()->id() ?? request()->ip() ?? 'guest';
+        $rateLimitKey = sprintf('cart-reprice:%s:%d', (string) $userId, $productId);
+        $allowed = false;
+        RateLimiter::attempt($rateLimitKey, 20, function () use (&$allowed): void {
+            $allowed = true;
+        }, 60);
+
+        if (! $allowed) {
+            $this->dispatch('cart-custom-amount-priced', productId: $productId, message: __('messages.something_went_wrong_checkout'));
+
+            return;
+        }
+
+        $amount = (int) $requestedAmount;
+
+        if ($amount <= 0) {
+            $this->dispatch('cart-custom-amount-priced', productId: $productId, message: __('messages.required_field', ['field' => __('messages.amount')]));
+
+            return;
+        }
+
+        $product = Product::query()
+            ->select([
+                'id',
+                'entry_price',
+                'amount_mode',
+                'custom_amount_min',
+                'custom_amount_max',
+                'custom_amount_step',
+            ])
+            ->whereKey($productId)
+            ->where('is_active', true)
+            ->first();
+
+        if ($product === null || ($product->amount_mode ?? ProductAmountMode::Fixed) !== ProductAmountMode::Custom) {
+            return;
+        }
+
+        $minimum = $product->custom_amount_min;
+        $maximum = $product->custom_amount_max;
+        $step = $product->custom_amount_step ?? 1;
+
+        if ($minimum !== null && $amount < $minimum) {
+            $this->dispatch('cart-custom-amount-priced', productId: $productId, message: __('messages.min_value', ['field' => __('messages.amount'), 'min' => $minimum]));
+
+            return;
+        }
+
+        if ($maximum !== null && $amount > $maximum) {
+            $this->dispatch('cart-custom-amount-priced', productId: $productId, message: __('messages.max_value', ['field' => __('messages.amount'), 'max' => $maximum]));
+
+            return;
+        }
+
+        if ($step > 1 && $amount % $step !== 0) {
+            $this->dispatch('cart-custom-amount-priced', productId: $productId, message: __('messages.invalid_value', ['field' => __('messages.amount')]));
+
+            return;
+        }
+
+        $entryPrice = $product->entry_price !== null ? (float) $product->entry_price : null;
+
+        if ($entryPrice === null) {
+            $this->dispatch('cart-custom-amount-priced', productId: $productId, message: __('messages.invalid_value', ['field' => __('messages.amount')]));
+
+            return;
+        }
+
+        $priceService = app(CustomerPriceService::class);
+        $user = auth()->user();
+
+        try {
+            $prices = $user !== null
+                ? $priceService->finalPriceForAmount($product, $amount, $user, $priceService->getUserOverridesFor($user))
+                : $this->guestCustomAmountPrices($product, $amount, $priceService);
+        } catch (\InvalidArgumentException) {
+            $this->dispatch('cart-custom-amount-priced', productId: $productId, message: __('messages.invalid_value', ['field' => __('messages.amount')]));
+
+            return;
+        }
+
+        $this->dispatch(
+            'cart-custom-amount-priced',
+            productId: $productId,
+            price: $prices['final_price'],
+            requestedAmount: $amount,
+            message: null,
+        );
+    }
+
     public function updatedBuyNowQuantity(mixed $value): void
     {
+        if ($this->buyNowAmountMode === ProductAmountMode::Custom->value) {
+            $this->buyNowQuantity = 1;
+            return;
+        }
         $this->buyNowQuantity = max(1, (int) $this->buyNowQuantity);
         $this->validateOnly('buyNowQuantity', $this->buyNowRules(), [], $this->buyNowAttributes());
+        $this->refreshBuyNowLinePrice();
     }
 
     public function updatedBuyNowRequirements(mixed $value, string $key): void
@@ -111,7 +402,7 @@ new class extends Component
         $this->validateOnly("buyNowRequirements.$key", $this->buyNowRules(), [], $this->buyNowAttributes());
     }
 
-    public function submitBuyNow(): void
+    public function submitBuyNow(?int $clientCustomAmount = null): void
     {
         $this->reset('buyNowError', 'buyNowSuccess', 'buyNowOrderNumber');
 
@@ -132,7 +423,22 @@ new class extends Component
             return;
         }
 
-        $this->buyNowQuantity = max(1, (int) $this->buyNowQuantity);
+        if ($this->buyNowAmountMode === ProductAmountMode::Custom->value) {
+            $this->buyNowQuantity = 1;
+            if ($clientCustomAmount !== null) {
+                $this->buyNowRequestedAmount = max(0, $clientCustomAmount);
+                $this->buyNowRequestedAmountInput = $this->formatGroupedIntegerForDisplay((int) $this->buyNowRequestedAmount);
+            } else {
+                $this->syncBuyNowRequestedAmountFromInputString();
+            }
+            if ($this->buyNowCustomAmountStep > 1 && $this->buyNowRequestedAmount % $this->buyNowCustomAmountStep !== 0) {
+                $this->addError('buyNowRequestedAmount', __('messages.invalid_value', ['field' => __('messages.amount')]));
+                return;
+            }
+        } else {
+            $this->buyNowQuantity = max(1, (int) $this->buyNowQuantity);
+            $this->buyNowRequestedAmount = null;
+        }
         $this->validate($this->buyNowRules(), [], $this->buyNowAttributes());
 
         try {
@@ -142,6 +448,9 @@ new class extends Component
                     'product_id' => $this->buyNowProductId,
                     'package_id' => $product['package_id'] ?? null,
                     'quantity' => $this->buyNowQuantity,
+                    'requested_amount' => $this->buyNowAmountMode === ProductAmountMode::Custom->value
+                        ? (int) $this->buyNowRequestedAmount
+                        : null,
                     'requirements' => $this->buyNowRequirements,
                 ]],
                 [
@@ -180,7 +489,21 @@ new class extends Component
         $package = Package::query()
             ->select(['id', 'name'])
             ->with(['products' => function ($query): void {
-                $query->select(['id', 'package_id', 'name', 'slug', 'entry_price', 'retail_price', 'order', 'is_active'])
+                $query->select([
+                    'id',
+                    'package_id',
+                    'name',
+                    'slug',
+                    'entry_price',
+                    'retail_price',
+                    'order',
+                    'is_active',
+                    'amount_mode',
+                    'amount_unit_label',
+                    'custom_amount_min',
+                    'custom_amount_max',
+                    'custom_amount_step',
+                ])
                     ->with([
                         'package:id,name,image,is_active',
                         'package.requirements:id,package_id,key,label,type,is_required,validation_rules,order',
@@ -211,6 +534,8 @@ new class extends Component
         $this->isPackageOverlayOpen = true;
         $this->showPackageProducts = true;
         $this->showBuyNowModal = true;
+
+        $this->seedPackageOverlayLivePrices();
     }
 
     public function backToPackageProducts(): void
@@ -234,6 +559,16 @@ new class extends Component
             'buyNowQuantity' => ['required', 'integer', 'min:1'],
         ];
 
+        if ($this->buyNowAmountMode === ProductAmountMode::Custom->value) {
+            $rules['buyNowRequestedAmount'] = array_values(array_filter([
+                'required',
+                'integer',
+                'min:1',
+                $this->buyNowCustomAmountMin !== null ? 'min:'.$this->buyNowCustomAmountMin : null,
+                $this->buyNowCustomAmountMax !== null ? 'max:'.$this->buyNowCustomAmountMax : null,
+            ]));
+        }
+
         foreach ($this->buyNowRequirementsRules as $key => $ruleSet) {
             $rules["buyNowRequirements.$key"] = $ruleSet;
         }
@@ -248,6 +583,7 @@ new class extends Component
     {
         $attributes = [
             'buyNowQuantity' => __('messages.quantity'),
+            'buyNowRequestedAmount' => __('messages.amount'),
         ];
 
         foreach ($this->buyNowRequirementsAttributes as $key => $label) {
@@ -267,7 +603,11 @@ new class extends Component
             return false;
         }
 
-        if ((int) $this->buyNowQuantity < 1) {
+        if ($this->buyNowAmountMode === ProductAmountMode::Custom->value) {
+            if ($this->buyNowFinalPerUnitRate === null || $this->buyNowPriceError !== null) {
+                return false;
+            }
+        } elseif ((int) $this->buyNowQuantity < 1) {
             return false;
         }
 
@@ -293,7 +633,7 @@ new class extends Component
     private function hasBuyNowErrors(): bool
     {
         foreach ($this->getErrorBag()->keys() as $key) {
-            if ($key === 'buyNowQuantity' || str_starts_with($key, 'buyNowRequirements.')) {
+            if ($key === 'buyNowQuantity' || $key === 'buyNowRequestedAmount' || str_starts_with($key, 'buyNowRequirements.')) {
                 return true;
             }
         }
@@ -301,16 +641,195 @@ new class extends Component
         return false;
     }
 
+    private function formatGroupedIntegerForDisplay(int $value): string
+    {
+        $localeTag = str_replace('_', '-', app()->getLocale());
+        $englishStyle = str_starts_with($localeTag, 'en');
+
+        return number_format($value, 0, $englishStyle ? '.' : ',', $englishStyle ? ',' : '.');
+    }
+
+    private function syncBuyNowRequestedAmountFromInputString(): void
+    {
+        $digits = preg_replace('/\D+/', '', (string) ($this->buyNowRequestedAmountInput ?? ''));
+        $this->buyNowRequestedAmount = $digits === '' ? 0 : (int) $digits;
+        $this->buyNowRequestedAmountInput = $this->formatGroupedIntegerForDisplay((int) $this->buyNowRequestedAmount);
+    }
+
+    private function buyNowPriceErrorFromAmountException(\InvalidArgumentException $exception, ?float $entryPrice): string
+    {
+        $message = $exception->getMessage();
+
+        if ($entryPrice === null || $entryPrice <= 0) {
+            return __('messages.invalid_value', ['field' => __('messages.entry_price')]);
+        }
+
+        if (str_contains($message, 'No active pricing rule') || str_contains($message, 'pricing rule matches')) {
+            return __('messages.custom_amount_no_pricing_rule');
+        }
+
+        return __('messages.invalid_value', ['field' => __('messages.entry_price')]);
+    }
+
     private function resetBuyNowState(): void
     {
         $this->buyNowProductId = null;
         $this->buyNowProductName = null;
         $this->buyNowPackageName = null;
+        $this->buyNowAmountMode = ProductAmountMode::Fixed->value;
+        $this->buyNowAmountUnitLabel = null;
+        $this->buyNowRequestedAmount = null;
+        $this->buyNowRequestedAmountInput = null;
+        $this->buyNowCustomAmountMin = null;
+        $this->buyNowCustomAmountMax = null;
+        $this->buyNowCustomAmountStep = 1;
         $this->buyNowQuantity = 1;
         $this->buyNowRequirements = [];
         $this->buyNowRequirementsSchema = [];
         $this->buyNowRequirementsRules = [];
         $this->buyNowRequirementsAttributes = [];
+        $this->buyNowLineFinalPrice = null;
+        $this->buyNowPriceError = null;
+        $this->buyNowFinalPerUnitRate = null;
+        $this->packageOverlayLivePrices = [];
+    }
+
+    private function seedPackageOverlayLivePrices(): void
+    {
+        $this->packageOverlayLivePrices = [];
+
+        foreach ($this->packageProducts as $row) {
+            if (($row['amount_mode'] ?? '') !== ProductAmountMode::Custom->value) {
+                continue;
+            }
+
+            $productId = (int) $row['id'];
+            $defaultAmount = (int) ($row['custom_amount_min'] ?? $row['custom_amount_step'] ?? 1);
+            $this->quotePackageProductPrice($productId, $defaultAmount, false);
+        }
+    }
+
+    private function quotePackageProductPrice(int $productId, int $amount, bool $withRateLimit): void
+    {
+        if ($withRateLimit) {
+            $userId = (string) (auth()->id() ?? request()->ip() ?? 'guest');
+            $allowed = RateLimiter::attempt(
+                sprintf('buy-now-overlay-reprice:%s:%d', $userId, $productId),
+                20,
+                fn (): bool => true,
+                60
+            );
+
+            if (! $allowed) {
+                $this->packageOverlayLivePrices[$productId] = [
+                    'final' => null,
+                    'per_unit' => null,
+                    'error' => __('messages.something_went_wrong_checkout'),
+                ];
+
+                return;
+            }
+        }
+
+        $product = Product::query()
+            ->select([
+                'id',
+                'entry_price',
+                'amount_mode',
+                'custom_amount_min',
+                'custom_amount_max',
+                'custom_amount_step',
+            ])
+            ->whereKey($productId)
+            ->where('is_active', true)
+            ->first();
+
+        if ($product === null || ($product->amount_mode ?? ProductAmountMode::Fixed) !== ProductAmountMode::Custom) {
+            $this->packageOverlayLivePrices[$productId] = [
+                'final' => null,
+                'per_unit' => null,
+                'error' => null,
+            ];
+
+            return;
+        }
+
+        $error = $this->validateCustomAmountAgainstProduct($product, $amount);
+
+        if ($error !== null) {
+            $this->packageOverlayLivePrices[$productId] = [
+                'final' => null,
+                'per_unit' => null,
+                'error' => $error,
+            ];
+
+            return;
+        }
+
+        $priceService = app(CustomerPriceService::class);
+        $user = auth()->user();
+
+        try {
+            $prices = $user !== null
+                ? $priceService->finalPriceForAmount($product, $amount, $user, $priceService->getUserOverridesFor($user))
+                : $this->guestCustomAmountPrices($product, $amount, $priceService);
+            $final = $prices['final_price'];
+            $this->packageOverlayLivePrices[$productId] = [
+                'final' => $final,
+                'per_unit' => $amount > 0 ? round($final / $amount, 6) : null,
+                'error' => null,
+            ];
+        } catch (\InvalidArgumentException) {
+            $this->packageOverlayLivePrices[$productId] = [
+                'final' => null,
+                'per_unit' => null,
+                'error' => __('messages.invalid_value', ['field' => __('messages.entry_price')]),
+            ];
+        }
+    }
+
+    private function validateCustomAmountAgainstProduct(Product $product, int $amount): ?string
+    {
+        if ($amount <= 0) {
+            return __('messages.required_field', ['field' => __('messages.amount')]);
+        }
+
+        $minimum = $product->custom_amount_min;
+        $maximum = $product->custom_amount_max;
+        $step = $product->custom_amount_step ?? 1;
+
+        if ($minimum !== null && $amount < $minimum) {
+            return __('messages.min_value', ['field' => __('messages.amount'), 'min' => $minimum]);
+        }
+
+        if ($maximum !== null && $amount > $maximum) {
+            return __('messages.max_value', ['field' => __('messages.amount'), 'max' => $maximum]);
+        }
+
+        if ($step > 1 && $amount % $step !== 0) {
+            return __('messages.invalid_value', ['field' => __('messages.amount')]);
+        }
+
+        $entryPrice = $product->entry_price !== null ? (float) $product->entry_price : null;
+
+        if ($entryPrice === null || $entryPrice <= 0) {
+            return __('messages.invalid_value', ['field' => __('messages.entry_price')]);
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{base_price: float, discount_amount: float, final_price: float, tier_name: string|null, meta: array<string, mixed>}
+     */
+    private function guestCustomAmountPrices(Product $product, int $amount, CustomerPriceService $priceService): array
+    {
+        $entryPrice = (float) $product->entry_price;
+        $computedEntryTotal = round($entryPrice * $amount, 2);
+        $pricingProduct = clone $product;
+        $pricingProduct->setAttribute('entry_price', $computedEntryTotal);
+
+        return $priceService->priceFor($pricingProduct, null, []);
     }
 
     /**
@@ -330,7 +849,21 @@ new class extends Component
     private function loadProductForBuyNow(int $productId): ?array
     {
         $product = Product::query()
-            ->select(['id', 'package_id', 'name', 'slug', 'entry_price', 'retail_price', 'order', 'is_active'])
+            ->select([
+                'id',
+                'package_id',
+                'name',
+                'slug',
+                'entry_price',
+                'retail_price',
+                'order',
+                'is_active',
+                'amount_mode',
+                'amount_unit_label',
+                'custom_amount_min',
+                'custom_amount_max',
+                'custom_amount_step',
+            ])
             ->with([
                 'package:id,name,image,is_active',
                 'package.requirements:id,package_id,key,label,type,is_required,validation_rules,order',
@@ -369,6 +902,11 @@ new class extends Component
             'base_price' => $prices['base_price'],
             'discount_amount' => $prices['discount_amount'],
             'tier_name' => $prices['tier_name'],
+            'amount_mode' => ($product->amount_mode ?? ProductAmountMode::Fixed)->value,
+            'amount_unit_label' => $product->amount_unit_label,
+            'custom_amount_min' => $product->custom_amount_min,
+            'custom_amount_max' => $product->custom_amount_max,
+            'custom_amount_step' => $product->custom_amount_step,
             'href' => '#',
             'image' => filled($product->package?->image)
                 ? asset($product->package->image)
@@ -389,9 +927,46 @@ new class extends Component
     @close="closeBuyNow"
     @cancel="closeBuyNow"
 >
+    @php
+        $bnLocaleTag = str_replace('_', '-', app()->getLocale());
+        $bnHtmlDir = app()->getLocale() === 'ar' ? 'rtl' : 'ltr';
+        $bnNumericDir = 'ltr';
+        $bnAmountMaskEn = str_starts_with($bnLocaleTag, 'en');
+        $bnMaskDec = $bnAmountMaskEn ? '.' : ',';
+        $bnMaskThousands = $bnAmountMaskEn ? ',' : '.';
+        $bnEstimateStep = max(1, (int) ($buyNowCustomAmountStep ?? 1));
+        $buyNowCustomEstimateConfig = [
+            'amountInputStr' => $buyNowRequestedAmountInput ?? '',
+            'rate' => $buyNowFinalPerUnitRate,
+            'serverError' => $buyNowPriceError,
+            'amountMin' => $buyNowCustomAmountMin,
+            'amountMax' => $buyNowCustomAmountMax,
+            'amountStep' => $buyNowCustomAmountStep,
+            'maskDec' => $bnMaskDec,
+            'maskThousands' => $bnMaskThousands,
+            'messages' => [
+                'enter_amount' => __('messages.buy_now_estimate_enter_amount'),
+                'below_min' => __('messages.buy_now_estimate_below_min', ['min' => $buyNowCustomAmountMin ?? 0]),
+                'above_max' => $buyNowCustomAmountMax !== null
+                    ? __('messages.buy_now_estimate_above_max', ['max' => $buyNowCustomAmountMax])
+                    : '',
+                'bad_step' => __('messages.buy_now_estimate_bad_step', [
+                    'step' => $bnEstimateStep,
+                    'step2' => $bnEstimateStep * 2,
+                    'step3' => $bnEstimateStep * 3,
+                ]),
+                'price_unavailable' => __('messages.buy_now_estimate_price_unavailable'),
+            ],
+        ];
+    @endphp
     <div
         class="relative space-y-4"
-        x-data
+        wire:key="buy-now-shell-{{ (string) ($buyNowProductId ?? '0') }}-{{ $buyNowAmountMode }}"
+        @if ($buyNowAmountMode === \App\Enums\ProductAmountMode::Custom->value)
+            x-data="buyNowCustomAmountEstimate({!! \Illuminate\Support\Js::from($buyNowCustomEstimateConfig)->toHtml() !!})"
+        @else
+            x-data
+        @endif
         x-on:open-buy-now.window="$wire.openBuyNow($event.detail.productId, false, $event.detail.quantity)"
         x-on:open-package-overlay.window="$wire.openPackageOverlay($event.detail.packageId)"
     >
@@ -407,7 +982,9 @@ new class extends Component
                 @endif
             </div>
             <div class="flex flex-col flex-1 min-w-0 pe-12 items-center justify-center gap-0.5 text-center">
-                @php($packageLabel = $selectedPackageName ?? $buyNowPackageName)
+                @php
+                    $packageLabel = $selectedPackageName ?? $buyNowPackageName;
+                @endphp
                 @if ($packageLabel)
                     <span class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-100/80 px-4 py-2 text-sm font-semibold text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100">
                         <span class="truncate">{{ $packageLabel }}</span>
@@ -438,63 +1015,257 @@ new class extends Component
             @else
                 <div class="space-y-3">
                     @foreach ($packageProducts as $product)
-                        <div
-                            x-data="{ product: @js($product), qty: 1 }"
-                            class="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-3 text-sm text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 sm:flex-row sm:items-center sm:justify-between"
-                            wire:key="package-product-{{ $product['id'] }}"
-                        >
-                            <div class="flex justify-between flex-1 space-y-1 text-start">
-                                <div class="font-semibold">
+                        @php
+                            $overlayPid = (int) $product['id'];
+                            $isOverlayCustom = ($product['amount_mode'] ?? '') === \App\Enums\ProductAmountMode::Custom->value;
+                            $overlayQuote = $packageOverlayLivePrices[$overlayPid] ?? [];
+                            $overlayError = $overlayQuote['error'] ?? null;
+                            $overlayFinal = $overlayQuote['final'] ?? null;
+                            $overlayPerUnit = $overlayQuote['per_unit'] ?? null;
+                        @endphp
+                        @if ($isOverlayCustom)
+                            @php
+                                $overlayRowStep = max(1, (int) ($product['custom_amount_step'] ?? 1));
+                                $overlayRowEstimateConfig = [
+                                    'rate' => $overlayPerUnit !== null ? (float) $overlayPerUnit : null,
+                                    'serverError' => $overlayError,
+                                    'amountMin' => $product['custom_amount_min'] ?? null,
+                                    'amountMax' => $product['custom_amount_max'] ?? null,
+                                    'amountStep' => $overlayRowStep,
+                                    'maskDec' => $bnMaskDec,
+                                    'maskThousands' => $bnMaskThousands,
+                                    'initialAmount' => (int) ($product['custom_amount_min'] ?? $product['custom_amount_step'] ?? 1),
+                                    'messages' => [
+                                        'enter_amount' => __('messages.buy_now_estimate_enter_amount'),
+                                        'below_min' => __('messages.buy_now_estimate_below_min', ['min' => $product['custom_amount_min'] ?? 0]),
+                                        'above_max' => ($product['custom_amount_max'] ?? null) !== null
+                                            ? __('messages.buy_now_estimate_above_max', ['max' => $product['custom_amount_max']])
+                                            : '',
+                                        'bad_step' => __('messages.buy_now_estimate_bad_step', [
+                                            'step' => $overlayRowStep,
+                                            'step2' => $overlayRowStep * 2,
+                                            'step3' => $overlayRowStep * 3,
+                                        ]),
+                                        'price_unavailable' => __('messages.buy_now_estimate_price_unavailable'),
+                                    ],
+                                    'product' => $product,
+                                ];
+                            @endphp
+                            <div
+                                x-data="packageOverlayCustomAmountRow({!! \Illuminate\Support\Js::from($overlayRowEstimateConfig)->toHtml() !!})"
+                                class="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                                wire:key="package-product-{{ $product['id'] }}"
+                            >
+                                <div class="text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-100">
                                     {{ $product['name'] }}
                                 </div>
-                                @if(\App\Models\WebsiteSetting::getPricesVisible())
-                                <div class="tabular-nums text-lg font-semibold text-(--color-accent)" dir="ltr">
-                                    ${{ number_format((float) $product['price'], 2) }}
+                                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+                                    <div class="min-w-0 w-full max-w-xs space-y-1">
+                                        <label class="block text-xs font-medium text-zinc-600 dark:text-zinc-400" for="package-overlay-amount-{{ $overlayPid }}">
+                                            {{ __('messages.amount') }}
+                                        </label>
+                                        <input
+                                            id="package-overlay-amount-{{ $overlayPid }}"
+                                            type="text"
+                                            inputmode="numeric"
+                                            dir="{{ $bnHtmlDir }}"
+                                            class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 shadow-sm outline-none transition focus:border-(--color-accent) dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+                                            x-mask:dynamic="$money($input, '{{ $bnMaskDec }}', '{{ $bnMaskThousands }}', 0)"
+                                            x-model="amountInputStr"
+                                        />
+                                        <p class="text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+                                            {{ ($product['custom_amount_min'] ?? '—') . ' - ' . ($product['custom_amount_max'] ?? '—') . ' (' . ($product['custom_amount_step'] ?? 1) . ' step)' }}
+                                            @if (! empty($product['amount_unit_label']))
+                                                <span class="ms-1">{{ $product['amount_unit_label'] }}</span>
+                                            @endif
+                                        </p>
+                                    </div>
+                                    @if(\App\Models\WebsiteSetting::getPricesVisible())
+                                        <div
+                                            class="flex w-full min-w-0 flex-1 gap-3 rounded-xl border px-4 py-3 transition-[box-shadow,border-color,background-color] duration-200 lg:max-w-sm"
+                                            x-bind:class="{
+                                                'border-zinc-200 bg-zinc-50/80 dark:border-zinc-700 dark:bg-zinc-800/50': estimateCardEmphasis === 'neutral' || estimateCardEmphasis === 'success',
+                                                'border-rose-400/90 bg-gradient-to-br from-rose-50 via-white to-rose-50/80 shadow-md shadow-rose-200/40 ring-2 ring-rose-300/70 dark:border-rose-700 dark:from-rose-950/50 dark:via-zinc-900/60 dark:to-rose-950/30 dark:shadow-rose-950/30 dark:ring-rose-800/60': estimateCardEmphasis === 'attention',
+                                                'border-red-400/90 bg-gradient-to-br from-red-50 via-white to-red-50/80 shadow-md shadow-red-200/40 ring-2 ring-red-300/70 dark:border-red-800 dark:from-red-950/45 dark:via-zinc-900/60 dark:to-red-950/30 dark:shadow-red-950/30 dark:ring-red-900/50': estimateCardEmphasis === 'error',
+                                            }"
+                                        >
+                                            <span
+                                                class="mt-0.5 shrink-0"
+                                                x-show="estimateCardEmphasis === 'attention'"
+                                                x-cloak
+                                                aria-hidden="true"
+                                            >
+                                                <flux:icon icon="exclamation-triangle" class="size-5 text-rose-600 dark:text-rose-400" />
+                                            </span>
+                                            <span
+                                                class="mt-0.5 shrink-0"
+                                                x-show="estimateCardEmphasis === 'error'"
+                                                x-cloak
+                                                aria-hidden="true"
+                                            >
+                                                <flux:icon icon="exclamation-circle" class="size-5 text-red-600 dark:text-red-400" />
+                                            </span>
+                                            <div class="min-w-0 flex-1 space-y-3">
+                                                <div>
+                                                    <div
+                                                        class="text-[10px] font-semibold uppercase tracking-wide"
+                                                        x-bind:class="{
+                                                            'text-zinc-500 dark:text-zinc-400': estimateCardEmphasis === 'neutral' || estimateCardEmphasis === 'success',
+                                                            'text-rose-800 dark:text-rose-200': estimateCardEmphasis === 'attention',
+                                                            'text-red-800 dark:text-red-200': estimateCardEmphasis === 'error',
+                                                        }"
+                                                    >
+                                                        {{ __('messages.unit_price') }}
+                                                    </div>
+                                                    <div class="mt-0.5 tabular-nums text-sm font-semibold text-zinc-900 dark:text-zinc-100" dir="{{ $bnNumericDir }}">
+                                                        <span
+                                                            x-show="! serverError && rate !== null && rate !== undefined"
+                                                            class="inline-flex flex-wrap items-baseline gap-x-1"
+                                                        >
+                                                            <span x-text="formatPerUnitRate(rate)"></span>
+                                                            @if (! empty($product['amount_unit_label']))
+                                                                <span class="text-xs font-normal text-zinc-500 dark:text-zinc-400">/ {{ $product['amount_unit_label'] }}</span>
+                                                            @endif
+                                                        </span>
+                                                        <span
+                                                            x-show="serverError || rate === null || rate === undefined"
+                                                            class="text-sm font-normal text-zinc-500 dark:text-zinc-400"
+                                                        >—</span>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div
+                                                        class="text-[10px] font-semibold uppercase tracking-wide"
+                                                        x-bind:class="{
+                                                            'text-zinc-500 dark:text-zinc-400': estimateCardEmphasis === 'neutral' || estimateCardEmphasis === 'success',
+                                                            'text-rose-800 dark:text-rose-200': estimateCardEmphasis === 'attention',
+                                                            'text-red-800 dark:text-red-200': estimateCardEmphasis === 'error',
+                                                        }"
+                                                    >
+                                                        {{ __('messages.estimated_total') }}
+                                                    </div>
+                                                    <div class="mt-1 min-h-[2rem] tabular-nums text-xl font-bold text-(--color-accent)" dir="{{ $bnNumericDir }}">
+                                                        <span
+                                                            x-show="serverError"
+                                                            x-text="serverError"
+                                                            class="block text-sm font-semibold text-red-700 dark:text-red-300"
+                                                        ></span>
+                                                        <span
+                                                            x-show="! serverError && estimatedFinal !== null"
+                                                            x-text="formatMoney(estimatedFinal)"
+                                                            class="block"
+                                                        ></span>
+                                                        <span
+                                                            x-show="! serverError && estimatedFinal === null"
+                                                            x-text="estimateHintText"
+                                                            class="block text-sm leading-snug"
+                                                            x-bind:class="{
+                                                                'font-normal text-zinc-500 dark:text-zinc-400': estimateCardEmphasis === 'neutral',
+                                                                'font-semibold text-rose-800 dark:text-rose-200': estimateCardEmphasis === 'attention',
+                                                            }"
+                                                        ></span>
+                                                    </div>
+                                                </div>
+                                                <p
+                                                    class="text-[10px] leading-relaxed"
+                                                    x-bind:class="{
+                                                        'text-zinc-500 dark:text-zinc-400': estimateCardEmphasis === 'neutral' || estimateCardEmphasis === 'success',
+                                                        'text-rose-700/90 dark:text-rose-300/90': estimateCardEmphasis === 'attention',
+                                                        'text-red-700/85 dark:text-red-300/90': estimateCardEmphasis === 'error',
+                                                    }"
+                                                >
+                                                    {{ __('messages.live_price_checkout_hint') }}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    @endif
+                                    <div class="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:flex-col lg:items-stretch">
+                                        <flux:button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            class="flex-1 lg:flex-none"
+                                            x-on:click="
+                                                $store.cart.add(product, qty);
+                                                if ($store.cart.updateRequestedAmount(product.id, digitsParsed)) {
+                                                    $wire.repriceCustomAmount(product.id, digitsParsed);
+                                                }
+                                                qty = 1;
+                                            "
+                                        >
+                                            {{ __('main.add_to_cart') }}
+                                        </flux:button>
+                                        <flux:button
+                                            type="button"
+                                            variant="primary"
+                                            size="sm"
+                                            class="flex-1 lg:flex-none"
+                                            x-on:click="$wire.openBuyNow({{ $product['id'] }}, true, 1, digitsParsed)"
+                                        >
+                                            {{ __('main.buy_now') }}
+                                        </flux:button>
+                                    </div>
                                 </div>
-                                @endif
                             </div>
-
-                            <div class="flex items-center gap-3 justify-between">
-                                <div class="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-1 py-0.5 text-xs font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
-                                    <button
-                                        type="button"
-                                        class="size-7 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                        x-on:click="qty = Math.max(1, qty - 1)"
-                                        aria-label="{{ __('main.decrease') }}"
-                                    >
-                                        <flux:icon icon="minus" class="size-3" />
-                                    </button>
-                                    <span class="min-w-6 text-center text-sm" x-text="qty"></span>
-                                    <button
-                                        type="button"
-                                        class="size-7 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                        x-on:click="qty += 1"
-                                        aria-label="{{ __('main.increase') }}"
-                                    >
-                                        <flux:icon icon="plus" class="size-3" />
-                                    </button>
+                        @else
+                            <div
+                                x-data="{ product: @js($product), qty: 1 }"
+                                class="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-3 text-sm text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 sm:flex-row sm:items-center sm:justify-between"
+                                wire:key="package-product-{{ $product['id'] }}"
+                            >
+                                <div class="flex flex-1 justify-between gap-3 space-y-1 text-start">
+                                    <div class="font-semibold">
+                                        {{ $product['name'] }}
+                                    </div>
+                                    @if(\App\Models\WebsiteSetting::getPricesVisible())
+                                        <div class="tabular-nums text-lg font-semibold text-(--color-accent)" dir="{{ $bnNumericDir }}">
+                                            ${{ number_format((float) $product['price'], 2) }}
+                                        </div>
+                                    @endif
                                 </div>
 
-                                <div class="flex items-center gap-2">
-                                    <flux:button
-                                        type="button"
-                                        variant="outline"
-                                        size="xs"
-                                        x-on:click="$store.cart.add(product, qty); qty = 1"
-                                    >
-                                        {{ __('main.add_to_cart') }}
-                                    </flux:button>
-                                    <flux:button
-                                        type="button"
-                                        variant="primary"
-                                        size="xs"
-                                        x-on:click="$wire.openBuyNow({{ $product['id'] }}, true, qty)"
-                                    >
-                                        {{ __('main.buy_now') }}
-                                    </flux:button>
+                                <div class="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
+                                    <div class="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-1 py-0.5 text-xs font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
+                                        <button
+                                            type="button"
+                                            class="flex size-7 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                            x-on:click="qty = Math.max(1, qty - 1)"
+                                            aria-label="{{ __('main.decrease') }}"
+                                        >
+                                            <flux:icon icon="minus" class="size-3" />
+                                        </button>
+                                        <span class="min-w-6 text-center text-sm" x-text="qty"></span>
+                                        <button
+                                            type="button"
+                                            class="flex size-7 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                            x-on:click="qty += 1"
+                                            aria-label="{{ __('main.increase') }}"
+                                        >
+                                            <flux:icon icon="plus" class="size-3" />
+                                        </button>
+                                    </div>
+
+                                    <div class="flex items-center gap-2">
+                                        <flux:button
+                                            type="button"
+                                            variant="outline"
+                                            size="xs"
+                                            x-on:click="$store.cart.add(product, qty); qty = 1;"
+                                        >
+                                            {{ __('main.add_to_cart') }}
+                                        </flux:button>
+                                        <flux:button
+                                            type="button"
+                                            variant="primary"
+                                            size="xs"
+                                            x-on:click="$wire.openBuyNow({{ $product['id'] }}, true, qty, null)"
+                                        >
+                                            {{ __('main.buy_now') }}
+                                        </flux:button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        @endif
                     @endforeach
                 </div>
             @endif
@@ -552,23 +1323,149 @@ new class extends Component
             @endif
 
             <div class="grid gap-4 sm:grid-cols-2">
-                <flux:input
-                    class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
-                    type="number"
-                    min="1"
-                    name="buyNowQuantity"
-                    label="{{ __('messages.quantity') }}"
-                    wire:model.blur="buyNowQuantity"
-                />
+                @if ($buyNowAmountMode === \App\Enums\ProductAmountMode::Custom->value)
+                    <div class="contents">
+                        <div class="space-y-1">
+                            <flux:field>
+                                <flux:label>{{ __('messages.amount') }}</flux:label>
+                                <input
+                                    type="text"
+                                    step="500"
+                                    inputmode="numeric"
+                                    dir="{{ $bnHtmlDir }}"
+                                    name="buyNowRequestedAmountDisplay"
+                                    autocomplete="off"
+                                    x-mask:dynamic="$money($input, '{{ $bnMaskDec }}', '{{ $bnMaskThousands }}', 0)"
+                                    x-model="amountInputStr"
+                                    class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 shadow-xs tabular-nums outline-none transition focus:border-(--color-accent) dark:border-white/10 dark:bg-white/10 dark:text-zinc-300 dark:shadow-none"
+                                />
+                            </flux:field>
+                            <p class="text-[11px] text-zinc-500 dark:text-zinc-400">
+                                {{ ($buyNowCustomAmountMin ?? '-') . ' - ' . ($buyNowCustomAmountMax ?? '-') . ' (' . $buyNowCustomAmountStep . ' step)' }}
+                                @if ($buyNowAmountUnitLabel)
+                                    {{ $buyNowAmountUnitLabel }}
+                                @endif
+                            </p>
+                        </div>
+                        @if (\App\Models\WebsiteSetting::getPricesVisible())
+                            <div
+                                class="flex gap-3 rounded-xl border px-4 py-3 sm:col-span-2 transition-[box-shadow,border-color,background-color] duration-200"
+                                x-bind:class="{
+                                    'border-zinc-200 bg-zinc-50/80 dark:border-zinc-700 dark:bg-zinc-800/50': estimateCardEmphasis === 'neutral' || estimateCardEmphasis === 'success',
+                                    'border-rose-400/90 bg-gradient-to-br from-rose-50 via-white to-rose-50/80 shadow-md shadow-rose-200/40 ring-2 ring-rose-300/70 dark:border-rose-700 dark:from-rose-950/50 dark:via-zinc-900/60 dark:to-rose-950/30 dark:shadow-rose-950/30 dark:ring-rose-800/60': estimateCardEmphasis === 'attention',
+                                    'border-red-400/90 bg-gradient-to-br from-red-50 via-white to-red-50/80 shadow-md shadow-red-200/40 ring-2 ring-red-300/70 dark:border-red-800 dark:from-red-950/45 dark:via-zinc-900/60 dark:to-red-950/30 dark:shadow-red-950/30 dark:ring-red-900/50': estimateCardEmphasis === 'error',
+                                }"
+                            >
+                                <span
+                                    class="mt-0.5 shrink-0"
+                                    x-show="estimateCardEmphasis === 'attention'"
+                                    x-cloak
+                                    aria-hidden="true"
+                                >
+                                    <flux:icon icon="exclamation-triangle" class="size-5 text-rose-600 dark:text-rose-400" />
+                                </span>
+                                <span
+                                    class="mt-0.5 shrink-0"
+                                    x-show="estimateCardEmphasis === 'error'"
+                                    x-cloak
+                                    aria-hidden="true"
+                                >
+                                    <flux:icon icon="exclamation-circle" class="size-5 text-red-600 dark:text-red-400" />
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <div
+                                        class="text-[11px] font-semibold uppercase tracking-wide"
+                                        x-bind:class="{
+                                            'text-zinc-500 dark:text-zinc-400': estimateCardEmphasis === 'neutral' || estimateCardEmphasis === 'success',
+                                            'text-rose-800 dark:text-rose-200': estimateCardEmphasis === 'attention',
+                                            'text-red-800 dark:text-red-200': estimateCardEmphasis === 'error',
+                                        }"
+                                    >
+                                        {{ __('messages.estimated_total') }}
+                                    </div>
+                                    <div class="mt-1 min-h-[2rem] tabular-nums text-2xl font-bold text-(--color-accent)" dir="{{ $bnNumericDir }}">
+                                        <span
+                                            x-show="serverError"
+                                            x-text="serverError"
+                                            class="block text-sm font-semibold text-red-700 dark:text-red-300"
+                                        ></span>
+                                        <span
+                                            x-show="! serverError && estimatedFinal !== null"
+                                            x-text="formatMoney(estimatedFinal)"
+                                            class="block"
+                                        ></span>
+                                        <span
+                                            x-show="! serverError && estimatedFinal === null"
+                                            x-text="estimateHintText"
+                                            class="block text-sm leading-snug"
+                                            x-bind:class="{
+                                                'font-normal text-zinc-500 dark:text-zinc-400': estimateCardEmphasis === 'neutral',
+                                                'font-semibold text-rose-800 dark:text-rose-200': estimateCardEmphasis === 'attention',
+                                            }"
+                                        ></span>
+                                    </div>
+                                    <p
+                                        class="mt-1 text-[11px] leading-relaxed"
+                                        x-bind:class="{
+                                            'text-zinc-500 dark:text-zinc-400': estimateCardEmphasis === 'neutral' || estimateCardEmphasis === 'success',
+                                            'text-rose-700/90 dark:text-rose-300/90': estimateCardEmphasis === 'attention',
+                                            'text-red-700/85 dark:text-red-300/90': estimateCardEmphasis === 'error',
+                                        }"
+                                    >
+                                        {{ __('messages.live_price_checkout_hint') }}
+                                    </p>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                @else
+                    <flux:input
+                        class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                        type="number"
+                        min="1"
+                        name="buyNowQuantity"
+                        label="{{ __('messages.quantity') }}"
+                        :loading="false"
+                        wire:model.live.debounce.400ms="buyNowQuantity"
+                    />
+
+                    @if (\App\Models\WebsiteSetting::getPricesVisible())
+                        <div class="rounded-xl border border-zinc-200 bg-zinc-50/80 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800/50 sm:col-span-2">
+                            <div class="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                {{ __('messages.estimated_total') }}
+                            </div>
+                            <div
+                                class="mt-1 min-h-[2rem] tabular-nums text-2xl font-bold text-(--color-accent)"
+                                dir="{{ $bnNumericDir }}"
+                            >
+                                @if ($buyNowPriceError)
+                                    <span class="text-sm font-semibold text-red-600 dark:text-red-400">{{ $buyNowPriceError }}</span>
+                                @elseif ($buyNowLineFinalPrice !== null)
+                                    ${{ number_format($buyNowLineFinalPrice, 2) }}
+                                @else
+                                    <span class="text-sm font-normal text-zinc-500 dark:text-zinc-400">—</span>
+                                @endif
+                            </div>
+                            <p class="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                                {{ __('messages.live_price_checkout_hint') }}
+                            </p>
+                        </div>
+                    @endif
+                @endif
             </div>
             @error('buyNowQuantity')
+                <span class="text-[11px] text-red-600 dark:text-red-400">{{ $message }}</span>
+            @enderror
+            @error('buyNowRequestedAmount')
                 <span class="text-[11px] text-red-600 dark:text-red-400">{{ $message }}</span>
             @enderror
 
             @if ($buyNowRequirementsSchema !== [])
                 <div class="grid gap-3 sm:grid-cols-2">
                     @foreach ($buyNowRequirementsSchema as $requirement)
-                        @php($requirementKey = $requirement['key'] ?? null)
+                        @php
+                            $requirementKey = $requirement['key'] ?? null;
+                        @endphp
                         @continue(empty($requirementKey))
                         <label class="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-300">
                             <span class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -609,15 +1506,33 @@ new class extends Component
                 <flux:button variant="ghost" wire:click="closeBuyNow">
                     {{ __('messages.cancel') }}
                 </flux:button>
-                <flux:button
-                    variant="primary"
-                    wire:click="submitBuyNow"
-                    wire:loading.attr="disabled"
-                    wire:target="submitBuyNow"
-                    wire:bind:disabled="{{ ! $this->buyNowCanSubmit }}"
-                >
-                    {{ __('main.pay_now') }}
-                </flux:button>
+                @if ($buyNowAmountMode === \App\Enums\ProductAmountMode::Custom->value && $buyNowFinalPerUnitRate === null)
+                    <flux:button variant="primary" disabled>
+                        {{ __('main.pay_now') }}
+                    </flux:button>
+                @elseif ($buyNowAmountMode === \App\Enums\ProductAmountMode::Custom->value)
+                    {{-- Native button: Flux's nested markup + Livewire morph (cloneNode) can evaluate Alpine before the parent x-data scope is attached. --}}
+                    <button
+                        type="button"
+                        class="relative inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium disabled:opacity-75 dark:disabled:opacity-75 disabled:cursor-default disabled:pointer-events-none h-10 text-sm rounded-lg ps-4 pe-4 bg-[var(--color-accent)] hover:bg-[color-mix(in_oklab,_var(--color-accent),_transparent_10%)] text-[var(--color-accent-foreground)] border border-black/10 dark:border-0 shadow-[inset_0px_1px_--theme(--color-white/.2)]"
+                        wire:loading.attr="disabled"
+                        wire:target="submitBuyNow"
+                        x-on:click.prevent="if (typeof amountValid !== 'undefined' && amountValid && typeof serverError !== 'undefined' && ! serverError && rate != null && {{ json_encode($this->buyNowCanSubmit) }}) { $wire.call('submitBuyNow', digitsParsed) }"
+                        x-bind:disabled="typeof amountValid === 'undefined' || typeof serverError === 'undefined' || typeof rate === 'undefined' ? true : (! amountValid || !! serverError || rate == null || {{ json_encode(! $this->buyNowCanSubmit) }})"
+                    >
+                        {{ __('main.pay_now') }}
+                    </button>
+                @else
+                    <flux:button
+                        variant="primary"
+                        wire:click="submitBuyNow"
+                        wire:loading.attr="disabled"
+                        wire:target="submitBuyNow"
+                        wire:bind:disabled="{{ ! $this->buyNowCanSubmit }}"
+                    >
+                        {{ __('main.pay_now') }}
+                    </flux:button>
+                @endif
             </div>
             @if ($errors->has('buyNowRequirements.*'))
                 <p class="text-xs text-zinc-500 dark:text-zinc-400">

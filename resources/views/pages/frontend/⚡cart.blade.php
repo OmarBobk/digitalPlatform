@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Cart\RepriceCustomAmountLinePrice;
 use App\Actions\Orders\CheckoutFromPayload;
 use App\Actions\Packages\ResolvePackageRequirements;
 use App\Enums\OrderStatus;
@@ -23,6 +24,7 @@ new #[Layout('layouts::frontend')] class extends Component
     public ?string $lastOrderNumber = null;
     public array $requirementsByProduct = [];
     public array $cartRequirements = [];
+    public array $customAmountPriceMeta = [];
 
     public function checkout(mixed $items): void
     {
@@ -124,6 +126,36 @@ new #[Layout('layouts::frontend')] class extends Component
             $message = collect($exception->errors())->flatten()->first();
             $this->dispatch('cart-requirement-validation', productId: $productId, key: $key, message: $message);
         }
+    }
+
+    public function repriceCustomAmount(int $productId, mixed $requestedAmount): void
+    {
+        $identity = (string) (auth()->id() ?? request()->ip() ?? 'guest');
+        $result = app(RepriceCustomAmountLinePrice::class)->handle(
+            $productId,
+            $requestedAmount,
+            auth()->user(),
+            $identity,
+        );
+
+        if (($result['silent'] ?? false) === true) {
+            return;
+        }
+
+        if (! $result['ok']) {
+            $this->dispatch('cart-custom-amount-priced', productId: $productId, message: $result['message']);
+
+            return;
+        }
+
+        $this->customAmountPriceMeta[$productId] = $result['meta'];
+        $this->dispatch(
+            'cart-custom-amount-priced',
+            productId: $productId,
+            price: $result['price'],
+            requestedAmount: $result['requested_amount'],
+            message: null,
+        );
     }
 
     #[Computed]
@@ -351,11 +383,27 @@ new #[Layout('layouts::frontend')] class extends Component
 };
 ?>
 
+@php
+    $cartLocaleTag = str_replace('_', '-', app()->getLocale());
+    $cartAmountMaskEn = str_starts_with($cartLocaleTag, 'en');
+    $cartMaskDec = $cartAmountMaskEn ? '.' : ',';
+    $cartMaskThousands = $cartAmountMaskEn ? ',' : '.';
+    $cartImageFallback = asset('images/promotions/promo-placeholder.svg');
+    $cartInputClass = 'h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-700 shadow-sm outline-none transition placeholder:text-zinc-400 focus:border-(--color-accent) focus:ring-2 focus:ring-(--color-accent)/15 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500';
+@endphp
+
 <div
     class="mx-auto w-full max-w-7xl px-3 py-6 sm:px-0 sm:py-10"
-    x-data="{ itemsLabel: @js(__('messages.items')) }"
+    x-data="{
+        itemsLabel: @js(__('messages.items')),
+        itemLabel: @js(__('messages.item')),
+        cartCountHeading(c) {
+            return c === 1 ? `${c} ${this.itemLabel}` : `${c} ${this.itemsLabel}`;
+        },
+    }"
     x-init="
         $store.cart.init();
+        $store.cart.showCartRequirementErrors = false;
         $store.cart.setValidationMessages({
             required: @js(__('messages.required_field')),
             numeric: @js(__('messages.numeric')),
@@ -376,6 +424,12 @@ new #[Layout('layouts::frontend')] class extends Component
     x-on:requirements-loaded.window="$store.cart.applyRequirementsSchema($event.detail.requirements)"
     x-on:cart-requirement-validation.window="$store.cart.setServerRequirementError($event.detail)"
     x-on:cart-requirement-errors.window="$store.cart.setServerRequirementErrors($event.detail.errors)"
+    x-on:cart-custom-amount-priced.window="
+        if ($event.detail?.price !== undefined) {
+            $store.cart.applyCustomAmountPrice($event.detail);
+        }
+        $store.cart.setCustomAmountError($event.detail);
+    "
     x-on:checkout-success.window="$store.cart.clear()"
     data-test="cart-page"
 >
@@ -390,12 +444,13 @@ new #[Layout('layouts::frontend')] class extends Component
                         {{ __('main.my_cart') }}
                     </flux:heading>
                     <span
-                        class="text-sm text-zinc-500 dark:text-zinc-400"
-                        x-text="$store.cart.count + ' ' + itemsLabel"
+                        class="text-sm tabular-nums text-zinc-500 dark:text-zinc-400"
+                        x-text="cartCountHeading($store.cart.count)"
+                        x-show="$store.cart.count > 0"
                     ></span>
                 </div>
 
-                <ul class="mt-4 divide-y divide-zinc-100 dark:divide-zinc-700">
+                <ul class="mt-6 space-y-4">
                     <template x-if="$store.cart.items.length === 0">
                         <li class="flex flex-col items-center gap-3 py-10 text-center">
                             <div class="flex size-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-300">
@@ -415,117 +470,214 @@ new #[Layout('layouts::frontend')] class extends Component
                     </template>
 
                     <template x-for="item in $store.cart.items" :key="item.id">
-                        <li class="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div class="flex items-center gap-4">
-                                <div class="h-16 w-16 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900">
-                                    <img
-                                        :src="item.image"
-                                        :alt="item.name"
-                                        class="h-full w-full object-cover"
-                                        loading="lazy"
-                                    />
-                                </div>
-                                <div class="min-w-0">
-                                    <a
-                                        :href="item.href || '#'"
-                                        class="block truncate text-sm font-semibold text-zinc-900 hover:underline dark:text-zinc-100"
-                                        x-text="item.name"
-                                    ></a>
-                                    @if(\App\Models\WebsiteSetting::getPricesVisible())
-                                    <div class="mt-1 text-sm font-semibold text-(--color-accent)" dir="ltr" x-text="$store.cart.format(item.price)"></div>
-                                    @else
-                                    <div class="mt-1 text-sm font-semibold text-zinc-500 dark:text-zinc-400" dir="ltr">—</div>
-                                    @endif
-                                </div>
-                            </div>
-
-                            <template x-if="item.requirements_schema && item.requirements_schema.length">
-                                <div class="mt-3 w-full sm:mt-0 sm:w-auto">
-                                    <div class="grid gap-2 sm:min-w-[18rem] sm:grid-cols-2">
-                                        <template x-for="requirement in item.requirements_schema" :key="requirement.key">
-                                            <label class="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-300">
-                                                <span class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                                                    <span x-text="requirement.label || requirement.key"></span>
-                                                    <span x-show="requirement.is_required" class="text-amber-600 dark:text-amber-400">*</span>
-                                                </span>
-                                                <template x-if="requirement.type === 'select' && Array.isArray(requirement.options) && requirement.options.length">
-                                                    <select
-                                                        class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 shadow-sm outline-none transition focus:border-(--color-accent) dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
-                                                        x-bind:class="{
-                                                            'border-red-500 focus:border-red-500': $store.cart.getRequirementError(item, requirement)
-                                                        }"
-                                                        x-on:change="
-                                                            $store.cart.updateRequirement(item.id, requirement.key, $event.target.value);
-                                                            $wire.validateCartRequirement(item.id, requirement.key, $event.target.value);
-                                                        "
-                                                        :value="item.requirements?.[requirement.key] ?? ''"
-                                                    >
-                                                        <option value="">--</option>
-                                                        <template x-for="option in requirement.options" :key="option">
-                                                            <option :value="option" x-text="option"></option>
-                                                        </template>
-                                                    </select>
-                                                </template>
-                                                <template x-if="!(requirement.type === 'select' && Array.isArray(requirement.options) && requirement.options.length)">
-                                                    <input
-                                                        class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 shadow-sm outline-none transition focus:border-(--color-accent) dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
-                                                        x-bind:class="{
-                                                            'border-red-500 focus:border-red-500': $store.cart.getRequirementError(item, requirement)
-                                                        }"
-                                                        :type="requirement.type === 'number' ? 'number' : 'text'"
-                                                        :placeholder="requirement.label || requirement.key"
-                                                        x-on:input="$store.cart.updateRequirement(item.id, requirement.key, $event.target.value)"
-                                                        x-on:blur="$wire.validateCartRequirement(item.id, requirement.key, $event.target.value)"
-                                                        :value="item.requirements?.[requirement.key] ?? ''"
-                                                    />
-                                                </template>
+                        <li>
+                            <article
+                                class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:p-5"
+                            >
+                                <div class="flex gap-4">
+                                    <div
+                                        class="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800"
+                                    >
+                                        <img
+                                            :src="item.image"
+                                            :alt="item.name"
+                                            class="h-full w-full object-cover"
+                                            loading="lazy"
+                                            onerror="this.onerror=null;this.src='{{ $cartImageFallback }}'"
+                                        />
+                                    </div>
+                                    <div class="min-w-0 flex-1" dir="auto">
+                                        <a
+                                            :href="item.href || '#'"
+                                            class="line-clamp-2 text-base font-semibold leading-snug text-zinc-900 hover:underline dark:text-zinc-100"
+                                            x-text="item.name"
+                                        ></a>
+                                        @if(\App\Models\WebsiteSetting::getPricesVisible())
+                                        <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-4 sm:gap-y-1">
+                                            <template x-if="item.amount_mode === 'custom'">
                                                 <span
-                                                    class="text-[11px] text-red-600 dark:text-red-400"
-                                                    x-show="$store.cart.getRequirementError(item, requirement)"
-                                                    x-text="$store.cart.getRequirementError(item, requirement)"
+                                                    class="inline-flex w-fit items-center rounded-md bg-(--color-accent)/10 px-2 py-1 text-sm font-semibold tabular-nums text-(--color-accent)"
+                                                    dir="ltr"
+                                                    x-text="$store.cart.formatPerUnitCurrency($store.cart.customUnitRateForDisplay(item))"
                                                 ></span>
-                                            </label>
+                                            </template>
+                                            <template x-if="item.amount_mode !== 'custom'">
+                                                <span
+                                                    class="inline-flex w-fit items-center rounded-md bg-(--color-accent)/10 px-2 py-1 text-sm font-semibold tabular-nums text-(--color-accent)"
+                                                    dir="ltr"
+                                                    x-text="$store.cart.format(item.price)"
+                                                ></span>
+                                            </template>
+                                            <template x-if="item.amount_mode === 'custom'">
+                                                <span
+                                                    class="text-sm text-zinc-600 dark:text-zinc-400"
+                                                    x-text="`${Number(item.requested_amount ?? 0).toLocaleString()} ${item.amount_unit_label ?? ''}`.trim()"
+                                                ></span>
+                                            </template>
+                                        </div>
+                                        @else
+                                        <div class="mt-2 text-sm font-medium text-zinc-500 dark:text-zinc-400" dir="ltr">—</div>
+                                        @endif
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="-me-1 -mt-1 inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                                        x-on:click.stop="$store.cart.remove(item.id)"
+                                        aria-label="{{ __('main.remove_item') }}"
+                                    >
+                                        <flux:icon icon="x-mark" class="size-5" />
+                                    </button>
+                                </div>
+
+                                <template x-if="item.requirements_schema && item.requirements_schema.length">
+                                    <div
+                                        class="mt-5 border-t border-zinc-100 pt-5 dark:border-zinc-800"
+                                    >
+                                        <p
+                                            class="mb-4 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400"
+                                        >
+                                            {{ __('main.cart_required_fields') }}
+                                        </p>
+                                        <div class="grid gap-5 sm:grid-cols-2">
+                                            <template x-for="requirement in item.requirements_schema" :key="requirement.key">
+                                                <label class="flex flex-col gap-2">
+                                                    <span class="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                                                        <span x-text="requirement.label || requirement.key"></span>
+                                                        <span
+                                                            x-show="requirement.is_required"
+                                                            class="ms-0.5 text-amber-600 dark:text-amber-400"
+                                                        >*</span>
+                                                    </span>
+                                                    <template x-if="requirement.type === 'select' && Array.isArray(requirement.options) && requirement.options.length">
+                                                        <select
+                                                            class="{{ $cartInputClass }}"
+                                                            x-bind:class="{
+                                                                'border-red-500 ring-red-500/20 focus:border-red-500': $store.cart.getRequirementError(item, requirement),
+                                                            }"
+                                                            x-on:change="
+                                                                $store.cart.updateRequirement(item.id, requirement.key, $event.target.value);
+                                                                $wire.validateCartRequirement(item.id, requirement.key, $event.target.value);
+                                                            "
+                                                            :value="item.requirements?.[requirement.key] ?? ''"
+                                                        >
+                                                            <option value="">--</option>
+                                                            <template x-for="option in requirement.options" :key="option">
+                                                                <option :value="option" x-text="option"></option>
+                                                            </template>
+                                                        </select>
+                                                    </template>
+                                                    <template x-if="!(requirement.type === 'select' && Array.isArray(requirement.options) && requirement.options.length)">
+                                                        <input
+                                                            class="{{ $cartInputClass }}"
+                                                            x-bind:class="{
+                                                                'border-red-500 ring-red-500/20 focus:border-red-500': $store.cart.getRequirementError(item, requirement),
+                                                            }"
+                                                            :type="requirement.type === 'number' ? 'number' : 'text'"
+                                                            :placeholder="requirement.label || requirement.key"
+                                                            x-on:input="$store.cart.updateRequirement(item.id, requirement.key, $event.target.value)"
+                                                            x-on:blur="$wire.validateCartRequirement(item.id, requirement.key, $event.target.value)"
+                                                            :value="item.requirements?.[requirement.key] ?? ''"
+                                                        />
+                                                    </template>
+                                                    <span
+                                                        class="min-h-[1.25rem] text-xs leading-snug text-red-600 dark:text-red-400"
+                                                        x-show="$store.cart.getRequirementError(item, requirement)"
+                                                        x-text="$store.cart.getRequirementError(item, requirement)"
+                                                    ></span>
+                                                </label>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <div
+                                    class="mt-5 flex flex-col gap-5 border-t border-zinc-100 pt-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8 dark:border-zinc-800"
+                                >
+                                    <div class="w-full min-w-0 sm:max-w-sm sm:flex-1">
+                                        <template x-if="item.amount_mode === 'custom'">
+                                            <div class="flex flex-col gap-2">
+                                                <span
+                                                    class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400"
+                                                >{{ __('main.cart_order_amount') }}</span>
+                                                <input
+                                                    type="text"
+                                                    inputmode="numeric"
+                                                    dir="ltr"
+                                                    class="{{ $cartInputClass }} tabular-nums"
+                                                    x-mask:dynamic="$money($input, '{{ $cartMaskDec }}', '{{ $cartMaskThousands }}', 0)"
+                                                    x-model="item.requested_amount_input"
+                                                    x-on:blur="
+                                                        const isValid = $store.cart.updateRequestedAmount(item.id, item.requested_amount_input);
+                                                        if (isValid) {
+                                                            $wire.repriceCustomAmount(item.id, item.requested_amount);
+                                                        }
+                                                    "
+                                                />
+                                                <p class="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400" dir="ltr">
+                                                    <span
+                                                        x-text="`${item.custom_amount_min ? Number(item.custom_amount_min).toLocaleString() : '-'} – ${item.custom_amount_max ? Number(item.custom_amount_max).toLocaleString() : '-'} · ${item.custom_amount_step ?? 1} ${item.amount_unit_label ?? ''}`.trim()"
+                                                    ></span>
+                                                </p>
+                                                <p
+                                                    class="text-xs text-red-600 dark:text-red-400"
+                                                    x-show="$store.cart.getCustomAmountError(item)"
+                                                    x-text="$store.cart.getCustomAmountError(item)"
+                                                ></p>
+                                            </div>
+                                        </template>
+                                        <template x-if="item.amount_mode !== 'custom'">
+                                            <div class="flex flex-col gap-2">
+                                                <span
+                                                    class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400"
+                                                >{{ __('main.cart_quantity') }}</span>
+                                                <div
+                                                    class="inline-flex h-10 max-w-[11rem] items-center gap-1 rounded-lg border border-zinc-200 bg-white px-1 dark:border-zinc-600 dark:bg-zinc-900"
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex size-9 items-center justify-center rounded-md text-zinc-600 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                                        x-on:click.stop="$store.cart.decrement(item.id)"
+                                                        aria-label="{{ __('main.decrease') }}"
+                                                    >
+                                                        <flux:icon icon="minus" class="size-4" />
+                                                    </button>
+                                                    <span
+                                                        class="min-w-8 flex-1 text-center text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-100"
+                                                        x-text="item.quantity"
+                                                    ></span>
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex size-9 items-center justify-center rounded-md text-zinc-600 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                                        x-on:click.stop="$store.cart.increment(item.id)"
+                                                        aria-label="{{ __('main.increase') }}"
+                                                    >
+                                                        <flux:icon icon="plus" class="size-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </template>
                                     </div>
-                                </div>
-                            </template>
-
-                            <div class="flex flex-wrap items-center justify-between gap-4 sm:justify-end">
-                                <div class="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-1 py-0.5 text-xs font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
-                                    <button
-                                        type="button"
-                                        class="size-7 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 p-[.45rem]"
-                                        x-on:click.stop="$store.cart.decrement(item.id)"
-                                        aria-label="{{ __('main.decrease') }}"
+                                    <div
+                                        class="flex w-full flex-col gap-1 border-t border-zinc-100 pt-4 sm:w-auto sm:min-w-[8rem] sm:border-t-0 sm:pt-0 sm:text-end dark:border-zinc-800"
                                     >
-                                        <flux:icon icon="minus" class="size-3" />
-                                    </button>
-                                    <span class="min-w-6 text-center text-sm" x-text="item.quantity"></span>
-                                    <button
-                                        type="button"
-                                        class="size-7 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 p-[.45rem]"
-                                        x-on:click.stop="$store.cart.increment(item.id)"
-                                        aria-label="{{ __('main.increase') }}"
-                                    >
-                                        <flux:icon icon="plus" class="size-3" />
-                                    </button>
+                                        @if(\App\Models\WebsiteSetting::getPricesVisible())
+                                        <span
+                                            class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400"
+                                        >{{ __('main.cart_line_total') }}</span>
+                                        <span
+                                            class="text-xl font-bold tabular-nums text-(--color-accent) sm:text-2xl"
+                                            dir="ltr"
+                                            x-text="$store.cart.format($store.cart.lineTotalForItem(item))"
+                                        ></span>
+                                        @else
+                                        <span
+                                            class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400"
+                                        >{{ __('main.cart_line_total') }}</span>
+                                        <span class="text-xl font-semibold text-zinc-500 dark:text-zinc-400" dir="ltr">—</span>
+                                        @endif
+                                    </div>
                                 </div>
-
-                                @if(\App\Models\WebsiteSetting::getPricesVisible())
-                                <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr" x-text="$store.cart.format(item.price * item.quantity)"></div>
-                                @else
-                                <div class="text-sm font-semibold text-zinc-500 dark:text-zinc-400" dir="ltr">—</div>
-                                @endif
-
-                                <button
-                                    type="button"
-                                    class="rounded-md p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                                    x-on:click.stop="$store.cart.remove(item.id)"
-                                    aria-label="{{ __('main.remove_item') }}"
-                                >
-                                    <flux:icon icon="x-mark" class="size-4" />
-                                </button>
-                            </div>
+                            </article>
                         </li>
                     </template>
                 </ul>
@@ -615,8 +767,8 @@ new #[Layout('layouts::frontend')] class extends Component
                     <flux:button
                         variant="primary"
                         class="w-full justify-center !bg-accent !text-accent-foreground hover:!bg-accent-hover"
-                        x-bind:disabled="$store.cart.count === 0 || $store.cart.hasMissingRequirements"
-                        x-on:click="$wire.checkout($store.cart.items)"
+                        x-bind:disabled="$store.cart.count === 0 || $store.cart.hasMissingRequirements || $store.cart.hasCustomAmountErrors"
+                        x-on:click="$wire.checkout($store.cart.checkoutItems)"
                         wire:loading.attr="disabled"
                         wire:target="checkout"
                         data-test="cart-checkout"
@@ -625,7 +777,7 @@ new #[Layout('layouts::frontend')] class extends Component
                     </flux:button>
                     <p
                         class="text-xs text-zinc-500 dark:text-zinc-400"
-                        x-show="$store.cart.hasMissingRequirements"
+                        x-show="$store.cart.hasMissingRequirements && ! $store.cart.showCartRequirementErrors"
                     >
                         {{ __('messages.requirements_required_checkout') }}
                     </p>

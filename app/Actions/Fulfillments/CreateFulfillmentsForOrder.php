@@ -7,6 +7,7 @@ namespace App\Actions\Fulfillments;
 use App\Enums\FulfillmentLogLevel;
 use App\Enums\FulfillmentStatus;
 use App\Enums\OrderStatus;
+use App\Enums\ProductAmountMode;
 use App\Events\FulfillmentListChanged;
 use App\Models\Fulfillment;
 use App\Models\Order;
@@ -38,10 +39,18 @@ class CreateFulfillmentsForOrder
                     ->firstOrFail();
 
                 $quantity = max(0, (int) $lockedItem->quantity);
+                $amountMode = $lockedItem->amount_mode ?? ProductAmountMode::Fixed;
+                $targetFulfillments = $amountMode === ProductAmountMode::Custom ? 1 : $quantity;
                 $requirementsPayload = $lockedItem->requirements_payload;
-                $meta = $requirementsPayload !== null && $requirementsPayload !== []
-                    ? ['requirements_payload' => $requirementsPayload]
-                    : [];
+                $meta = $amountMode === ProductAmountMode::Custom
+                    ? [
+                        'type' => 'custom_amount',
+                        'amount' => (int) ($lockedItem->requested_amount ?? 0),
+                        'unit' => $lockedItem->amount_unit_label,
+                    ]
+                    : array_filter([
+                        'requirements_payload' => $requirementsPayload !== [] ? $requirementsPayload : null,
+                    ], fn (mixed $value): bool => $value !== null);
 
                 $existingFulfillments = Fulfillment::query()
                     ->where('order_item_id', $lockedItem->id)
@@ -52,7 +61,11 @@ class CreateFulfillmentsForOrder
                     foreach ($existingFulfillments as $existing) {
                         $currentMeta = $existing->meta ?? [];
 
-                        if (! array_key_exists('requirements_payload', $currentMeta)) {
+                        if ($amountMode === ProductAmountMode::Custom) {
+                            if ($currentMeta !== $meta) {
+                                $existing->update(['meta' => $meta]);
+                            }
+                        } elseif (! array_key_exists('requirements_payload', $currentMeta)) {
                             $existing->update([
                                 'meta' => array_merge($currentMeta, $meta),
                             ]);
@@ -60,7 +73,7 @@ class CreateFulfillmentsForOrder
                     }
                 }
 
-                $needed = max(0, $quantity - $existingFulfillments->count());
+                $needed = max(0, $targetFulfillments - $existingFulfillments->count());
 
                 for ($i = 0; $i < $needed; $i++) {
                     $fulfillment = Fulfillment::create([

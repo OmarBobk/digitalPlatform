@@ -30,6 +30,8 @@ class GetProducts
                 'is_active',
                 'order',
                 'created_at',
+                'amount_mode',
+                'amount_unit_label',
             ]);
 
         if ($search !== '') {

@@ -96,6 +96,7 @@ class CheckoutFromPayload
                     'product_id' => $item['product_id'] ?? $item['id'] ?? null,
                     'package_id' => $item['package_id'] ?? null,
                     'quantity' => $item['quantity'] ?? null,
+                    'requested_amount' => $item['requested_amount'] ?? null,
                     'requirements' => $item['requirements'] ?? $item['requirements_payload'] ?? null,
                 ];
             })

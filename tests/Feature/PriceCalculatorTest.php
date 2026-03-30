@@ -3,6 +3,8 @@
 use App\Models\PricingRule;
 use App\Services\PriceCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -21,6 +23,28 @@ test('calculates retail and wholesale from entry price using active rule', funct
 
     expect($result['retail_price'])->toBe(110.0);
     expect($result['wholesale_price'])->toBe(102.0);
+});
+
+test('sub cent entry rounds to zero at two decimals but preserves value at higher scale', function () {
+    PricingRule::create([
+        'min_price' => 0,
+        'max_price' => 999999.99,
+        'wholesale_percentage' => 5,
+        'retail_percentage' => 10,
+        'priority' => 0,
+        'is_active' => true,
+    ]);
+
+    $calculator = app(PriceCalculator::class);
+
+    $two = $calculator->calculate(0.001783164381826);
+    expect($two['retail_price'])->toBe(0.0);
+    expect($two['wholesale_price'])->toBe(0.0);
+
+    $six = $calculator->calculate(0.001783164381826, 6);
+    expect($six['retail_price'])->toBeGreaterThan(0.0);
+    expect($six['wholesale_price'])->toBeGreaterThan(0.0);
+    expect($six['retail_price'])->toBe(round(0.001783164381826 * 1.10, 6, PHP_ROUND_HALF_EVEN));
 });
 
 test('applies bankers rounding to prices', function () {
@@ -79,3 +103,28 @@ test('throws when no rule matches entry price', function () {
 
     $calculator->calculate(50.0);
 })->throws(\InvalidArgumentException::class);
+
+test('caches pricing rule lookup for same entry price', function () {
+    Cache::flush();
+
+    PricingRule::query()->create([
+        'min_price' => 0,
+        'max_price' => 999999.99,
+        'wholesale_percentage' => 2,
+        'retail_percentage' => 10,
+        'priority' => 0,
+        'is_active' => true,
+    ]);
+
+    DB::enableQueryLog();
+
+    $calculator = app(PriceCalculator::class);
+    $calculator->calculate(123.45);
+    $calculator->calculate(123.45);
+
+    $queries = collect(DB::getQueryLog())
+        ->filter(fn (array $query): bool => str_contains(strtolower((string) ($query['query'] ?? '')), 'pricing_rules'))
+        ->values();
+
+    expect($queries->count())->toBe(1);
+});

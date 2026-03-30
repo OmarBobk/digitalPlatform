@@ -6,6 +6,7 @@ use App\Actions\Products\GetProductPackages;
 use App\Actions\Products\GetProducts;
 use App\Actions\Products\ToggleProductStatus;
 use App\Actions\Products\UpsertProduct;
+use App\Enums\ProductAmountMode;
 use App\Models\Product;
 use App\Services\PriceCalculator;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -33,6 +34,16 @@ new class extends Component
     public ?int $productOrder = null;
     public bool $productIsActive = true;
 
+    public string $productAmountMode = 'fixed';
+
+    public ?string $productAmountUnitLabel = null;
+
+    public ?int $productCustomAmountMin = null;
+
+    public ?int $productCustomAmountMax = null;
+
+    public ?int $productCustomAmountStep = null;
+
     public bool $showDeleteProductModal = false;
     public ?int $deleteProductId = null;
     public string $deleteProductName = '';
@@ -58,6 +69,8 @@ new class extends Component
      */
     protected function productRules(): array
     {
+        $isCustom = $this->productAmountMode === ProductAmountMode::Custom->value;
+
         return [
             'productPackageId' => ['required', 'integer', 'exists:packages,id'],
             'productSerial' => [
@@ -67,7 +80,31 @@ new class extends Component
                 Rule::unique('products', 'serial')->ignore($this->editingProductId),
             ],
             'productName' => ['required', 'string', 'max:255'],
-            'productEntryPrice' => ['required', 'numeric', 'min:0'],
+            'productAmountMode' => ['required', 'string', Rule::in(ProductAmountMode::values())],
+            'productEntryPrice' => array_merge(
+                ['required', 'numeric'],
+                $isCustom ? ['gt:0'] : ['min:0'],
+            ),
+            'productAmountUnitLabel' => [
+                Rule::requiredIf($isCustom),
+                'nullable',
+                'string',
+                'max:64',
+            ],
+            'productCustomAmountMin' => [
+                Rule::requiredIf($isCustom),
+                'nullable',
+                'integer',
+                'min:1',
+            ],
+            'productCustomAmountMax' => [
+                Rule::requiredIf($isCustom),
+                'nullable',
+                'integer',
+                'min:1',
+                'gte:productCustomAmountMin',
+            ],
+            'productCustomAmountStep' => ['nullable', 'integer', 'min:1'],
             'productOrder' => [
                 'required',
                 'integer',
@@ -78,9 +115,29 @@ new class extends Component
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
+    protected function productValidationAttributes(): array
+    {
+        return [
+            'productPackageId' => __('messages.package'),
+            'productSerial' => __('messages.serial'),
+            'productName' => __('messages.name'),
+            'productEntryPrice' => __('messages.entry_price'),
+            'productAmountMode' => __('messages.product_amount_mode'),
+            'productAmountUnitLabel' => __('messages.amount_unit_label'),
+            'productCustomAmountMin' => __('messages.custom_amount_min'),
+            'productCustomAmountMax' => __('messages.custom_amount_max'),
+            'productCustomAmountStep' => __('messages.custom_amount_step'),
+            'productOrder' => __('messages.order'),
+            'productIsActive' => __('messages.active'),
+        ];
+    }
+
     public function saveProduct(): void
     {
-        $validated = $this->validate($this->productRules());
+        $validated = $this->validate($this->productRules(), [], $this->productValidationAttributes());
 
         app(UpsertProduct::class)->handle(
             $this->editingProductId,
@@ -91,6 +148,11 @@ new class extends Component
                 'entry_price' => $validated['productEntryPrice'],
                 'is_active' => $validated['productIsActive'],
                 'order' => $validated['productOrder'],
+                'amount_mode' => $validated['productAmountMode'],
+                'amount_unit_label' => $validated['productAmountUnitLabel'] ?? null,
+                'custom_amount_min' => $validated['productCustomAmountMin'] ?? null,
+                'custom_amount_max' => $validated['productCustomAmountMax'] ?? null,
+                'custom_amount_step' => $validated['productCustomAmountStep'] ?? null,
             ]
         );
 
@@ -114,6 +176,11 @@ new class extends Component
         $this->productEntryPrice = $product->entry_price !== null ? (string) $product->entry_price : null;
         $this->productOrder = $product->order;
         $this->productIsActive = $product->is_active;
+        $this->productAmountMode = ($product->amount_mode ?? ProductAmountMode::Fixed)->value;
+        $this->productAmountUnitLabel = $product->amount_unit_label;
+        $this->productCustomAmountMin = $product->custom_amount_min;
+        $this->productCustomAmountMax = $product->custom_amount_max;
+        $this->productCustomAmountStep = $product->custom_amount_step;
 
         $this->dispatch('open-product-panel');
     }
@@ -165,7 +232,13 @@ new class extends Component
             'productEntryPrice',
             'productOrder',
             'productIsActive',
+            'productAmountMode',
+            'productAmountUnitLabel',
+            'productCustomAmountMin',
+            'productCustomAmountMax',
+            'productCustomAmountStep',
         ]);
+        $this->productAmountMode = ProductAmountMode::Fixed->value;
         $this->resetValidation();
     }
 
@@ -186,6 +259,30 @@ new class extends Component
     }
 
     /**
+     * Admin preview uses extra scale so per-unit entry prices below 0.01 still show non-zero derived margins.
+     * Checkout and Product accessors keep {@see PriceCalculator::calculate()} default scale (2).
+     */
+    private const DERIVED_PREVIEW_ROUNDING_SCALE = 6;
+
+    public function formatDerivedPricePreview(?float $value): string
+    {
+        if ($value === null) {
+            return '—';
+        }
+
+        $abs = abs($value);
+        if ($abs < 1e-12) {
+            return number_format(0.0, 2, '.', '');
+        }
+
+        if ($abs < 0.01) {
+            return number_format($value, 6, '.', '');
+        }
+
+        return number_format($value, 2, '.', '');
+    }
+
+    /**
      * Live preview: derived retail price for current productEntryPrice (backend source of truth).
      */
     public function getComputedRetailPriceProperty(): ?float
@@ -196,7 +293,7 @@ new class extends Component
         }
 
         try {
-            return app(PriceCalculator::class)->calculate((float) $entry)['retail_price'];
+            return app(PriceCalculator::class)->calculate((float) $entry, self::DERIVED_PREVIEW_ROUNDING_SCALE)['retail_price'];
         } catch (\Throwable) {
             return null;
         }
@@ -213,7 +310,7 @@ new class extends Component
         }
 
         try {
-            return app(PriceCalculator::class)->calculate((float) $entry)['wholesale_price'];
+            return app(PriceCalculator::class)->calculate((float) $entry, self::DERIVED_PREVIEW_ROUNDING_SCALE)['wholesale_price'];
         } catch (\Throwable) {
             return null;
         }
@@ -472,6 +569,80 @@ new class extends Component
                         <flux:text color="red">{{ $message }}</flux:text>
                     @enderror
                 </div>
+                <div class="grid gap-2 md:col-span-2">
+                    <flux:select
+                        class="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                        name="productAmountMode"
+                        label="{{ __('messages.product_amount_mode') }}"
+                        wire:model.live="productAmountMode"
+                    >
+                        <flux:select.option value="{{ ProductAmountMode::Fixed->value }}">{{ __('messages.amount_mode_fixed') }}</flux:select.option>
+                        <flux:select.option value="{{ ProductAmountMode::Custom->value }}">{{ __('messages.amount_mode_custom') }}</flux:select.option>
+                    </flux:select>
+                    @error('productAmountMode')
+                        <flux:text color="red">{{ $message }}</flux:text>
+                    @enderror
+                    <flux:text class="text-zinc-600 dark:text-zinc-400">
+                        {{ __('messages.product_amount_mode_hint') }}
+                    </flux:text>
+                </div>
+                @if ($productAmountMode === ProductAmountMode::Custom->value)
+                    <div class="grid gap-2 md:col-span-2">
+                        <flux:input
+                            class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                            name="productAmountUnitLabel"
+                            label="{{ __('messages.amount_unit_label') }}"
+                            placeholder="{{ __('messages.amount_unit_label_placeholder') }}"
+                            wire:model.defer="productAmountUnitLabel"
+                        />
+                        @error('productAmountUnitLabel')
+                            <flux:text color="red">{{ $message }}</flux:text>
+                        @enderror
+                    </div>
+                    <div class="grid gap-2">
+                        <flux:input
+                            class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                            name="productCustomAmountMin"
+                            label="{{ __('messages.custom_amount_min') }}"
+                            type="number"
+                            min="1"
+                            step="1"
+                            wire:model.defer="productCustomAmountMin"
+                        />
+                        @error('productCustomAmountMin')
+                            <flux:text color="red">{{ $message }}</flux:text>
+                        @enderror
+                    </div>
+                    <div class="grid gap-2">
+                        <flux:input
+                            class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                            name="productCustomAmountMax"
+                            label="{{ __('messages.custom_amount_max') }}"
+                            type="number"
+                            min="1"
+                            step="1"
+                            wire:model.defer="productCustomAmountMax"
+                        />
+                        @error('productCustomAmountMax')
+                            <flux:text color="red">{{ $message }}</flux:text>
+                        @enderror
+                    </div>
+                    <div class="grid gap-2">
+                        <flux:input
+                            class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                            name="productCustomAmountStep"
+                            label="{{ __('messages.custom_amount_step') }}"
+                            type="number"
+                            min="1"
+                            step="1"
+                            placeholder="{{ __('messages.custom_amount_step_placeholder') }}"
+                            wire:model.defer="productCustomAmountStep"
+                        />
+                        @error('productCustomAmountStep')
+                            <flux:text color="red">{{ $message }}</flux:text>
+                        @enderror
+                    </div>
+                @endif
                 <div class="grid gap-2">
                     <flux:input
                         class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
@@ -479,13 +650,16 @@ new class extends Component
                         label="{{ __('messages.entry_price') }}"
                         type="number"
                         min="0"
-                        step="0.01"
+                        step="any"
                         placeholder="{{ __('messages.entry_price_placeholder') }}"
                         wire:model.live="productEntryPrice"
                     />
                     @error('productEntryPrice')
                         <flux:text color="red">{{ $message }}</flux:text>
                     @enderror
+                    <flux:text class="text-zinc-600 dark:text-zinc-400">
+                        {{ $productAmountMode === ProductAmountMode::Custom->value ? __('messages.entry_price_per_unit_hint') : __('messages.entry_price_fixed_hint') }}
+                    </flux:text>
                 </div>
                 <div class="grid gap-2 md:col-span-2">
                     <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ __('messages.derived_prices') }}</span>
@@ -493,13 +667,13 @@ new class extends Component
                         <div class="flex flex-col gap-0.5">
                             <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.retail_price') }}</span>
                             <span class="tabular-nums font-mono text-base text-zinc-900 dark:text-zinc-100">
-                                {{ $this->computedRetailPrice !== null ? number_format($this->computedRetailPrice, 2) : '—' }}
+                                {{ $this->formatDerivedPricePreview($this->computedRetailPrice) }}
                             </span>
                         </div>
                         <div class="flex flex-col gap-0.5">
                             <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.wholesale_price') }}</span>
                             <span class="tabular-nums font-mono text-base text-zinc-900 dark:text-zinc-100">
-                                {{ $this->computedWholesalePrice !== null ? number_format($this->computedWholesalePrice, 2) : '—' }}
+                                {{ $this->formatDerivedPricePreview($this->computedWholesalePrice) }}
                             </span>
                         </div>
                     </div>
@@ -606,6 +780,14 @@ new class extends Component
                                                 </span>
                                                 @if ($product->serial)
                                                     <flux:badge color="zinc" size="sm" variant="subtle">{{ $product->serial }}</flux:badge>
+                                                @endif
+                                                @if ($product->amount_mode === ProductAmountMode::Custom)
+                                                    <flux:badge color="sky" size="sm" variant="subtle">
+                                                        {{ __('messages.amount_mode_custom') }}
+                                                        @if (filled($product->amount_unit_label))
+                                                            <span class="font-normal opacity-90">· {{ $product->amount_unit_label }}</span>
+                                                        @endif
+                                                    </flux:badge>
                                                 @endif
                                             </div>
                                             <div class="text-xs text-zinc-500 dark:text-zinc-400">

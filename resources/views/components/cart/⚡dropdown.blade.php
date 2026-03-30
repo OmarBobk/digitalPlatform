@@ -1,12 +1,54 @@
 <?php
 
+use App\Actions\Cart\RepriceCustomAmountLinePrice;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 new class extends Component
 {
-    //
+    #[On('cart-reprice-after-quick-add')]
+    public function repriceAfterQuickAdd(int $productId, int $requestedAmount): void
+    {
+        $this->repriceCustomAmount($productId, $requestedAmount);
+    }
+
+    public function repriceCustomAmount(int $productId, mixed $requestedAmount): void
+    {
+        $identity = (string) (auth()->id() ?? request()->ip() ?? 'guest');
+        $result = app(RepriceCustomAmountLinePrice::class)->handle(
+            $productId,
+            $requestedAmount,
+            auth()->user(),
+            $identity,
+        );
+
+        if (($result['silent'] ?? false) === true) {
+            return;
+        }
+
+        if (! $result['ok']) {
+            $this->dispatch('cart-custom-amount-priced', productId: $productId, message: $result['message']);
+
+            return;
+        }
+
+        $this->dispatch(
+            'cart-custom-amount-priced',
+            productId: $productId,
+            price: $result['price'],
+            requestedAmount: $result['requested_amount'],
+            message: null,
+        );
+    }
 };
 ?>
+
+@php
+    $dropdownCartLocaleTag = str_replace('_', '-', app()->getLocale());
+    $dropdownCartAmountMaskEn = str_starts_with($dropdownCartLocaleTag, 'en');
+    $dropdownCartMaskDec = $dropdownCartAmountMaskEn ? '.' : ',';
+    $dropdownCartMaskThousands = $dropdownCartAmountMaskEn ? ',' : '.';
+@endphp
 
 
 <flux:dropdown position="bottom" align="end" x-data x-init="$store.cart.init()" data-test="cart-dropdown">
@@ -81,30 +123,63 @@ new class extends Component
                                         <flux:icon icon="x-mark" class="size-4" />
                                     </button>
                                 </div>
-                                <div class="mt-2 flex items-center justify-between gap-2">
-                                    <div class="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-1 py-0.5 text-xs font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
-                                        <button
-                                            type="button"
-                                            class="size-6 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 p-[.35rem]"
-                                            x-on:click.stop="$store.cart.decrement(item.id)"
-                                            aria-label="{{ __('main.decrease') }}"
-                                        >
-                                            <flux:icon icon="minus" class="size-3" />
-                                        </button>
-                                        <span class="min-w-5 text-center" x-text="item.quantity"></span>
-                                        <button
-                                            type="button"
-                                            class="size-6 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 p-[.35rem]"
-                                            x-on:click.stop="$store.cart.increment(item.id)"
-                                            aria-label="{{ __('main.increase') }}"
-                                        >
-                                            <flux:icon icon="plus" class="size-3" />
-                                        </button>
-                                    </div>
+                                <div class="mt-2 flex items-start justify-between gap-2">
+                                    <template x-if="item.amount_mode === 'custom'">
+                                        <div class="min-w-0 flex-1 flex flex-col gap-1">
+                                            <input
+                                                type="text"
+                                                inputmode="numeric"
+                                                dir="ltr"
+                                                class="w-full rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs font-semibold text-zinc-700 tabular-nums shadow-sm outline-none transition focus:border-(--color-accent) dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+                                                x-mask:dynamic="$money($input, '{{ $dropdownCartMaskDec }}', '{{ $dropdownCartMaskThousands }}', 0)"
+                                                x-model="item.requested_amount_input"
+                                                x-on:blur="
+                                                    const ok = $store.cart.updateRequestedAmount(item.id, item.requested_amount_input);
+                                                    if (ok) {
+                                                        $wire.repriceCustomAmount(item.id, item.requested_amount);
+                                                    }
+                                                "
+                                            />
+                                            <div class="text-[10px] leading-tight text-zinc-500 dark:text-zinc-400" dir="ltr">
+                                                <span
+                                                    x-text="`${item.custom_amount_min ? Number(item.custom_amount_min).toLocaleString() : '-'} – ${item.custom_amount_max ? Number(item.custom_amount_max).toLocaleString() : '-'} · ${item.custom_amount_step ?? 1}`"
+                                                ></span>
+                                                <span class="ms-1" x-text="item.amount_unit_label ?? ''"></span>
+                                            </div>
+                                            <div
+                                                class="text-[10px] text-red-600 dark:text-red-400"
+                                                x-show="$store.cart.getCustomAmountError(item)"
+                                                x-text="$store.cart.getCustomAmountError(item)"
+                                            ></div>
+                                        </div>
+                                    </template>
+                                    <template x-if="item.amount_mode !== 'custom'">
+                                        <div class="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-1 py-0.5 text-xs font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
+                                            <button
+                                                type="button"
+                                                class="size-6 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 p-[.35rem]"
+                                                x-on:click.stop="$store.cart.decrement(item.id)"
+                                                aria-label="{{ __('main.decrease') }}"
+                                            >
+                                                <flux:icon icon="minus" class="size-3" />
+                                            </button>
+                                            <span class="min-w-5 text-center" x-text="item.quantity"></span>
+                                            <button
+                                                type="button"
+                                                class="size-6 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 p-[.35rem]"
+                                                x-on:click.stop="$store.cart.increment(item.id)"
+                                                aria-label="{{ __('main.increase') }}"
+                                            >
+                                                <flux:icon icon="plus" class="size-3" />
+                                            </button>
+                                        </div>
+                                    </template>
                                     @if(\App\Models\WebsiteSetting::getPricesVisible())
-                                    <span class="text-sm font-semibold text-(--color-accent)" x-text="$store.cart.format(item.price * item.quantity)"></span>
+                                    <div class="flex shrink-0 flex-col items-end gap-0.5 text-end">
+                                        <span class="text-sm font-semibold text-(--color-accent)" dir="ltr" x-text="$store.cart.format($store.cart.lineTotalForItem(item))"></span>
+                                    </div>
                                     @else
-                                    <span class="text-sm font-semibold text-zinc-500 dark:text-zinc-400">—</span>
+                                    <span class="shrink-0 text-sm font-semibold text-zinc-500 dark:text-zinc-400">—</span>
                                     @endif
                                 </div>
                             </div>

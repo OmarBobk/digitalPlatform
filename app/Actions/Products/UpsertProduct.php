@@ -2,6 +2,7 @@
 
 namespace App\Actions\Products;
 
+use App\Enums\ProductAmountMode;
 use App\Models\Product;
 
 class UpsertProduct
@@ -13,7 +14,12 @@ class UpsertProduct
      *     name:string,
      *     entry_price:float|string|null,
      *     is_active:bool,
-     *     order:int
+     *     order:int,
+     *     amount_mode?:string,
+     *     amount_unit_label?:?string,
+     *     custom_amount_min?:?int,
+     *     custom_amount_max?:?int,
+     *     custom_amount_step?:?int
      * }  $data
      */
     public function handle(?int $productId, array $data): Product
@@ -24,6 +30,14 @@ class UpsertProduct
 
         $serial = $data['serial'] !== null && trim($data['serial']) !== '' ? trim($data['serial']) : null;
 
+        $mode = ProductAmountMode::tryFrom((string) ($data['amount_mode'] ?? ProductAmountMode::Fixed->value))
+            ?? ProductAmountMode::Fixed;
+        $isCustom = $mode === ProductAmountMode::Custom;
+
+        $unitLabel = isset($data['amount_unit_label']) && trim((string) $data['amount_unit_label']) !== ''
+            ? trim((string) $data['amount_unit_label'])
+            : null;
+
         $product->fill([
             'package_id' => $data['package_id'],
             'serial' => $serial,
@@ -33,6 +47,11 @@ class UpsertProduct
             'wholesale_price' => 0,
             'is_active' => $data['is_active'],
             'order' => $data['order'],
+            'amount_mode' => $mode,
+            'amount_unit_label' => $isCustom ? $unitLabel : null,
+            'custom_amount_min' => $isCustom ? ($data['custom_amount_min'] ?? null) : null,
+            'custom_amount_max' => $isCustom ? ($data['custom_amount_max'] ?? null) : null,
+            'custom_amount_step' => $isCustom ? max(1, (int) ($data['custom_amount_step'] ?? 1)) : null,
         ]);
 
         $product->save();

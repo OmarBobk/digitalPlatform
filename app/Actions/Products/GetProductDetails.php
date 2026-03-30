@@ -24,6 +24,11 @@ class GetProductDetails
                 'wholesale_price',
                 'is_active',
                 'order',
+                'amount_mode',
+                'amount_unit_label',
+                'custom_amount_min',
+                'custom_amount_max',
+                'custom_amount_step',
             ])
             ->with('package:id,name,slug')
             ->find($productId);

@@ -10,6 +10,7 @@ use App\Enums\FulfillmentLogLevel;
 use App\Enums\FulfillmentStatus;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
+use App\Enums\ProductAmountMode;
 use App\Events\FulfillmentListChanged;
 use App\Models\Fulfillment;
 use App\Models\Order;
@@ -160,6 +161,55 @@ test('create fulfillments generates one per quantity', function () {
 
     expect($fulfillments)->toHaveCount(3);
     expect($fulfillments->pluck('status')->unique()->all())->toBe([FulfillmentStatus::Queued]);
+});
+
+test('create fulfillments generates one for custom amount items', function () {
+    $user = User::factory()->create();
+    $package = Package::factory()->create();
+    $product = Product::factory()->create([
+        'package_id' => $package->id,
+        'entry_price' => 0.01,
+        'amount_mode' => ProductAmountMode::Custom,
+        'amount_unit_label' => 'crystals',
+    ]);
+
+    $order = Order::create([
+        'user_id' => $user->id,
+        'order_number' => Order::temporaryOrderNumber(),
+        'currency' => 'USD',
+        'subtotal' => 95.39,
+        'fee' => 0,
+        'total' => 95.39,
+        'status' => OrderStatus::Paid,
+    ]);
+
+    $item = OrderItem::create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'package_id' => $package->id,
+        'name' => $product->name,
+        'unit_price' => 95.39,
+        'quantity' => 3,
+        'amount_mode' => ProductAmountMode::Custom,
+        'requested_amount' => 9539,
+        'amount_unit_label' => 'crystals',
+        'line_total' => 95.39,
+        'status' => OrderItemStatus::Pending,
+    ]);
+
+    (new CreateFulfillmentsForOrder)->handle($order);
+    (new CreateFulfillmentsForOrder)->handle($order);
+
+    $fulfillments = Fulfillment::query()
+        ->where('order_item_id', $item->id)
+        ->get();
+
+    expect($fulfillments)->toHaveCount(1);
+    expect($fulfillments->first()->meta)->toBe([
+        'type' => 'custom_amount',
+        'amount' => 9539,
+        'unit' => 'crystals',
+    ]);
 });
 
 test('create fulfillments stores requirements payload in meta', function () {
