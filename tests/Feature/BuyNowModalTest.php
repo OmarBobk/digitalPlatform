@@ -241,3 +241,38 @@ it('shows no additional requirements message when package has no requirements', 
         ->call('openBuyNow', $product->id, true, 1)
         ->assertSee(__('messages.no_additional_requirements'));
 });
+
+it('computes fixed buy now line total using total-based pricing', function (): void {
+    PricingRule::query()->delete();
+    PricingRule::create([
+        'min_price' => 0,
+        'max_price' => 100,
+        'wholesale_percentage' => 0,
+        'retail_percentage' => 50,
+        'priority' => 0,
+        'is_active' => true,
+    ]);
+    PricingRule::create([
+        'min_price' => 100,
+        'max_price' => 1000,
+        'wholesale_percentage' => 0,
+        'retail_percentage' => 10,
+        'priority' => 1,
+        'is_active' => true,
+    ]);
+
+    $user = User::factory()->create();
+    $package = Package::factory()->create(['is_active' => true]);
+    $product = Product::factory()->for($package)->create([
+        'is_active' => true,
+        'amount_mode' => ProductAmountMode::Fixed,
+        'entry_price' => 90,
+    ]);
+
+    $component = Livewire::actingAs($user)
+        ->test('main.buy-now-modal')
+        ->call('openBuyNow', $product->id, false, 1)
+        ->set('buyNowQuantity', 2);
+
+    expect((float) $component->get('buyNowLineFinalPrice'))->toBe(198.0);
+});

@@ -10,6 +10,7 @@ use App\Models\Fulfillment;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Package;
+use App\Models\PricingRule;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Wallet;
@@ -225,4 +226,99 @@ test('custom amount rejects non-positive entry price products', function () {
         'product_id' => $product->id,
         'requested_amount' => 10,
     ]], null, false))->toThrow(ValidationException::class);
+});
+
+test('fixed amount checkout applies pricing rule on total base', function () {
+    PricingRule::query()->delete();
+    PricingRule::create([
+        'min_price' => 0,
+        'max_price' => 100,
+        'wholesale_percentage' => 0,
+        'retail_percentage' => 50,
+        'priority' => 0,
+        'is_active' => true,
+    ]);
+    PricingRule::create([
+        'min_price' => 100,
+        'max_price' => 1000,
+        'wholesale_percentage' => 0,
+        'retail_percentage' => 10,
+        'priority' => 1,
+        'is_active' => true,
+    ]);
+
+    $user = User::factory()->create();
+    Wallet::create([
+        'user_id' => $user->id,
+        'type' => WalletType::Customer,
+        'balance' => 1000,
+        'currency' => 'USD',
+    ]);
+
+    $package = Package::factory()->create();
+    $product = Product::factory()->create([
+        'package_id' => $package->id,
+        'entry_price' => 90,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test('pages::frontend.cart')
+        ->call('checkout', [[
+            'id' => $product->id,
+            'quantity' => 2,
+        ]]);
+
+    $order = Order::query()->firstOrFail();
+    $item = OrderItem::query()->firstOrFail();
+
+    expect((float) $order->subtotal)->toBe(198.0);
+    expect((float) $item->line_total)->toBe(198.0);
+    expect((float) $item->unit_price)->toBe(99.0);
+    expect($item->quantity)->toBe(2);
+});
+
+test('fixed amount rule band selection uses total not unit', function () {
+    PricingRule::query()->delete();
+    PricingRule::create([
+        'min_price' => 0,
+        'max_price' => 100,
+        'wholesale_percentage' => 0,
+        'retail_percentage' => 50,
+        'priority' => 0,
+        'is_active' => true,
+    ]);
+    PricingRule::create([
+        'min_price' => 100,
+        'max_price' => 1000,
+        'wholesale_percentage' => 0,
+        'retail_percentage' => 10,
+        'priority' => 1,
+        'is_active' => true,
+    ]);
+
+    $user = User::factory()->create();
+    Wallet::create([
+        'user_id' => $user->id,
+        'type' => WalletType::Customer,
+        'balance' => 1000,
+        'currency' => 'USD',
+    ]);
+
+    $package = Package::factory()->create();
+    $product = Product::factory()->create([
+        'package_id' => $package->id,
+        'entry_price' => 60,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test('pages::frontend.cart')
+        ->call('checkout', [[
+            'id' => $product->id,
+            'quantity' => 2,
+        ]]);
+
+    $order = Order::query()->firstOrFail();
+
+    expect((float) $order->subtotal)->toBe(132.0)
+        ->and((float) $order->subtotal)->not->toBe(180.0);
 });

@@ -840,13 +840,13 @@ new class extends Component
                                         {{ $this->formatEntryPriceForTable($product) }}
                                     </td>
                                     <td class="px-5 py-4 text-end tabular-nums text-zinc-900 dark:text-zinc-100">
-                                        {{ number_format($product->retail_price, 2) }}
+                                        {{ $this->formatDerivedPricePreview((float) $product->retail_price) }}
                                         <div class="mt-0.5 text-left text-xs text-zinc-500 dark:text-zinc-400 lg:hidden">
-                                            {{ __('messages.wholesale_price') }} {{ number_format($product->wholesale_price, 2) }}
+                                            {{ __('messages.wholesale_price') }} {{ $this->formatDerivedPricePreview((float) $product->wholesale_price) }}
                                         </div>
                                     </td>
                                     <td class="px-5 py-4 text-end tabular-nums text-zinc-900 dark:text-zinc-100 hidden lg:table-cell">
-                                        {{ number_format($product->wholesale_price, 2) }}
+                                        {{ $this->formatDerivedPricePreview((float) $product->wholesale_price) }}
                                     </td>
                                     <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300 hidden xl:table-cell">
                                         {{ $product->order ?? '—' }}

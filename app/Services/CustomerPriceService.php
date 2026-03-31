@@ -138,15 +138,53 @@ class CustomerPriceService
      */
     public function finalPriceForAmount(Product $product, int $amount, User $user, ?array $overridesByProductId = null): array
     {
+        return $this->priceForComputedTotal($product, $amount, $user, $overridesByProductId);
+    }
+
+    /**
+     * Resolve customer price for fixed-quantity products.
+     * Pricing rules apply on total base (entry_price * quantity).
+     *
+     * @return array{
+     *   base_price: float,
+     *   discount_amount: float,
+     *   final_price: float,
+     *   final_total: float,
+     *   unit_price: float,
+     *   tier_name: string|null,
+     *   meta: array{is_override: bool, is_below_cost?: bool, is_floor_applied?: bool}
+     * }
+     */
+    public function finalPriceForQuantity(Product $product, int $quantity, User $user, ?array $overridesByProductId = null): array
+    {
+        if ($quantity <= 0) {
+            throw new InvalidArgumentException('Quantity must be greater than zero.');
+        }
+
+        $prices = $this->priceForComputedTotal($product, $quantity, $user, $overridesByProductId);
+        $finalTotal = (float) $prices['final_price'];
+
+        return [
+            ...$prices,
+            'final_total' => $finalTotal,
+            'unit_price' => $this->divideTotalByQuantity($finalTotal, $quantity),
+        ];
+    }
+
+    /**
+     * @return array{base_price: float, discount_amount: float, final_price: float, tier_name: string|null, meta: array{is_override: bool, is_below_cost?: bool, is_floor_applied?: bool}}
+     */
+    private function priceForComputedTotal(Product $product, int $multiplier, User $user, ?array $overridesByProductId = null): array
+    {
         $entryPrice = $product->entry_price !== null
             ? (float) $product->entry_price
             : null;
 
         if ($entryPrice === null || $entryPrice <= 0) {
-            throw new InvalidArgumentException('Invalid entry price for custom amount product.');
+            throw new InvalidArgumentException('Invalid entry price for product.');
         }
 
-        $computedEntryTotal = $this->multiplyAmountByEntryPrice($amount, $entryPrice);
+        $computedEntryTotal = $this->multiplyAmountByEntryPrice($multiplier, $entryPrice);
         $pricingProduct = clone $product;
         $pricingProduct->setAttribute('entry_price', $computedEntryTotal);
 
@@ -206,6 +244,14 @@ class CustomerPriceService
     {
         $entryAsDecimal = number_format($entryPrice, 6, '.', '');
         $computed = bcmul((string) $amount, $entryAsDecimal, 6);
+
+        return (float) $computed;
+    }
+
+    private function divideTotalByQuantity(float $finalTotal, int $quantity): float
+    {
+        $totalAsDecimal = number_format($finalTotal, 8, '.', '');
+        $computed = bcdiv($totalAsDecimal, (string) $quantity, 8);
 
         return (float) $computed;
     }

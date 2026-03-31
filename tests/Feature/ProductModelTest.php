@@ -76,6 +76,31 @@ test('product retail and wholesale prices are derived from entry price', functio
     expect($product->wholesale_price)->toBe(100.0);
 });
 
+test('custom amount product keeps non-zero derived prices for sub cent unit entry price', function (): void {
+    PricingRule::create([
+        'min_price' => 0,
+        'max_price' => 999999.99,
+        'wholesale_percentage' => 5,
+        'retail_percentage' => 10,
+        'priority' => 0,
+        'is_active' => true,
+    ]);
+
+    $package = Package::factory()->create();
+    $product = Product::factory()->create([
+        'package_id' => $package->id,
+        'entry_price' => 0.001783164381826,
+        'amount_mode' => ProductAmountMode::Custom,
+        'amount_unit_label' => 'GB',
+        'custom_amount_min' => 1,
+        'custom_amount_max' => 500,
+        'custom_amount_step' => 1,
+    ]);
+
+    expect($product->retail_price)->toBeGreaterThan(0.0);
+    expect($product->wholesale_price)->toBeGreaterThan(0.0);
+});
+
 test('product belongs to package', function () {
     $package = Package::factory()->create();
     $product = Product::factory()->create(['package_id' => $package->id]);

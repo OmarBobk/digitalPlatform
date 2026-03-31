@@ -7,6 +7,8 @@ use App\Actions\Packages\ResolvePackageRequirements;
 use App\Enums\OrderStatus;
 use App\Enums\ProductAmountMode;
 use App\Models\Package;
+use App\Models\LoyaltyTierConfig;
+use App\Models\PricingRule;
 use App\Models\Product;
 use App\Services\CustomerPriceService;
 use Illuminate\Support\Facades\RateLimiter;
@@ -23,6 +25,8 @@ new class extends Component
     public ?string $buyNowPackageName = null;
     public string $buyNowAmountMode = ProductAmountMode::Fixed->value;
     public ?string $buyNowAmountUnitLabel = null;
+    public ?float $buyNowEntryPrice = null;
+    public float $buyNowOverrideDelta = 0.0;
     /** @var int|string Livewire can send empty string from number input; we normalize to int. */
     public int|string|null $buyNowRequestedAmount = null;
 
@@ -64,6 +68,9 @@ new class extends Component
      * @var array<int, array{final: ?float, per_unit: ?float, error: ?string}>
      */
     public array $packageOverlayLivePrices = [];
+    /** @var array<int, array{min: float, max: float, percentage: float}> */
+    public array $clientPricingRules = [];
+    public float $clientLoyaltyDiscountPercent = 0.0;
 
     public function openBuyNow(int $productId, bool $fromPackageOverlay = false, ?int $quantity = null, ?int $overlayCustomAmount = null): void
     {
@@ -86,6 +93,8 @@ new class extends Component
         $this->buyNowPackageName = $product['package_name'] ?? $this->selectedPackageName;
         $this->buyNowAmountMode = (string) ($product['amount_mode'] ?? ProductAmountMode::Fixed->value);
         $this->buyNowAmountUnitLabel = $product['amount_unit_label'] ?? null;
+        $this->buyNowEntryPrice = isset($product['entry_price']) ? (float) $product['entry_price'] : null;
+        $this->buyNowOverrideDelta = isset($product['override_delta']) ? (float) $product['override_delta'] : 0.0;
         $this->buyNowCustomAmountMin = isset($product['custom_amount_min']) ? (int) $product['custom_amount_min'] : null;
         $this->buyNowCustomAmountMax = isset($product['custom_amount_max']) ? (int) $product['custom_amount_max'] : null;
         $this->buyNowCustomAmountStep = max(1, (int) ($product['custom_amount_step'] ?? 1));
@@ -139,6 +148,7 @@ new class extends Component
         }
 
         $this->buyNowPriceError = null;
+        $this->loadClientPricingRules();
         $this->seedBuyNowPricingOnOpen();
     }
 
@@ -165,6 +175,8 @@ new class extends Component
             'buyNowLineFinalPrice',
             'buyNowPriceError',
             'buyNowFinalPerUnitRate',
+            'buyNowEntryPrice',
+            'buyNowOverrideDelta',
             'packageOverlayLivePrices',
         ]);
         $this->resetValidation();
@@ -218,7 +230,9 @@ new class extends Component
                 $prices = $priceService->finalPriceForAmount($product, $amount, $user, $overrides);
                 $final = $prices['final_price'];
                 $this->buyNowLineFinalPrice = $final;
-                $this->buyNowFinalPerUnitRate = $amount > 0 ? $final / $amount : null;
+                $this->buyNowFinalPerUnitRate = $amount > 0
+                    ? (float) bcdiv(number_format($final, 8, '.', ''), (string) $amount, 8)
+                    : null;
             } catch (\InvalidArgumentException $exception) {
                 $this->buyNowLineFinalPrice = null;
                 $this->buyNowFinalPerUnitRate = null;
@@ -232,11 +246,8 @@ new class extends Component
         }
 
         $qty = max(1, (int) $this->buyNowQuantity);
-        $this->buyNowLineFinalPrice = round(
-            $priceService->finalPrice($product, $user, $overrides) * $qty,
-            2,
-            PHP_ROUND_HALF_EVEN
-        );
+        $prices = $priceService->finalPriceForQuantity($product, $qty, $user, $overrides);
+        $this->buyNowLineFinalPrice = (float) $prices['final_total'];
     }
 
     public function refreshBuyNowLinePrice(): void
@@ -287,11 +298,8 @@ new class extends Component
         $overrides = $user !== null ? $priceService->getUserOverridesFor($user) : [];
 
         $qty = max(1, (int) $this->buyNowQuantity);
-        $this->buyNowLineFinalPrice = round(
-            $priceService->finalPrice($product, $user, $overrides) * $qty,
-            2,
-            PHP_ROUND_HALF_EVEN
-        );
+        $prices = $priceService->finalPriceForQuantity($product, $qty, $user, $overrides);
+        $this->buyNowLineFinalPrice = (float) $prices['final_total'];
     }
 
     public function repriceCustomAmount(int $productId, mixed $requestedAmount): void
@@ -485,6 +493,7 @@ new class extends Component
         $this->reset('buyNowError', 'buyNowSuccess', 'buyNowOrderNumber');
         $this->resetValidation();
         $this->resetBuyNowState();
+        $this->loadClientPricingRules();
 
         $package = Package::query()
             ->select(['id', 'name'])
@@ -691,6 +700,8 @@ new class extends Component
         $this->buyNowLineFinalPrice = null;
         $this->buyNowPriceError = null;
         $this->buyNowFinalPerUnitRate = null;
+        $this->buyNowEntryPrice = null;
+        $this->buyNowOverrideDelta = 0.0;
         $this->packageOverlayLivePrices = [];
     }
 
@@ -776,7 +787,9 @@ new class extends Component
             $final = $prices['final_price'];
             $this->packageOverlayLivePrices[$productId] = [
                 'final' => $final,
-                'per_unit' => $amount > 0 ? round($final / $amount, 6) : null,
+                'per_unit' => $amount > 0
+                    ? (float) bcdiv(number_format($final, 8, '.', ''), (string) $amount, 8)
+                    : null,
                 'error' => null,
             ];
         } catch (\InvalidArgumentException) {
@@ -825,7 +838,11 @@ new class extends Component
     private function guestCustomAmountPrices(Product $product, int $amount, CustomerPriceService $priceService): array
     {
         $entryPrice = (float) $product->entry_price;
-        $computedEntryTotal = round($entryPrice * $amount, 2);
+        $computedEntryTotal = (float) bcmul(
+            (string) $amount,
+            number_format($entryPrice, 6, '.', ''),
+            6
+        );
         $pricingProduct = clone $product;
         $pricingProduct->setAttribute('entry_price', $computedEntryTotal);
 
@@ -898,6 +915,8 @@ new class extends Component
             'package_id' => $product->package_id,
             'package_name' => $product->package?->name,
             'name' => $product->name,
+            'entry_price' => $product->entry_price !== null ? (float) $product->entry_price : null,
+            'override_delta' => isset($overrides[$product->id]) ? (float) $overrides[$product->id] : 0.0,
             'price' => $prices['final_price'],
             'base_price' => $prices['base_price'],
             'discount_amount' => $prices['discount_amount'],
@@ -915,6 +934,37 @@ new class extends Component
             'requirements_rules' => $resolved['rules'],
             'requirements_attributes' => $resolved['attributes'],
         ];
+    }
+
+    private function loadClientPricingRules(): void
+    {
+        if ($this->clientPricingRules !== []) {
+            return;
+        }
+
+        $useWholesale = auth()->check() && auth()->user()?->hasRole('salesperson');
+
+        $this->clientPricingRules = PricingRule::query()
+            ->where('is_active', true)
+            ->orderBy('priority')
+            ->get(['min_price', 'max_price', 'retail_percentage', 'wholesale_percentage'])
+            ->map(fn (PricingRule $rule): array => [
+                'min' => (float) $rule->min_price,
+                'max' => (float) $rule->max_price,
+                'percentage' => (float) ($useWholesale ? $rule->wholesale_percentage : $rule->retail_percentage),
+            ])
+            ->all();
+
+        $this->clientLoyaltyDiscountPercent = 0.0;
+        $user = auth()->user();
+        if ($user !== null && $user->loyaltyRole() !== null) {
+            $tierName = $user->loyalty_tier?->value ?? 'bronze';
+            $tier = LoyaltyTierConfig::query()
+                ->forRole($user->loyaltyRole())
+                ->where('name', $tierName)
+                ->first();
+            $this->clientLoyaltyDiscountPercent = $tier !== null ? (float) $tier->discount_percentage : 0.0;
+        }
     }
 };
 ?>
@@ -938,6 +988,10 @@ new class extends Component
         $buyNowCustomEstimateConfig = [
             'amountInputStr' => $buyNowRequestedAmountInput ?? '',
             'rate' => $buyNowFinalPerUnitRate,
+            'entryPrice' => $buyNowEntryPrice,
+            'pricingRules' => $clientPricingRules,
+            'overrideDelta' => $buyNowOverrideDelta,
+            'loyaltyDiscountPercent' => $clientLoyaltyDiscountPercent,
             'serverError' => $buyNowPriceError,
             'amountMin' => $buyNowCustomAmountMin,
             'amountMax' => $buyNowCustomAmountMax,
@@ -1028,6 +1082,10 @@ new class extends Component
                                 $overlayRowStep = max(1, (int) ($product['custom_amount_step'] ?? 1));
                                 $overlayRowEstimateConfig = [
                                     'rate' => $overlayPerUnit !== null ? (float) $overlayPerUnit : null,
+                                    'entryPrice' => $product['entry_price'] ?? null,
+                                    'pricingRules' => $clientPricingRules,
+                                    'overrideDelta' => $product['override_delta'] ?? 0,
+                                    'loyaltyDiscountPercent' => $clientLoyaltyDiscountPercent,
                                     'serverError' => $overlayError,
                                     'amountMin' => $product['custom_amount_min'] ?? null,
                                     'amountMax' => $product['custom_amount_max'] ?? null,
@@ -1187,7 +1245,19 @@ new class extends Component
                                             class="flex-1 lg:flex-none"
                                             x-on:click="
                                                 $store.cart.add(product, qty);
-                                                if ($store.cart.updateRequestedAmount(product.id, digitsParsed)) {
+                                                const item = $store.cart.items.find((entry) => entry.id === product.id);
+                                                if (item && amountValid) {
+                                                    item.quantity = 1;
+                                                    item.requested_amount = digitsParsed;
+                                                    item.requested_amount_input = $store.cart.formatGroupedIntegerForAmount(digitsParsed);
+                                                    delete $store.cart.customAmountErrors[product.id];
+                                                    if (estimatedFinal !== null) {
+                                                        item.price = Number(estimatedFinal);
+                                                        if (digitsParsed > 0) {
+                                                            item.custom_unit_rate = Math.round((Number(estimatedFinal) / digitsParsed) * 1e8) / 1e8;
+                                                        }
+                                                    }
+                                                    $store.cart.persist();
                                                     $wire.repriceCustomAmount(product.id, digitsParsed);
                                                 }
                                                 qty = 1;

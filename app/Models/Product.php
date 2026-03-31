@@ -78,7 +78,8 @@ class Product extends Model
         $entryPrice = $this->attributes['entry_price'] ?? null;
 
         if ($entryPrice !== null && $entryPrice !== '') {
-            $prices = app(PriceCalculator::class)->calculate((float) $entryPrice);
+            $roundingScale = ($this->attributes['amount_mode'] ?? null) === ProductAmountMode::Custom->value ? 6 : 2;
+            $prices = app(PriceCalculator::class)->calculate((float) $entryPrice, $roundingScale);
 
             return $prices['retail_price'];
         }
@@ -95,7 +96,8 @@ class Product extends Model
         $entryPrice = $this->attributes['entry_price'] ?? null;
 
         if ($entryPrice !== null && $entryPrice !== '') {
-            $prices = app(PriceCalculator::class)->calculate((float) $entryPrice);
+            $roundingScale = ($this->attributes['amount_mode'] ?? null) === ProductAmountMode::Custom->value ? 6 : 2;
+            $prices = app(PriceCalculator::class)->calculate((float) $entryPrice, $roundingScale);
 
             return $prices['wholesale_price'];
         }

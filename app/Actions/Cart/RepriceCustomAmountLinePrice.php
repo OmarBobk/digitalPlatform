@@ -72,7 +72,11 @@ final class RepriceCustomAmountLinePrice
             return ['ok' => false, 'message' => __('messages.invalid_value', ['field' => __('messages.amount')])];
         }
 
-        $computedEntryTotal = round($entryPrice * $amount, 2);
+        $computedEntryTotal = (float) bcmul(
+            (string) $amount,
+            number_format($entryPrice, 6, '.', ''),
+            6
+        );
         $pricingProduct = clone $product;
         $pricingProduct->setAttribute('entry_price', $computedEntryTotal);
 

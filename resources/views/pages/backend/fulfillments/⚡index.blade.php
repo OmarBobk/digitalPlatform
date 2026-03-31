@@ -755,6 +755,8 @@ new class extends Component
         firstTab() { this.adminTab = this.adminTabs[0]; },
         lastTab() { this.adminTab = this.adminTabs[this.adminTabs.length - 1]; },
         nowTs: Date.now(),
+        queueCollapsed: false,
+        processingCollapsed: false,
         init() {
             window.addEventListener('open-admin-table-tab', () => {
                 this.adminTab = 'table';
@@ -778,7 +780,7 @@ new class extends Component
 >
     <section class="sticky top-0 z-20 rounded-2xl border border-zinc-200/80 bg-white/95 p-4 shadow-sm backdrop-blur-md dark:border-zinc-700 dark:bg-zinc-900/95">
         <div class="pointer-events-none absolute inset-x-0 top-0 h-24 bg-linear-to-r from-emerald-500/10 via-cyan-500/10 to-blue-500/10 dark:from-emerald-400/5 dark:via-cyan-400/5 dark:to-blue-400/5"></div>
-        <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="min-w-0 flex flex-wrap items-start justify-between gap-4">
             <div class="space-y-1">
                 <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
                     {{ __('messages.fulfillments') }}
@@ -839,7 +841,7 @@ new class extends Component
         @if ($this->isAdmin)
             <div class="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-700 dark:bg-zinc-950/50">
                 <div
-                    class="flex flex-wrap items-center gap-2"
+                    class="flex flex-wrap items-center gap-2 overflow-x-auto"
                     role="tablist"
                     aria-label="Admin operations views"
                     x-on:keydown.right.prevent="moveTab(1)"
@@ -876,7 +878,7 @@ new class extends Component
             </div>
 
             <section class="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
-                <div class="mb-3 flex items-center justify-between">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <flux:heading size="sm">Supervisor health</flux:heading>
                     <flux:badge color="gray">{{ $this->supervisorHealth->count() }} supervisors</flux:badge>
                 </div>
@@ -938,13 +940,25 @@ new class extends Component
             </section>
         @endif
 
-        <div id="panel-queue" role="tabpanel" aria-labelledby="tab-queue" class="mt-4 grid gap-4 xl:grid-cols-2" x-show="!{{ $this->isAdmin ? 'true' : 'false' }} || adminTab === 'queue'">
-            <section class="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
+        <div id="panel-queue" role="tabpanel" aria-labelledby="tab-queue" class="mt-4 grid min-w-0 gap-4 xl:grid-cols-2" x-show="!{{ $this->isAdmin ? 'true' : 'false' }} || adminTab === 'queue'">
+            <section class="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
                 <div class="mb-3 flex items-center justify-between">
                     <flux:heading size="sm">{{ __('messages.unclaimed_tasks') }}</flux:heading>
-                    <flux:badge color="gray">{{ $this->queueCards->count() }}</flux:badge>
+                    <div class="flex items-center gap-2">
+                        <flux:badge color="gray">{{ $this->queueCards->count() }}</flux:badge>
+                        <flux:button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            x-on:click="queueCollapsed = !queueCollapsed"
+                            x-bind:aria-expanded="(!queueCollapsed).toString()"
+                            aria-controls="unclaimed-tasks-list"
+                        >
+                            <span x-text="queueCollapsed ? 'Expand' : 'Collapse'"></span>
+                        </flux:button>
+                    </div>
                 </div>
-                <div class="space-y-3">
+                <div id="unclaimed-tasks-list" class="space-y-3" x-show="!queueCollapsed" x-transition.opacity.duration.150ms>
                     @forelse ($this->queueCards as $fulfillment)
                         @php
                             $minutes = (int) now()->diffInMinutes($fulfillment->created_at ?? now());
@@ -960,12 +974,12 @@ new class extends Component
                             x-transition:leave="transition ease-in duration-150"
                             x-transition:leave-start="opacity-100 translate-y-0"
                             x-transition:leave-end="opacity-0 -translate-y-1"
-                            class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-700/80 dark:bg-zinc-900/90"
+                            class="min-w-0 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-700/80 dark:bg-zinc-900/90"
                         >
                             <div class="flex items-start justify-between gap-3">
-                                <div class="space-y-1">
-                                    <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $fulfillment->orderItem?->name ?? __('messages.unknown_item') }}</div>
-                                    <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ $fulfillment->order?->user?->email ?? __('messages.unknown_user') }}</div>
+                                <div class="min-w-0 space-y-1">
+                                    <div class="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $fulfillment->orderItem?->name ?? __('messages.unknown_item') }}</div>
+                                    <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">{{ $fulfillment->order?->user?->email ?? __('messages.unknown_user') }}</div>
 
                                     @if ($this->isAdmin)
                                         <div class="text-xs text-zinc-500 dark:text-zinc-400">
@@ -980,7 +994,7 @@ new class extends Component
                                             {{ $fulfillment->order?->order_number ?? ('#'.$fulfillment->order_id) }}
                                         </span>
                                         @if ($requirementsToken)
-                                            <span class="rounded-md border border-cyan-200 bg-cyan-50 px-1.5 py-0.5 font-mono text-[11px] text-cyan-800 dark:border-cyan-900/50 dark:bg-cyan-950/40 dark:text-cyan-200" title="{{ $requirementsToken }}">{{ $requirementsToken }}</span>
+                                            <span class="inline-block max-w-[11rem] truncate rounded-md border border-cyan-200 bg-cyan-50 px-1.5 py-0.5 font-mono text-[11px] text-cyan-800 dark:border-cyan-900/50 dark:bg-cyan-950/40 dark:text-cyan-200 sm:max-w-none" title="{{ $requirementsToken }}">{{ $requirementsToken }}</span>
                                         @else
                                             <span class="rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[11px] text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-400">—</span>
                                         @endif
@@ -1004,40 +1018,35 @@ new class extends Component
                                 @endif
                             </div>
 
-                            <div class="mt-4 flex items-center gap-2">
-                                <div class="flex items-center gap-2">
-                                    <flux:button
-                                        variant="primary"
-                                        wire:click="claimFulfillment({{ $fulfillment->id }})"
-                                        :disabled="! $this->canClaimMore"
-                                        title="{{ $this->canClaimMore ? '' : __('messages.fulfillment_claim_limit_reached') }}"
-                                        wire:target="claimFulfillment({{ $fulfillment->id }})"
-                                        wire:loading.attr="disabled"
-                                    >
-                                        {{ __('messages.claim_task') }}
-                                    </flux:button>
-                                    @if ($this->isAdmin)
-                                        <flux:dropdown position="bottom start">
-                                            <flux:button variant="ghost" icon-trailing="chevron-down">Intervene</flux:button>
-                                            <flux:menu>
-                                                <flux:menu.item wire:click="openDetails({{ $fulfillment->id }})">Override / Force Assign</flux:menu.item>
-                                                <flux:menu.item wire:click="openForceCompleteModal({{ $fulfillment->id }})">Force complete</flux:menu.item>
-                                                <flux:menu.item wire:click="openForceFailModal({{ $fulfillment->id }})">Force fail</flux:menu.item>
-                                            </flux:menu>
-                                        </flux:dropdown>
-                                    @endif
-                                </div>
+                            <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                                <flux:button
+                                    variant="primary"
+                                    wire:click="claimFulfillment({{ $fulfillment->id }})"
+                                    :disabled="! $this->canClaimMore"
+                                    title="{{ $this->canClaimMore ? '' : __('messages.fulfillment_claim_limit_reached') }}"
+                                    wire:target="claimFulfillment({{ $fulfillment->id }})"
+                                    wire:loading.attr="disabled"
+                                    class="w-full sm:w-auto"
+                                >
+                                    {{ __('messages.claim_task') }}
+                                </flux:button>
+
                                 @if ($this->isAdmin)
                                     <flux:dropdown position="bottom start">
-                                        <flux:button variant="ghost" wire:click="openDetails({{ $fulfillment->id }})">
-                                            {{ __('messages.details') }}
+                                        <flux:button variant="ghost" icon-trailing="chevron-down" class="w-full sm:w-auto">
+                                            Intervene
                                         </flux:button>
+                                        <flux:menu>
+                                            <flux:menu.item wire:click="openDetails({{ $fulfillment->id }})">Override / Force Assign</flux:menu.item>
+                                            <flux:menu.item wire:click="openForceCompleteModal({{ $fulfillment->id }})">Force complete</flux:menu.item>
+                                            <flux:menu.item wire:click="openForceFailModal({{ $fulfillment->id }})">Force fail</flux:menu.item>
+                                        </flux:menu>
                                     </flux:dropdown>
-                                @else
-                                    <flux:button variant="ghost" wire:click="openDetails({{ $fulfillment->id }})">
-                                        {{ __('messages.details') }}
-                                    </flux:button>
                                 @endif
+
+                                <flux:button variant="ghost" wire:click="openDetails({{ $fulfillment->id }})" class="w-full sm:w-auto">
+                                    {{ __('messages.details') }}
+                                </flux:button>
                             </div>
                         </article>
                     @empty
@@ -1046,14 +1055,36 @@ new class extends Component
                         </div>
                     @endforelse
                 </div>
+                <div
+                    x-show="queueCollapsed"
+                    x-transition.opacity.duration.150ms
+                    class="rounded-xl border border-dashed border-zinc-300 bg-white/70 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300"
+                >
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <span>{{ __('messages.unclaimed_tasks') }} hidden</span>
+                        <flux:button type="button" variant="ghost" size="sm" x-on:click="queueCollapsed = false">Show tasks</flux:button>
+                    </div>
+                </div>
             </section>
 
-            <section class="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
-                <div class="mb-3 flex items-center justify-between">
+            <section class="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <flux:heading size="sm">{{ $this->isAdmin ? 'Processing tasks' : __('messages.my_tasks') }}</flux:heading>
-                    <flux:badge color="cyan">{{ $this->isAdmin ? $this->activeClaimedCount : $this->activeClaimedCount.'/5' }}</flux:badge>
+                    <div class="flex items-center gap-2">
+                        <flux:badge color="cyan">{{ $this->isAdmin ? $this->activeClaimedCount : $this->activeClaimedCount.'/5' }}</flux:badge>
+                        <flux:button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            x-on:click="processingCollapsed = !processingCollapsed"
+                            x-bind:aria-expanded="(!processingCollapsed).toString()"
+                            aria-controls="processing-tasks-list"
+                        >
+                            <span x-text="processingCollapsed ? 'Expand' : 'Collapse'"></span>
+                        </flux:button>
+                    </div>
                 </div>
-                <div class="space-y-3">
+                <div id="processing-tasks-list" class="space-y-3" x-show="!processingCollapsed" x-transition.opacity.duration.150ms>
                     @forelse ($this->myCards as $fulfillment)
                         @php
                             $minutes = (int) now()->diffInMinutes($fulfillment->created_at ?? now());
@@ -1070,12 +1101,12 @@ new class extends Component
                             x-transition:leave="transition ease-in duration-150"
                             x-transition:leave-start="opacity-100 translate-y-0"
                             x-transition:leave-end="opacity-0 -translate-y-1"
-                            class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-700/80 dark:bg-zinc-900/90"
+                            class="min-w-0 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-700/80 dark:bg-zinc-900/90"
                         >
                             <div class="flex items-start justify-between gap-3">
-                                <div class="space-y-1">
-                                    <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $fulfillment->orderItem?->name ?? __('messages.unknown_item') }}</div>
-                                    <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ $fulfillment->order?->user?->email ?? __('messages.unknown_user') }}</div>
+                                <div class="min-w-0 space-y-1">
+                                    <div class="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $fulfillment->orderItem?->name ?? __('messages.unknown_item') }}</div>
+                                    <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">{{ $fulfillment->order?->user?->email ?? __('messages.unknown_user') }}</div>
                                     @if ($this->isAdmin)
                                         <div class="text-xs text-zinc-500 dark:text-zinc-400">
                                             {{ __('messages.claimed_by') }}:
@@ -1089,7 +1120,7 @@ new class extends Component
                                             {{ $fulfillment->order?->order_number ?? ('#'.$fulfillment->order_id) }}
                                         </span>
                                         @if ($requirementsToken)
-                                            <span class="rounded-md border border-cyan-200 bg-cyan-50 px-1.5 py-0.5 font-mono text-[11px] text-cyan-800 dark:border-cyan-900/50 dark:bg-cyan-950/40 dark:text-cyan-200" title="{{ $requirementsToken }}">{{ $requirementsToken }}</span>
+                                            <span class="inline-block max-w-[11rem] truncate rounded-md border border-cyan-200 bg-cyan-50 px-1.5 py-0.5 font-mono text-[11px] text-cyan-800 dark:border-cyan-900/50 dark:bg-cyan-950/40 dark:text-cyan-200 sm:max-w-none" title="{{ $requirementsToken }}">{{ $requirementsToken }}</span>
                                         @else
                                             <span class="rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[11px] text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-400">—</span>
                                         @endif
@@ -1117,7 +1148,7 @@ new class extends Component
                             <div class="mt-4 flex flex-wrap items-center gap-2">
                                 @if ($this->isAdmin && ! $adminOwnsTask)
                                     <flux:dropdown position="bottom start">
-                                        <flux:button variant="ghost" icon-trailing="chevron-down">Intervene</flux:button>
+                                        <flux:button variant="ghost" icon-trailing="chevron-down" class="w-full sm:w-auto">Intervene</flux:button>
                                         <flux:menu>
                                             @if (! in_array($fulfillment->status, [FulfillmentStatus::Completed, FulfillmentStatus::Failed], true))
                                                 <flux:menu.item wire:click="openForceCompleteModal({{ $fulfillment->id }})">Force complete</flux:menu.item>
@@ -1129,22 +1160,22 @@ new class extends Component
                                     </flux:dropdown>
                                 @else
                                     @if (! in_array($fulfillment->status, [FulfillmentStatus::Completed, FulfillmentStatus::Failed], true))
-                                        <flux:button variant="primary" wire:click="openCompleteModal({{ $fulfillment->id }})" wire:loading.attr="disabled">
+                                        <flux:button variant="primary" wire:click="openCompleteModal({{ $fulfillment->id }})" wire:loading.attr="disabled" class="w-full sm:w-auto">
                                             {{ __('messages.mark_completed') }}
                                         </flux:button>
                                     @endif
                                     @if (! in_array($fulfillment->status, [FulfillmentStatus::Completed, FulfillmentStatus::Failed], true))
-                                        <flux:button variant="danger" wire:click="openFailModal({{ $fulfillment->id }})" wire:loading.attr="disabled">
+                                        <flux:button variant="danger" wire:click="openFailModal({{ $fulfillment->id }})" wire:loading.attr="disabled" class="w-full sm:w-auto">
                                             {{ __('messages.mark_failed') }}
                                         </flux:button>
                                     @endif
                                 @endif
                                 @if ($fulfillment->status === FulfillmentStatus::Failed && ! $this->isAdmin)
-                                    <flux:button variant="ghost" wire:click="retryFulfillment({{ $fulfillment->id }})">
+                                    <flux:button variant="ghost" wire:click="retryFulfillment({{ $fulfillment->id }})" class="w-full sm:w-auto">
                                         {{ __('messages.retry') }}
                                     </flux:button>
                                 @endif
-                                <flux:button variant="ghost" wire:click="openDetails({{ $fulfillment->id }})">
+                                <flux:button variant="ghost" wire:click="openDetails({{ $fulfillment->id }})" class="w-full sm:w-auto">
                                     {{ __('messages.details') }}
                                 </flux:button>
                             </div>
@@ -1154,6 +1185,16 @@ new class extends Component
                             {{ __('messages.no_fulfillments_yet') }}
                         </div>
                     @endforelse
+                </div>
+                <div
+                    x-show="processingCollapsed"
+                    x-transition.opacity.duration.150ms
+                    class="rounded-xl border border-dashed border-zinc-300 bg-white/70 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300"
+                >
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <span>{{ $this->isAdmin ? 'Processing tasks' : __('messages.my_tasks') }} hidden</span>
+                        <flux:button type="button" variant="ghost" size="sm" x-on:click="processingCollapsed = false">Show tasks</flux:button>
+                    </div>
                 </div>
             </section>
         </div>

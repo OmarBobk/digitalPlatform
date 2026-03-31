@@ -143,9 +143,9 @@ class CreateOrderFromCartPayload
                             "items.$index.quantity" => 'Fixed amount products require quantity greater than zero.',
                         ]);
                     }
-                    $price = $priceService->priceFor($product, $user, $priceOverrides);
-                    $unitPrice = $price['final_price'];
-                    $lineTotal = round($unitPrice * $quantity, 2);
+                    $price = $priceService->finalPriceForQuantity($product, $quantity, $user, $priceOverrides);
+                    $unitPrice = $price['unit_price'];
+                    $lineTotal = round((float) $price['final_total'], 2);
                 }
 
                 if (($price['meta']['is_floor_applied'] ?? false) === true) {
