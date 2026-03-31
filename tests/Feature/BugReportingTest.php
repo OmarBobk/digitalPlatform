@@ -226,3 +226,27 @@ it('bumps bug inbox realtime version on admin index when bug inbox event fires',
         ->dispatch('bug-inbox-updated')
         ->assertSet('inboxRealtimeVersion', 1);
 });
+
+it('shows description column with toggle affordance for long bug descriptions', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+    $admin->givePermissionTo('manage_bugs');
+    actingAs($admin);
+
+    Bug::query()->create([
+        'user_id' => $admin->id,
+        'role' => 'admin',
+        'scenario' => 'other',
+        'subtype' => 'test',
+        'severity' => 'low',
+        'status' => Bug::STATUS_OPEN,
+        'description' => str_repeat('Long description segment. ', 12),
+        'current_url' => 'https://example.test/page',
+    ]);
+
+    $this->get(route('admin.bugs.index'))
+        ->assertOk()
+        ->assertSee('Description')
+        ->assertSee('Show more')
+        ->assertSee('-webkit-line-clamp: 3', false);
+});

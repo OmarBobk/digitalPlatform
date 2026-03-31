@@ -111,12 +111,13 @@ new class extends Component
                 <flux:text class="text-sm text-zinc-600 dark:text-zinc-300">{{ __('Loading bugs...') }}</flux:text>
             </div>
 
-            <table class="min-w-[44rem] w-full table-auto divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
+            <table class="min-w-[52rem] w-full table-auto divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
                 <thead class="bg-zinc-50 dark:bg-zinc-800/50">
                     <tr>
                         <th class="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('ID') }}</th>
                         <th class="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('User') }}</th>
                         <th class="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('Scenario') }}</th>
+                        <th class="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('Description') }}</th>
                         <th class="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('Severity') }}</th>
                         <th class="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('Status') }}</th>
                         <th class="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('Date') }}</th>
@@ -132,6 +133,27 @@ new class extends Component
                                 <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ $bug->user?->email ?? __('No email') }}</div>
                             </td>
                             <td class="px-4 py-3">{{ str_replace('_', ' ', $bug->scenario) }}</td>
+                            <td class="px-4 py-3 align-top">
+                                <div x-data="{ expanded: false }" class="max-w-xl">
+                                    <p
+                                        x-bind:style="expanded ? '' : '-webkit-line-clamp: 3; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden;'"
+                                        class="whitespace-pre-line break-words text-sm text-zinc-700 dark:text-zinc-300"
+                                    >
+                                        {{ $bug->description ?: '—' }}
+                                    </p>
+
+                                    @if (filled($bug->description) && mb_strlen($bug->description) > 160)
+                                        <button
+                                            type="button"
+                                            x-on:click="expanded = ! expanded"
+                                            class="mt-1 text-xs font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
+                                        >
+                                            <span x-show="! expanded">{{ __('Show more') }}</span>
+                                            <span x-show="expanded">{{ __('Show less') }}</span>
+                                        </button>
+                                    @endif
+                                </div>
+                            </td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide
                                     @if ($bug->severity === 'critical') bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300
@@ -159,7 +181,7 @@ new class extends Component
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-10">
+                            <td colspan="8" class="px-4 py-10">
                                 <div class="grid place-items-center gap-2 text-center">
                                     <flux:heading size="sm">{{ __('No bugs found') }}</flux:heading>
                                     <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">

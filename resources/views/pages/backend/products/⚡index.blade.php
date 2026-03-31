@@ -282,6 +282,26 @@ new class extends Component
         return number_format($value, 2, '.', '');
     }
 
+    public function formatEntryPriceForTable(Product $product): string
+    {
+        if ($product->entry_price === null) {
+            return '—';
+        }
+
+        $value = (float) $product->entry_price;
+        $isCustom = $product->amount_mode === ProductAmountMode::Custom;
+
+        if (! $isCustom || abs($value) >= 0.01) {
+            return number_format($value, 2, '.', '');
+        }
+
+        if (abs($value) < 1e-12) {
+            return number_format(0.0, 2, '.', '');
+        }
+
+        return number_format($value, 6, '.', '');
+    }
+
     /**
      * Live preview: derived retail price for current productEntryPrice (backend source of truth).
      */
@@ -797,6 +817,15 @@ new class extends Component
                                                     /{{ $product->slug }}
                                                 @endif
                                             </div>
+                                            @if ($product->amount_mode === ProductAmountMode::Custom)
+                                                <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                                                    {{ __('messages.custom_amount_min') }}: {{ $product->custom_amount_min ?? '—' }}
+                                                    · {{ __('messages.custom_amount_max') }}: {{ $product->custom_amount_max ?? '—' }}
+                                                    @if ($product->custom_amount_step !== null)
+                                                        · {{ __('messages.custom_amount_step') }}: {{ $product->custom_amount_step }}
+                                                    @endif
+                                                </div>
+                                            @endif
                                             @if ($product->package)
                                                 <div class="text-xs text-zinc-500 dark:text-zinc-400 sm:hidden">
                                                     {{ $product->package->name }}
@@ -808,7 +837,7 @@ new class extends Component
                                         {{ $product->package?->name ?? __('messages.no_package') }}
                                     </td>
                                     <td class="px-5 py-4 text-end tabular-nums text-zinc-900 dark:text-zinc-100">
-                                        {{ $product->entry_price !== null ? number_format((float) $product->entry_price, 2) : '—' }}
+                                        {{ $this->formatEntryPriceForTable($product) }}
                                     </td>
                                     <td class="px-5 py-4 text-end tabular-nums text-zinc-900 dark:text-zinc-100">
                                         {{ number_format($product->retail_price, 2) }}

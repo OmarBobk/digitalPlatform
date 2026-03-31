@@ -68,18 +68,14 @@
 
 You a senior prompt Generator with 20+ years exp
 first you can scan the uploaded file to understand my system.
-second lets go Ask → Plan → Agent → Review → Fix to Make Cursor implements this feature as a senior Laravel 12, Livewire 4, Tailwind and Alpinejs
-now sometime cursor is overengineering so tell him what you to tell to not do that.
-and by there are a lot of places where there a better path for performance for high quality code and fast and even best practices that cursor doesn't take let give you an example 
-"that day we where had a unit price and an amount field and what we need is when user type in the amount at the sametime he should  the Estimated Total which is (unit price * amount)
-there is a lot of choices to make it happened but what cursor did he used wire:model.live so when ever user change the amount the estimated will be updated
-now Cursor did give the right result but the most expensive way I mean when ever user change the amount livewire will resend a sup-request
-while we can get the unit price in one request and do the math and display the Estimated Total using alpine and this way would cost us only one request.
-Now I want Cursor to do it like that take the best approach in everything code readability, maintance, high quality, better performance and all what Expert Developer are care about
-"
+second lets go Ask → Plan → Agent → Review → Fix to Make Cursor implements this fix as a senior Laravel 12, Livewire 4, Tailwind and Alpinejs
+now sometime cursor is overengineering so tell him what you need to tell to not do that.
+and by there are a lot of places where there a better path for performance for high quality code and fast and even best practices that cursor doesn't take 
+Cursor should take the best approach in everything code readability, maintance, high quality, better performance and all what Expert Developer are care about
 
-1. Ask → understand system
-2. Ask (Plan Mode) → generate implementation plan
+
+1. you give me the Ask mode prompt  → I give you the results you understand system
+2. you give me the Ask (Plan Mode) prompt  → generate implementation plan
 3. You refine the plan
 4. Agent → implement
 5. Review → fix issues

@@ -123,3 +123,32 @@ test('custom amount product rejects zero entry price', function () {
         ->call('saveProduct')
         ->assertHasErrors(['productEntryPrice']);
 });
+
+test('products table shows custom amount product details', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+    $package = Package::factory()->create();
+
+    Product::factory()->create([
+        'package_id' => $package->id,
+        'serial' => 'CUS-TABLE-01',
+        'name' => 'Custom Table Product',
+        'slug' => 'custom-table-product',
+        'amount_mode' => ProductAmountMode::Custom->value,
+        'amount_unit_label' => 'GB',
+        'custom_amount_min' => 1,
+        'custom_amount_max' => 500,
+        'custom_amount_step' => 5,
+        'entry_price' => 0.5,
+        'is_active' => true,
+        'order' => 10,
+    ]);
+
+    $this->actingAs($user)
+        ->get('/products')
+        ->assertOk()
+        ->assertSee(__('messages.amount_mode_custom'))
+        ->assertSee(__('messages.custom_amount_min').': 1', false)
+        ->assertSee(__('messages.custom_amount_max').': 500', false)
+        ->assertSee(__('messages.custom_amount_step').': 5', false);
+});

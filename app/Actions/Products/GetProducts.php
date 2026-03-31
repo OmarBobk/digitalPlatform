@@ -32,6 +32,9 @@ class GetProducts
                 'created_at',
                 'amount_mode',
                 'amount_unit_label',
+                'custom_amount_min',
+                'custom_amount_max',
+                'custom_amount_step',
             ]);
 
         if ($search !== '') {
