@@ -193,6 +193,8 @@ test('custom amount pricing keeps precision for large amount and small entry pri
 });
 
 test('custom amount hard limit rejects oversized requested amount', function () {
+    config()->set('billing.custom_amount_hard_cap', 100000);
+
     $user = User::factory()->create();
     $package = Package::factory()->create();
     $product = Product::factory()->create([
