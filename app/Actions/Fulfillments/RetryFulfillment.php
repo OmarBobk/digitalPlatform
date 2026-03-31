@@ -71,6 +71,8 @@ class RetryFulfillment
 
             $lockedFulfillment->fill([
                 'status' => FulfillmentStatus::Queued,
+                'claimed_by' => null,
+                'claimed_at' => null,
                 'last_error' => null,
                 'processed_at' => null,
                 'completed_at' => null,
@@ -114,7 +116,7 @@ class RetryFulfillment
 
             $fulfillmentId = $lockedFulfillment->id;
             DB::afterCommit(static function () use ($fulfillmentId): void {
-                event(new FulfillmentListChanged($fulfillmentId, 'status-updated'));
+                event(new FulfillmentListChanged($fulfillmentId, 'created'));
             });
 
             return $lockedFulfillment->refresh();

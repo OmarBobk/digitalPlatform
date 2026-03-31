@@ -101,7 +101,7 @@ class CompleteFulfillment
 
             $fulfillmentId = $lockedFulfillment->id;
             DB::afterCommit(static function () use ($fulfillmentId): void {
-                event(new FulfillmentListChanged($fulfillmentId, 'status-updated'));
+                event(new FulfillmentListChanged($fulfillmentId, 'completed'));
             });
 
             return $lockedFulfillment->refresh();

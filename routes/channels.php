@@ -17,7 +17,7 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 });
 
 Broadcast::channel('admin.fulfillments', function ($user) {
-    return $user !== null && $user->hasRole('admin');
+    return $user !== null && $user->can('view_fulfillments');
 });
 
 Broadcast::channel('admin.topups', function ($user) {

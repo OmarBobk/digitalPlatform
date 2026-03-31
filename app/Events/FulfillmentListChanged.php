@@ -14,7 +14,7 @@ class FulfillmentListChanged implements ShouldBroadcastNow
 
     public function __construct(
         public readonly ?int $fulfillmentId = null,
-        public readonly ?string $reason = null,
+        public readonly ?string $type = null,
     ) {}
 
     /**
@@ -39,7 +39,7 @@ class FulfillmentListChanged implements ShouldBroadcastNow
     {
         return array_filter([
             'fulfillment_id' => $this->fulfillmentId,
-            'reason' => $this->reason,
+            'type' => $this->type,
         ], static fn ($value) => $value !== null && $value !== '');
     }
 }

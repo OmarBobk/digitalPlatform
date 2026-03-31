@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Fulfillments\AppendFulfillmentLog;
+use App\Actions\Fulfillments\ClaimFulfillment;
 use App\Actions\Fulfillments\CompleteFulfillment;
 use App\Actions\Fulfillments\CreateFulfillmentsForOrder;
 use App\Actions\Fulfillments\FailFulfillment;
@@ -12,6 +13,7 @@ use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\ProductAmountMode;
 use App\Events\FulfillmentListChanged;
+use App\Models\Category;
 use App\Models\Fulfillment;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -22,6 +24,7 @@ use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -40,7 +43,13 @@ beforeEach(function (): void {
 function makeFulfillment(): Fulfillment
 {
     $user = User::factory()->create();
-    $package = Package::factory()->create();
+    $category = Category::factory()->create([
+        'order' => fake()->unique()->numberBetween(1, 1000000),
+    ]);
+    $package = Package::factory()->create([
+        'category_id' => $category->id,
+        'order' => fake()->unique()->numberBetween(1, 1000000),
+    ]);
     $product = Product::factory()->create(['package_id' => $package->id, 'entry_price' => 20]);
 
     $order = Order::create([
@@ -278,7 +287,7 @@ test('create fulfillments dispatches list changed event', function () {
     (new CreateFulfillmentsForOrder)->handle($order);
 
     Event::assertDispatched(FulfillmentListChanged::class, function (FulfillmentListChanged $event): bool {
-        return $event->reason === 'created' && is_int($event->fulfillmentId);
+        return $event->type === 'created' && is_int($event->fulfillmentId);
     });
 });
 
@@ -394,8 +403,59 @@ test('fulfillment lifecycle dispatches list changed events', function () {
 
     Event::assertDispatchedTimes(FulfillmentListChanged::class, 2);
     Event::assertDispatched(FulfillmentListChanged::class, function (FulfillmentListChanged $event): bool {
-        return $event->reason === 'status-updated' && is_int($event->fulfillmentId);
+        return in_array($event->type, ['processing', 'completed'], true) && is_int($event->fulfillmentId);
     });
+});
+
+test('single claim success marks fulfillment as processing and claimed', function () {
+    $supervisor = User::factory()->create();
+    $supervisor->givePermissionTo('manage_fulfillments');
+
+    $fulfillment = makeFulfillment();
+
+    $claimed = app(ClaimFulfillment::class)->handle($fulfillment, $supervisor->id);
+
+    expect($claimed->claimed_by)->toBe($supervisor->id);
+    expect($claimed->claimed_at)->not->toBeNull();
+    expect($claimed->status)->toBe(FulfillmentStatus::Processing);
+});
+
+test('second claim attempt on same fulfillment fails', function () {
+    $first = User::factory()->create();
+    $second = User::factory()->create();
+    $first->givePermissionTo('manage_fulfillments');
+    $second->givePermissionTo('manage_fulfillments');
+
+    $fulfillment = makeFulfillment();
+
+    app(ClaimFulfillment::class)->handle($fulfillment, $first->id);
+
+    expect(fn () => app(ClaimFulfillment::class)->handle($fulfillment->refresh(), $second->id))
+        ->toThrow(ValidationException::class);
+
+    expect($fulfillment->refresh()->claimed_by)->toBe($first->id);
+});
+
+test('claim rejects when supervisor already has five active tasks', function () {
+    $supervisor = User::factory()->create();
+    $supervisor->givePermissionTo('manage_fulfillments');
+
+    for ($i = 0; $i < 5; $i++) {
+        $active = makeFulfillment();
+        $active->update([
+            'status' => FulfillmentStatus::Processing,
+            'claimed_by' => $supervisor->id,
+            'claimed_at' => now(),
+        ]);
+    }
+
+    $next = makeFulfillment();
+
+    expect(fn () => app(ClaimFulfillment::class)->handle($next, $supervisor->id))
+        ->toThrow(ValidationException::class);
+
+    expect($next->refresh()->claimed_by)->toBeNull();
+    expect($next->status)->toBe(FulfillmentStatus::Queued);
 });
 
 test('completing twice does not double log', function () {
@@ -425,6 +485,8 @@ test('failed fulfillment can be retried and completed', function () {
     $fulfillment->refresh();
 
     expect($fulfillment->status)->toBe(FulfillmentStatus::Queued);
+    expect($fulfillment->claimed_by)->toBeNull();
+    expect($fulfillment->claimed_at)->toBeNull();
     expect($fulfillment->last_error)->toBeNull();
 
     (new StartFulfillment)->handle($fulfillment, 'system');
@@ -433,6 +495,22 @@ test('failed fulfillment can be retried and completed', function () {
     $fulfillment->refresh();
     expect($fulfillment->status)->toBe(FulfillmentStatus::Completed);
     expect($fulfillment->orderItem->refresh()->status)->toBe(OrderItemStatus::Fulfilled);
+});
+
+test('supervisor cannot update fulfillment claimed by another supervisor', function () {
+    $owner = User::factory()->create();
+    $other = User::factory()->create();
+    $owner->givePermissionTo('manage_fulfillments');
+    $other->givePermissionTo('manage_fulfillments');
+
+    $fulfillment = makeFulfillment();
+    $fulfillment->update([
+        'status' => FulfillmentStatus::Processing,
+        'claimed_by' => $owner->id,
+        'claimed_at' => now(),
+    ]);
+
+    expect($other->can('update', $fulfillment->refresh()))->toBeFalse();
 });
 
 test('admin can fail fulfillment and refund immediately', function () {
@@ -475,6 +553,5 @@ test('admin can fail fulfillment and refund immediately', function () {
         ->assertDontSeeHtml('wire:click="markProcessing(')
         ->assertDontSeeHtml('wire:click="openCompleteModal(')
         ->assertDontSeeHtml('wire:click="openFailModal(')
-        ->assertDontSeeHtml('wire:click="retryFulfillment(')
-        ->assertSeeHtml('wire:click="openDetails(');
+        ->assertDontSeeHtml('wire:click="retryFulfillment(');
 });

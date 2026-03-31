@@ -27,12 +27,14 @@ class Fulfillment extends Model
     protected $fillable = [
         'order_id',
         'order_item_id',
+        'claimed_by',
         'provider',
         'status',
         'attempts',
         'last_error',
         'processed_at',
         'completed_at',
+        'claimed_at',
         'meta',
     ];
 
@@ -46,10 +48,12 @@ class Fulfillment extends Model
         return [
             'order_id' => 'integer',
             'order_item_id' => 'integer',
+            'claimed_by' => 'integer',
             'status' => FulfillmentStatus::class,
             'attempts' => 'integer',
             'processed_at' => 'datetime',
             'completed_at' => 'datetime',
+            'claimed_at' => 'datetime',
             'meta' => 'array',
         ];
     }
@@ -62,6 +66,11 @@ class Fulfillment extends Model
     public function orderItem(): BelongsTo
     {
         return $this->belongsTo(OrderItem::class);
+    }
+
+    public function claimer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'claimed_by');
     }
 
     public function logs(): HasMany

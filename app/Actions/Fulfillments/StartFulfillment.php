@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace App\Actions\Fulfillments;
 
-use App\Enums\FulfillmentLogLevel;
+use App\Actions\Fulfillments\Concerns\TransitionsFulfillmentToProcessing;
 use App\Enums\FulfillmentStatus;
 use App\Events\FulfillmentListChanged;
 use App\Models\Fulfillment;
-use App\Models\OrderItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class StartFulfillment
 {
+    use TransitionsFulfillmentToProcessing;
+
     public function handle(
         Fulfillment $fulfillment,
         string $actor = 'system',
@@ -30,69 +31,29 @@ class StartFulfillment
                 return $lockedFulfillment;
             }
 
-            $statusFrom = $lockedFulfillment->status;
+            if ($actorId !== null && $this->mustOwnClaimToStart($actorId, $lockedFulfillment)) {
+                return $lockedFulfillment;
+            }
 
-            $lockedFulfillment->fill([
-                'status' => FulfillmentStatus::Processing,
-                'processed_at' => $lockedFulfillment->processed_at ?? now(),
-                'attempts' => $lockedFulfillment->attempts + 1,
-                'last_error' => null,
-            ])->save();
-
-            $orderItem = OrderItem::query()
-                ->whereKey($lockedFulfillment->order_item_id)
-                ->lockForUpdate()
-                ->firstOrFail();
-            $fulfillments = Fulfillment::query()
-                ->where('order_item_id', $orderItem->id)
-                ->lockForUpdate()
-                ->get();
-            $orderItem->syncStatusFromFulfillments($fulfillments);
-
-            app(AppendFulfillmentLog::class)->handle(
-                $lockedFulfillment,
-                FulfillmentLogLevel::Info,
-                'Fulfillment started',
-                $this->buildContext('start', $actor, $actorId, $meta)
-            );
-
-            activity()
-                ->inLog('fulfillment')
-                ->event('fulfillment.processing')
-                ->performedOn($lockedFulfillment)
-                ->causedBy($actorId ? User::query()->find($actorId) : null)
-                ->withProperties(array_filter([
-                    'fulfillment_id' => $lockedFulfillment->id,
-                    'order_id' => $lockedFulfillment->order_id,
-                    'order_item_id' => $lockedFulfillment->order_item_id,
-                    'provider' => $lockedFulfillment->provider,
-                    'status_from' => $statusFrom->value,
-                    'status_to' => FulfillmentStatus::Processing->value,
-                    'attempts' => $lockedFulfillment->attempts,
-                    'actor' => $actor,
-                    'actor_id' => $actorId,
-                ], fn ($value) => $value !== null && $value !== ''))
-                ->log('Fulfillment processing');
+            $this->transitionToProcessing($lockedFulfillment, $actor, $actorId, $meta);
 
             $fulfillmentId = $lockedFulfillment->id;
             DB::afterCommit(static function () use ($fulfillmentId): void {
-                event(new FulfillmentListChanged($fulfillmentId, 'status-updated'));
+                event(new FulfillmentListChanged($fulfillmentId, 'processing'));
             });
 
             return $lockedFulfillment->refresh();
         });
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function buildContext(string $action, string $actor, ?int $actorId, array $meta): array
+    private function mustOwnClaimToStart(int $actorId, Fulfillment $fulfillment): bool
     {
-        return array_filter([
-            'action' => $action,
-            'actor' => $actor,
-            'actor_id' => $actorId,
-            'meta' => $meta !== [] ? $meta : null,
-        ], fn ($value) => $value !== null);
+        $actor = User::query()->find($actorId);
+
+        if ($actor?->hasRole('admin')) {
+            return false;
+        }
+
+        return $fulfillment->claimed_by !== $actorId;
     }
 }

@@ -22,7 +22,7 @@ if (import.meta.env.VITE_REVERB_APP_KEY && window.Laravel?.userId) {
     });
 }
 
-if (import.meta.env.VITE_REVERB_APP_KEY && window.Laravel?.isAdmin) {
+if (import.meta.env.VITE_REVERB_APP_KEY && window.Laravel?.canViewFulfillments) {
     window.Echo.private('admin.fulfillments').listen('.FulfillmentListChanged', (payload) => {
         if (window.Livewire?.dispatch) {
             window.Livewire.dispatch('fulfillment-list-updated', payload ?? {});
@@ -31,7 +31,9 @@ if (import.meta.env.VITE_REVERB_APP_KEY && window.Laravel?.isAdmin) {
 
         window.dispatchEvent(new CustomEvent('fulfillment-list-updated', { detail: payload || {} }));
     });
+}
 
+if (import.meta.env.VITE_REVERB_APP_KEY && window.Laravel?.isAdmin) {
     window.Echo.private('admin.topups').listen('.TopupRequestsChanged', (payload) => {
         if (window.Livewire?.dispatch) {
             window.Livewire.dispatch('topup-list-updated', payload ?? {});

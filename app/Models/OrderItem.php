@@ -55,7 +55,7 @@ class OrderItem extends Model
             'product_id' => 'integer',
             'package_id' => 'integer',
             'unit_price' => 'decimal:2',
-            'entry_price' => 'decimal:2',
+            'entry_price' => 'decimal:8',
             'quantity' => 'integer',
             'amount_mode' => ProductAmountMode::class,
             'requested_amount' => 'integer',

@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Fulfillments\CompleteFulfillment;
+use App\Actions\Fulfillments\ClaimFulfillment;
 use App\Actions\Fulfillments\FailFulfillment;
 use App\Actions\Fulfillments\GetFulfillments;
 use App\Actions\Fulfillments\RetryFulfillment;
@@ -8,11 +9,16 @@ use App\Actions\Fulfillments\StartFulfillment;
 use App\Actions\Orders\RefundOrderItem;
 use App\Actions\Refunds\ApproveRefundRequest;
 use App\Enums\FulfillmentStatus;
+use App\Enums\ProductAmountMode;
 use App\Enums\WalletTransactionType;
 use App\Models\Fulfillment;
 use App\Models\Order;
+use App\Models\User;
 use App\Models\WalletTransaction;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Url;
 use Livewire\Attributes\On;
@@ -29,6 +35,8 @@ new class extends Component
     public string $search = '';
     public string $statusFilter = 'all';
     public int $perPage = 10;
+    #[Url]
+    public string $scope = 'unclaimed';
 
     public ?int $selectedFulfillmentId = null;
     public bool $showDetailsModal = false;
@@ -39,6 +47,12 @@ new class extends Component
     public ?string $failureReason = null;
     public bool $refundAfterFail = false;
     public bool $autoDonePayload = false;
+    public ?int $adminTableSupervisorId = null;
+    public ?string $adminTableStatusFilter = null;
+    public array $hiddenQueueFulfillmentIds = [];
+    public array $hiddenMyFulfillmentIds = [];
+    public array $prependedQueueFulfillmentIds = [];
+    public array $prependedMyFulfillmentIds = [];
 
     public function mount(): void
     {
@@ -47,17 +61,47 @@ new class extends Component
 
     public function applyFilters(): void
     {
+        $this->hiddenQueueFulfillmentIds = [];
+        $this->hiddenMyFulfillmentIds = [];
+        $this->prependedQueueFulfillmentIds = [];
+        $this->prependedMyFulfillmentIds = [];
         $this->resetPage();
     }
 
     public function resetFilters(): void
     {
         $this->reset(['search', 'statusFilter', 'perPage']);
+        $this->adminTableSupervisorId = null;
+        $this->adminTableStatusFilter = null;
+        $this->hiddenQueueFulfillmentIds = [];
+        $this->hiddenMyFulfillmentIds = [];
+        $this->prependedQueueFulfillmentIds = [];
+        $this->prependedMyFulfillmentIds = [];
         $this->resetPage();
+    }
+
+    public function openAdminTableForSupervisorStatus(int $supervisorId, string $status): void
+    {
+        if (! $this->isAdmin) {
+            return;
+        }
+
+        $resolvedStatus = FulfillmentStatus::tryFrom($status);
+
+        if ($resolvedStatus === null || ! in_array($resolvedStatus, [FulfillmentStatus::Completed, FulfillmentStatus::Failed], true)) {
+            return;
+        }
+
+        $this->adminTableSupervisorId = $supervisorId;
+        $this->adminTableStatusFilter = $resolvedStatus->value;
+        $this->resetPage();
+        $this->dispatch('open-admin-table-tab');
     }
 
     public function openDetails(int $fulfillmentId): void
     {
+        $fulfillment = Fulfillment::query()->findOrFail($fulfillmentId);
+        $this->authorize('view', $fulfillment);
         $this->selectedFulfillmentId = $fulfillmentId;
         $this->showDetailsModal = true;
     }
@@ -76,11 +120,31 @@ new class extends Component
         $this->success(__('messages.fulfillment_marked_processing'));
     }
 
+    public function claimFulfillment(int $fulfillmentId): void
+    {
+        $fulfillment = Fulfillment::query()->findOrFail($fulfillmentId);
+        $this->authorize('claim', $fulfillment);
+
+        try {
+            app(ClaimFulfillment::class)->handle($fulfillment, (int) auth()->id());
+            $this->hiddenQueueFulfillmentIds[$fulfillmentId] = $fulfillmentId;
+            $this->prependedMyFulfillmentIds[$fulfillmentId] = $fulfillmentId;
+            $this->success(__('messages.fulfillment_claimed'));
+        } catch (ValidationException $exception) {
+            $this->error($exception->validator->errors()->first() ?: __('messages.fulfillment_claim_failed'));
+        }
+    }
+
     public function openCompleteModal(int $fulfillmentId): void
     {
         $this->reset('deliveredPayloadInput', 'autoDonePayload');
         $this->selectedFulfillmentId = $fulfillmentId;
         $this->showCompleteModal = true;
+    }
+
+    public function openForceCompleteModal(int $fulfillmentId): void
+    {
+        $this->openCompleteModal($fulfillmentId);
     }
 
     public function completeFulfillment(): void
@@ -125,6 +189,11 @@ new class extends Component
         $this->reset('failureReason', 'refundAfterFail');
         $this->selectedFulfillmentId = $fulfillmentId;
         $this->showFailModal = true;
+    }
+
+    public function openForceFailModal(int $fulfillmentId): void
+    {
+        $this->openFailModal($fulfillmentId);
     }
 
     public function failFulfillment(): void
@@ -175,15 +244,378 @@ new class extends Component
     }
 
     #[On('fulfillment-list-updated')]
-    public function refreshFulfillments(): void
+    public function refreshFulfillments(array $payload = []): void
     {
-        $this->resetPage();
-        $this->dispatch('$refresh');
+        if ($this->getPage() !== 1) {
+            return;
+        }
+
+        $fulfillmentId = (int) ($payload['fulfillment_id'] ?? 0);
+        $type = (string) ($payload['type'] ?? '');
+
+        if ($fulfillmentId <= 0 || ! in_array($type, ['created', 'claimed', 'processing', 'completed', 'failed'], true)) {
+            return;
+        }
+
+        if ($type === 'created') {
+            $this->prependedQueueFulfillmentIds[$fulfillmentId] = $fulfillmentId;
+            return;
+        }
+
+        if ($type === 'claimed') {
+            $this->hiddenQueueFulfillmentIds[$fulfillmentId] = $fulfillmentId;
+            unset($this->prependedQueueFulfillmentIds[$fulfillmentId]);
+            $claimedFulfillment = Fulfillment::query()
+                ->select(['id', 'claimed_by'])
+                ->whereKey($fulfillmentId)
+                ->first();
+            if ($this->isAdmin || $claimedFulfillment?->claimed_by === auth()->id()) {
+                $this->prependedMyFulfillmentIds[$fulfillmentId] = $fulfillmentId;
+            }
+            return;
+        }
+
+        if (in_array($type, ['completed', 'failed'], true)) {
+            $this->hiddenMyFulfillmentIds[$fulfillmentId] = $fulfillmentId;
+            unset($this->prependedMyFulfillmentIds[$fulfillmentId]);
+        }
     }
 
-    public function getFulfillmentsProperty(): LengthAwarePaginator
+    public function getQueuePageProperty(): LengthAwarePaginator
     {
-        return app(GetFulfillments::class)->handle($this->search, $this->statusFilter, $this->perPage);
+        return app(GetFulfillments::class)->handle(
+            $this->search,
+            $this->statusFilter,
+            $this->perPage,
+            'unclaimed',
+            auth()->id(),
+            $this->isAdmin
+        );
+    }
+
+    public function getMyPageProperty(): LengthAwarePaginator
+    {
+        if ($this->isAdmin) {
+            return app(GetFulfillments::class)->handle(
+                $this->search,
+                FulfillmentStatus::Processing->value,
+                $this->perPage,
+                'all',
+                auth()->id(),
+                true
+            );
+        }
+
+        return app(GetFulfillments::class)->handle(
+            $this->search,
+            $this->statusFilter,
+            $this->perPage,
+            'mine',
+            auth()->id(),
+            $this->isAdmin
+        );
+    }
+
+    public function getAllPageProperty(): LengthAwarePaginator
+    {
+        return app(GetFulfillments::class)->handle(
+            $this->search,
+            $this->adminTableStatusFilter ?? $this->statusFilter,
+            $this->perPage,
+            'all',
+            auth()->id(),
+            $this->isAdmin,
+            $this->adminTableSupervisorId,
+            null
+        );
+    }
+
+    public function getQueueCardsProperty(): Collection
+    {
+        $collection = $this->queuePage->getCollection()
+            ->reject(fn ($fulfillment) => in_array($fulfillment->id, $this->hiddenQueueFulfillmentIds, true))
+            ->values();
+
+        if ($this->prependedQueueFulfillmentIds === []) {
+            return $collection;
+        }
+
+        $alreadyPresent = $collection->pluck('id')->all();
+        $prependIds = collect($this->prependedQueueFulfillmentIds)
+            ->diff($alreadyPresent)
+            ->values()
+            ->all();
+
+        if ($prependIds === []) {
+            return $collection;
+        }
+
+        $prepended = Fulfillment::query()
+            ->whereIn('id', $prependIds)
+            ->where('status', FulfillmentStatus::Queued)
+            ->whereNull('claimed_by')
+            ->with([
+                'order:id,user_id,order_number,total,currency',
+                'order.user:id,name,email',
+                'orderItem:id,order_id,product_id,name,requirements_payload',
+                'orderItem.product:id,name',
+            ])
+            ->orderByDesc('created_at')
+            ->get();
+
+        return $prepended->concat($collection)->unique('id')->values();
+    }
+
+    public function getMyCardsProperty(): Collection
+    {
+        $collection = $this->myPage->getCollection()
+            ->reject(fn ($fulfillment) => in_array($fulfillment->id, $this->hiddenMyFulfillmentIds, true))
+            ->values();
+
+        if ($this->prependedMyFulfillmentIds === []) {
+            return $collection;
+        }
+
+        $alreadyPresent = $collection->pluck('id')->all();
+        $prependIds = collect($this->prependedMyFulfillmentIds)
+            ->diff($alreadyPresent)
+            ->values()
+            ->all();
+
+        if ($prependIds === []) {
+            return $collection;
+        }
+
+        $prepended = Fulfillment::query()
+            ->whereIn('id', $prependIds)
+            ->where('claimed_by', auth()->id())
+            ->with([
+                'order:id,user_id,order_number,total,currency',
+                'order.user:id,name,email',
+                'orderItem:id,order_id,product_id,package_id,name,quantity,requirements_payload',
+                'orderItem.product:id,name,slug',
+                'claimer:id,username,name',
+            ])
+            ->orderByDesc('created_at')
+            ->get();
+
+        return $prepended->concat($collection)->unique('id')->values();
+    }
+
+    public function getActiveClaimedCountProperty(): int
+    {
+        if ($this->isAdmin) {
+            return Fulfillment::query()
+                ->where('status', FulfillmentStatus::Processing)
+                ->count();
+        }
+
+        return Fulfillment::query()
+            ->where('claimed_by', auth()->id())
+            ->where('status', FulfillmentStatus::Processing)
+            ->count();
+    }
+
+    public function getIsAdminProperty(): bool
+    {
+        return auth()->user()?->hasRole('admin') === true;
+    }
+
+    public function getSystemOverviewProperty(): array
+    {
+        $queued = Fulfillment::query()
+            ->where('status', FulfillmentStatus::Queued)
+            ->count();
+        $processing = Fulfillment::query()
+            ->where('status', FulfillmentStatus::Processing)
+            ->count();
+        $completed = Fulfillment::query()
+            ->where('status', FulfillmentStatus::Completed)
+            ->count();
+        $activeSupervisors = Fulfillment::query()
+            ->where('status', FulfillmentStatus::Processing)
+            ->whereNotNull('claimed_by')
+            ->distinct('claimed_by')
+            ->count('claimed_by');
+
+        $load = $processing >= 20 ? 'high' : ($processing >= 8 ? 'medium' : 'normal');
+
+        return [
+            'queued' => $queued,
+            'processing' => $processing,
+            'completed' => $completed,
+            'active_supervisors' => $activeSupervisors,
+            'load' => $load,
+        ];
+    }
+
+    public function getSupervisorHealthProperty(): Collection
+    {
+        $supervisors = User::query()
+            ->where(function ($query): void {
+                $query
+                    ->permission('manage_fulfillments')
+                    ->orWhereHas('roles', fn ($roleQuery) => $roleQuery->where('name', 'admin'));
+            })
+            ->select(['id', 'name', 'username'])
+            ->get();
+
+        if ($supervisors->isEmpty()) {
+            return collect();
+        }
+
+        $activeCounts = Fulfillment::query()
+            ->selectRaw('claimed_by, COUNT(*) as active_tasks')
+            ->where('status', FulfillmentStatus::Processing)
+            ->whereIn('claimed_by', $supervisors->pluck('id')->all())
+            ->groupBy('claimed_by')
+            ->pluck('active_tasks', 'claimed_by');
+
+        $completedCounts = Fulfillment::query()
+            ->selectRaw('claimed_by, COUNT(*) as completed_tasks')
+            ->where('status', FulfillmentStatus::Completed)
+            ->whereIn('claimed_by', $supervisors->pluck('id')->all())
+            ->groupBy('claimed_by')
+            ->pluck('completed_tasks', 'claimed_by');
+
+        $failedCounts = Fulfillment::query()
+            ->selectRaw('claimed_by, COUNT(*) as failed_tasks')
+            ->where('status', FulfillmentStatus::Failed)
+            ->whereIn('claimed_by', $supervisors->pluck('id')->all())
+            ->groupBy('claimed_by')
+            ->pluck('failed_tasks', 'claimed_by');
+
+        $lastActivity = Fulfillment::query()
+            ->selectRaw('claimed_by, MAX(updated_at) as last_activity_at')
+            ->whereIn('claimed_by', $supervisors->pluck('id')->all())
+            ->groupBy('claimed_by')
+            ->pluck('last_activity_at', 'claimed_by');
+
+        return $supervisors
+            ->map(function (User $supervisor) use ($activeCounts, $completedCounts, $failedCounts, $lastActivity): array {
+                $activeTasks = (int) ($activeCounts[$supervisor->id] ?? 0);
+                $status = $activeTasks >= 5 ? 'overloaded' : ($activeTasks >= 4 ? 'busy' : ($activeTasks > 0 ? 'active' : 'idle'));
+
+                return [
+                    'id' => $supervisor->id,
+                    'name' => $supervisor->name ?: $supervisor->username ?: ('#'.$supervisor->id),
+                    'active_tasks' => $activeTasks,
+                    'completed_tasks' => (int) ($completedCounts[$supervisor->id] ?? 0),
+                    'failed_tasks' => (int) ($failedCounts[$supervisor->id] ?? 0),
+                    'status' => $status,
+                    'last_activity_at' => $lastActivity[$supervisor->id] ?? null,
+                ];
+            })
+            ->sortByDesc('active_tasks')
+            ->values();
+    }
+
+    public function getDistributionBucketsProperty(): Collection
+    {
+        return Fulfillment::query()
+            ->where('status', FulfillmentStatus::Processing)
+            ->with([
+                'claimer:id,name,username',
+                'order:user_id,id,order_number,total,currency',
+                'orderItem:id,order_id,name',
+            ])
+            ->latest('updated_at')
+            ->get()
+            ->groupBy('claimed_by')
+            ->map(function (Collection $items): array {
+                $first = $items->first();
+                $claimerName = $first?->claimer?->name ?: $first?->claimer?->username ?: __('messages.unknown_user');
+
+                return [
+                    'claimer_name' => $claimerName,
+                    'count' => $items->count(),
+                    'items' => $items->take(8),
+                ];
+            })
+            ->sortByDesc('count')
+            ->values();
+    }
+
+    public function getAdminAlertsProperty(): Collection
+    {
+        if (! $this->isAdmin) {
+            return collect();
+        }
+
+        $alerts = collect();
+        $queued = (int) $this->systemOverview['queued'];
+        $processing = (int) $this->systemOverview['processing'];
+        $activeSupervisors = (int) $this->systemOverview['active_supervisors'];
+        $overloadedSupervisors = $this->supervisorHealth
+            ->where('status', 'overloaded')
+            ->count();
+
+        if ($queued >= 25 && $processing <= 5) {
+            $alerts->push([
+                'level' => 'amber',
+                'title' => 'Queue backlog rising',
+                'message' => 'Queue is growing faster than processing throughput. Check assignments and blockers.',
+            ]);
+        }
+
+        if ($overloadedSupervisors > 0) {
+            $alerts->push([
+                'level' => 'red',
+                'title' => 'Supervisor overload detected',
+                'message' => $overloadedSupervisors.' supervisor(s) are at 5/5 active tasks.',
+            ]);
+        }
+
+        if ($activeSupervisors === 0 && $queued > 0) {
+            $alerts->push([
+                'level' => 'zinc',
+                'title' => 'No active supervisors',
+                'message' => 'Tasks are queued but no supervisor is currently processing.',
+            ]);
+        }
+
+        return $alerts->take(3);
+    }
+
+    public function getQueueCountProperty(): int
+    {
+        return Fulfillment::query()
+            ->where('status', FulfillmentStatus::Queued)
+            ->whereNull('claimed_by')
+            ->count();
+    }
+
+    public function getAverageProcessingMinutesProperty(): ?int
+    {
+        $completed = Fulfillment::query()
+            ->select(['processed_at', 'completed_at'])
+            ->whereNotNull('processed_at')
+            ->whereNotNull('completed_at')
+            ->latest('completed_at')
+            ->limit(50)
+            ->get();
+
+        if ($completed->isEmpty()) {
+            return null;
+        }
+
+        $seconds = $completed
+            ->map(fn (Fulfillment $fulfillment): int => max(
+                0,
+                (int) $fulfillment->completed_at?->diffInSeconds($fulfillment->processed_at, false)
+            ))
+            ->sum();
+
+        return (int) round(($seconds / max(1, $completed->count())) / 60);
+    }
+
+    public function getCanClaimMoreProperty(): bool
+    {
+        if (auth()->user()?->hasRole('admin')) {
+            return true;
+        }
+
+        return $this->activeClaimedCount < 5;
     }
 
     public function getSelectedFulfillmentProperty(): ?Fulfillment
@@ -256,11 +688,46 @@ new class extends Component
         return ['code' => $input];
     }
 
+    private function requirementsToken(mixed $payload): ?string
+    {
+        if (blank($payload)) {
+            return null;
+        }
+
+        if (is_array($payload)) {
+            $id = data_get($payload, 'id');
+
+            if (filled($id)) {
+                return 'id: '.$id;
+            }
+
+            $firstScalar = collect($payload)->first(fn (mixed $value): bool => is_scalar($value) && filled($value));
+
+            return filled($firstScalar) ? (string) $firstScalar : null;
+        }
+
+        if (is_string($payload)) {
+            $decoded = json_decode($payload, true);
+
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $decodedId = data_get($decoded, 'id');
+
+                if (filled($decodedId)) {
+                    return 'id: '.$decodedId;
+                }
+            }
+
+            return filled(trim($payload)) ? Str::limit(trim($payload), 36) : null;
+        }
+
+        return null;
+    }
+
     protected function statusBadgeColor(FulfillmentStatus $status): string
     {
         return match ($status) {
             FulfillmentStatus::Queued => 'gray',
-            FulfillmentStatus::Processing => 'amber',
+            FulfillmentStatus::Processing => 'cyan',
             FulfillmentStatus::Completed => 'green',
             FulfillmentStatus::Failed => 'red',
             default => 'gray',
@@ -269,11 +736,50 @@ new class extends Component
 };
 ?>
 
-<div class="flex h-full w-full flex-1 flex-col gap-6">
-    <section class="relative overflow-hidden rounded-3xl border border-zinc-200/80 bg-white p-5 shadow-sm shadow-zinc-200/60 dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-none">
+<div
+    class="flex h-full w-full flex-1 flex-col gap-4"
+    x-data="{
+        adminTab: 'queue',
+        setAdminTab(tab) { this.adminTab = tab; },
+        adminTabs: ['queue', 'distribution', 'table'],
+        tabButtonClass(tab) {
+            return this.adminTab === tab
+                ? '!bg-zinc-900 !text-white dark:!bg-zinc-200 dark:!text-zinc-900'
+                : '';
+        },
+        moveTab(step) {
+            const currentIndex = this.adminTabs.indexOf(this.adminTab);
+            const nextIndex = (currentIndex + step + this.adminTabs.length) % this.adminTabs.length;
+            this.adminTab = this.adminTabs[nextIndex];
+        },
+        firstTab() { this.adminTab = this.adminTabs[0]; },
+        lastTab() { this.adminTab = this.adminTabs[this.adminTabs.length - 1]; },
+        nowTs: Date.now(),
+        init() {
+            window.addEventListener('open-admin-table-tab', () => {
+                this.adminTab = 'table';
+            });
+        },
+        startTicker() {
+            setInterval(() => { this.nowTs = Date.now(); }, 60000);
+        },
+        relativeTime(epochMs) {
+            const diff = Math.max(0, Math.floor((this.nowTs - epochMs) / 1000));
+            if (diff < 60) return 'just now';
+            const minutes = Math.floor(diff / 60);
+            if (minutes < 60) return `${minutes} min ago`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours} hr ago`;
+            const days = Math.floor(hours / 24);
+            return `${days} day ago`;
+        }
+    }"
+    x-init="init(); startTicker()"
+>
+    <section class="sticky top-0 z-20 rounded-2xl border border-zinc-200/80 bg-white/95 p-4 shadow-sm backdrop-blur-md dark:border-zinc-700 dark:bg-zinc-900/95">
         <div class="pointer-events-none absolute inset-x-0 top-0 h-24 bg-linear-to-r from-emerald-500/10 via-cyan-500/10 to-blue-500/10 dark:from-emerald-400/5 dark:via-cyan-400/5 dark:to-blue-400/5"></div>
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="relative space-y-1">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div class="space-y-1">
                 <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
                     {{ __('messages.fulfillments') }}
                 </flux:heading>
@@ -283,243 +789,468 @@ new class extends Component
             </div>
         </div>
 
-        @php
-            $pageFulfillments = $this->fulfillments->getCollection();
-            $queuedCount = $pageFulfillments->where('status', \App\Enums\FulfillmentStatus::Queued)->count();
-            $processingCount = $pageFulfillments->where('status', \App\Enums\FulfillmentStatus::Processing)->count();
-            $completedCount = $pageFulfillments->where('status', \App\Enums\FulfillmentStatus::Completed)->count();
-            $failedCount = $pageFulfillments->where('status', \App\Enums\FulfillmentStatus::Failed)->count();
-        @endphp
-
-        <div class="relative mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            <div class="rounded-2xl border border-zinc-200 bg-white/90 px-4 py-3 backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/70">
-                <div class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{{ __('messages.total') }}</div>
-                <div class="mt-1 text-xl font-semibold text-zinc-900 dark:text-zinc-100">{{ number_format($this->fulfillments->total()) }}</div>
-            </div>
-            <div class="rounded-2xl border border-zinc-200 bg-zinc-50/90 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800/70">
-                <div class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{{ __('messages.fulfillment_status_queued') }}</div>
-                <div class="mt-1 text-xl font-semibold text-zinc-900 dark:text-zinc-100">{{ $queuedCount }}</div>
-            </div>
-            <div class="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 dark:border-amber-500/40 dark:bg-amber-500/10">
-                <div class="text-[11px] uppercase tracking-wide text-amber-700 dark:text-amber-300">{{ __('messages.fulfillment_status_processing') }}</div>
-                <div class="mt-1 text-xl font-semibold text-amber-800 dark:text-amber-200">{{ $processingCount }}</div>
-            </div>
-            <div class="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 dark:border-emerald-500/40 dark:bg-emerald-500/10">
-                <div class="text-[11px] uppercase tracking-wide text-emerald-700 dark:text-emerald-300">{{ __('messages.fulfillment_status_completed') }}</div>
-                <div class="mt-1 text-xl font-semibold text-emerald-800 dark:text-emerald-200">{{ $completedCount }}</div>
-            </div>
-            <div class="rounded-2xl border border-red-200 bg-red-50/80 px-4 py-3 dark:border-red-500/40 dark:bg-red-500/10">
-                <div class="text-[11px] uppercase tracking-wide text-red-700 dark:text-red-300">{{ __('messages.fulfillment_status_failed') }}</div>
-                <div class="mt-1 text-xl font-semibold text-red-800 dark:text-red-200">{{ $failedCount }}</div>
-            </div>
-        </div>
-
-        <form
-            class="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-800/60"
-            wire:submit.prevent="applyFilters"
-        >
-            <div class="grid gap-4 lg:grid-cols-4">
-                <flux:input
-                    name="search"
-                    label="{{ __('messages.search') }}"
-                    placeholder="{{ __('messages.fulfillment_search_placeholder') }}"
-                    wire:model.defer="search"
-                    class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
-                />
-
-                <flux:select
-                    name="statusFilter"
-                    label="{{ __('messages.status') }}"
-                    wire:model.defer="statusFilter"
-                >
-                    @foreach ($this->statusOptions as $value => $label)
-                        <flux:select.option value="{{ $value }}">{{ $label }}</flux:select.option>
-                    @endforeach
-                </flux:select>
-
-                <flux:select
-                    name="perPage"
-                    label="{{ __('messages.per_page') }}"
-                    wire:model.defer="perPage"
-                >
-                    <flux:select.option value="10">10</flux:select.option>
-                    <flux:select.option value="25">25</flux:select.option>
-                    <flux:select.option value="50">50</flux:select.option>
-                </flux:select>
-
-                <div class="flex items-end gap-2">
-                    <flux:button type="submit" variant="primary" icon="magnifying-glass">
-                        {{ __('messages.apply') }}
-                    </flux:button>
-                    <flux:button type="button" variant="ghost" icon="arrow-path" wire:click="resetFilters">
-                        {{ __('messages.reset') }}
-                    </flux:button>
+        @if ($this->isAdmin)
+            <div class="mt-4 grid gap-3 md:grid-cols-5">
+                <div class="rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                    <div class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Total queued</div>
+                    <div class="mt-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ number_format($this->systemOverview['queued']) }}</div>
+                </div>
+                <div class="rounded-2xl border border-cyan-200 bg-cyan-50/80 px-4 py-3 shadow-sm dark:border-cyan-500/40 dark:bg-cyan-500/10">
+                    <div class="text-[11px] uppercase tracking-wide text-cyan-700 dark:text-cyan-300">Total processing</div>
+                    <div class="mt-1 text-2xl font-semibold text-cyan-800 dark:text-cyan-100">{{ number_format($this->systemOverview['processing']) }}</div>
+                </div>
+                <div class="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 shadow-sm dark:border-emerald-500/40 dark:bg-emerald-500/10">
+                    <div class="text-[11px] uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Total completed</div>
+                    <div class="mt-1 text-2xl font-semibold text-emerald-900 dark:text-emerald-100">{{ number_format($this->systemOverview['completed']) }}</div>
+                </div>
+                <div class="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/10">
+                    <div class="text-[11px] uppercase tracking-wide text-amber-700 dark:text-amber-300">Active supervisors</div>
+                    <div class="mt-1 text-2xl font-semibold text-amber-900 dark:text-amber-100">{{ number_format($this->systemOverview['active_supervisors']) }}</div>
+                </div>
+                <div class="rounded-2xl border border-violet-200 bg-violet-50/80 px-4 py-3 shadow-sm dark:border-violet-500/40 dark:bg-violet-500/10">
+                    <div class="text-[11px] uppercase tracking-wide text-violet-700 dark:text-violet-300">System load</div>
+                    <div class="mt-1 text-sm font-semibold uppercase tracking-wide text-violet-900 dark:text-violet-100">{{ $this->systemOverview['load'] }}</div>
                 </div>
             </div>
-        </form>
-
-        <div class="mt-4 overflow-hidden rounded-2xl border border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-            <div class="overflow-x-auto">
-                @if ($this->fulfillments->isEmpty())
-                    <div class="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
-                        <flux:heading size="sm" class="text-zinc-900 dark:text-zinc-100">
-                            {{ __('messages.no_fulfillments_yet') }}
-                        </flux:heading>
-                        <flux:text class="text-zinc-600 dark:text-zinc-400">
-                            {{ __('messages.no_fulfillments_hint') }}
-                        </flux:text>
+        @else
+            <div class="mt-4 grid gap-3 md:grid-cols-4">
+                <div class="rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                    <div class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{{ __('messages.unclaimed_tasks') }}</div>
+                    <div class="mt-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{{ number_format($this->queueCount) }}</div>
+                </div>
+                <div class="rounded-2xl border border-cyan-200 bg-cyan-50/80 px-4 py-3 shadow-sm dark:border-cyan-500/40 dark:bg-cyan-500/10">
+                    <div class="text-[11px] uppercase tracking-wide text-cyan-700 dark:text-cyan-300">{{ __('messages.my_active_tasks') }}</div>
+                    <div class="mt-1 text-2xl font-semibold text-cyan-800 dark:text-cyan-100">{{ $this->activeClaimedCount }}/5</div>
+                </div>
+                <div class="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 shadow-sm dark:border-emerald-500/40 dark:bg-emerald-500/10">
+                    <div class="text-[11px] uppercase tracking-wide text-emerald-700 dark:text-emerald-300">{{ __('messages.status') }}</div>
+                    <div class="mt-1 inline-flex items-center gap-2 text-sm font-semibold text-emerald-800 dark:text-emerald-200">
+                        <span class="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                        {{ __('messages.online') }}
                     </div>
-                @else
-                    <table class="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800" data-test="fulfillments-table">
-                        <thead class="bg-zinc-50/90 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-800/80 dark:text-zinc-400">
-                            <tr>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.order_number') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.user') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.item') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.requirements') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.status') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.updated') }}</th>
-                                <th class="px-5 py-3 text-end font-semibold">{{ __('messages.actions') }}</th>
+                </div>
+                <div class="rounded-2xl border border-violet-200 bg-violet-50/80 px-4 py-3 shadow-sm dark:border-violet-500/40 dark:bg-violet-500/10">
+                    <div class="text-[11px] uppercase tracking-wide text-violet-700 dark:text-violet-300">{{ __('messages.avg_time') }}</div>
+                    <div class="mt-1 text-2xl font-semibold text-violet-900 dark:text-violet-100">{{ $this->averageProcessingMinutes !== null ? $this->averageProcessingMinutes.'m' : '—' }}</div>
+                </div>
+            </div>
+        @endif
+
+        @if ($this->isAdmin)
+            <div class="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-700 dark:bg-zinc-950/50">
+                <div
+                    class="flex flex-wrap items-center gap-2"
+                    role="tablist"
+                    aria-label="Admin operations views"
+                    x-on:keydown.right.prevent="moveTab(1)"
+                    x-on:keydown.left.prevent="moveTab(-1)"
+                    x-on:keydown.home.prevent="firstTab()"
+                    x-on:keydown.end.prevent="lastTab()"
+                >
+                    <flux:button id="tab-queue" type="button" variant="ghost" role="tab" aria-controls="panel-queue" x-on:click="setAdminTab('queue')" x-bind:aria-selected="adminTab === 'queue'" x-bind:tabindex="adminTab === 'queue' ? 0 : -1" x-bind:class="tabButtonClass('queue')" class="focus-visible:!ring-2 focus-visible:!ring-cyan-500/70">Queue View</flux:button>
+                    <flux:button id="tab-distribution" type="button" variant="ghost" role="tab" aria-controls="panel-distribution" x-on:click="setAdminTab('distribution')" x-bind:aria-selected="adminTab === 'distribution'" x-bind:tabindex="adminTab === 'distribution' ? 0 : -1" x-bind:class="tabButtonClass('distribution')" class="focus-visible:!ring-2 focus-visible:!ring-cyan-500/70">Supervisor Distribution</flux:button>
+                    <flux:button id="tab-table" type="button" variant="ghost" role="tab" aria-controls="panel-table" x-on:click="setAdminTab('table')" x-bind:aria-selected="adminTab === 'table'" x-bind:tabindex="adminTab === 'table' ? 0 : -1" x-bind:class="tabButtonClass('table')" class="focus-visible:!ring-2 focus-visible:!ring-cyan-500/70">Global Task Table</flux:button>
+                </div>
+                <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                    Monitor health, inspect load distribution, and intervene only when necessary.
+                </p>
+            </div>
+
+            @if ($this->adminAlerts->isNotEmpty())
+                <section class="mt-3 grid gap-2 md:grid-cols-3">
+                    @foreach ($this->adminAlerts as $alert)
+                        <flux:callout variant="subtle" icon="exclamation-triangle" class="{{ $alert['level'] === 'red' ? 'border-red-300 bg-red-50/70 dark:border-red-900/50 dark:bg-red-950/40' : ($alert['level'] === 'amber' ? 'border-amber-300 bg-amber-50/70 dark:border-amber-900/50 dark:bg-amber-950/40' : 'border-zinc-300 bg-zinc-50/70 dark:border-zinc-700 dark:bg-zinc-900/40') }}">
+                            <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $alert['title'] }}</div>
+                            <div class="mt-1 text-xs text-zinc-600 dark:text-zinc-300">{{ $alert['message'] }}</div>
+                        </flux:callout>
+                    @endforeach
+                </section>
+            @endif
+
+            <div class="relative">
+                <div class="pointer-events-none absolute inset-0 z-10 hidden items-center justify-center rounded-2xl bg-white/55 backdrop-blur-sm dark:bg-zinc-900/55"
+                    wire:loading.flex
+                    wire:target="claimFulfillment,openForceCompleteModal,openForceFailModal,completeFulfillment,failFulfillment,retryFulfillment">
+                    <flux:badge color="cyan">Updating operations view...</flux:badge>
+                </div>
+            </div>
+
+            <section class="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
+                <div class="mb-3 flex items-center justify-between">
+                    <flux:heading size="sm">Supervisor health</flux:heading>
+                    <flux:badge color="gray">{{ $this->supervisorHealth->count() }} supervisors</flux:badge>
+                </div>
+                <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    @forelse ($this->supervisorHealth as $supervisor)
+                        @php
+                            $statusColor = match ($supervisor['status']) {
+                                'overloaded' => 'red',
+                                'busy' => 'amber',
+                                'active' => 'green',
+                                default => 'zinc',
+                            };
+                        @endphp
+                        <article class="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $supervisor['name'] }}</div>
+                                <flux:badge color="{{ $statusColor }}">
+                                    <span class="inline-flex items-center gap-1">
+                                        <span class="h-1.5 w-1.5 rounded-full {{ $statusColor === 'red' ? 'bg-red-500' : ($statusColor === 'amber' ? 'bg-amber-500' : ($statusColor === 'green' ? 'bg-emerald-500' : 'bg-zinc-400')) }}"></span>
+                                        {{ $supervisor['status'] }}
+                                    </span>
+                                </flux:badge>
+                            </div>
+                            <div class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Active tasks</div>
+                            <div class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ $supervisor['active_tasks'] }}/5</div>
+                            <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                                <button
+                                    type="button"
+                                    class="inline-flex cursor-pointer items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800 transition hover:bg-emerald-100 hover:ring-1 hover:ring-emerald-300/60 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+                                    wire:click="openAdminTableForSupervisorStatus({{ $supervisor['id'] }}, 'completed')"
+                                >
+                                    Completed
+                                    <span>{{ $supervisor['completed_tasks'] }}</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="inline-flex cursor-pointer items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-800 transition hover:bg-red-100 hover:ring-1 hover:ring-red-300/60 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50"
+                                    wire:click="openAdminTableForSupervisorStatus({{ $supervisor['id'] }}, 'failed')"
+                                >
+                                    Failed
+                                    <span>{{ $supervisor['failed_tasks'] }}</span>
+                                </button>
+                            </div>
+                            <div class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                Last activity:
+                                @if ($supervisor['last_activity_at'])
+                                    <span x-text="relativeTime({{ \Illuminate\Support\Carbon::parse($supervisor['last_activity_at'])->getTimestamp() * 1000 }})">{{ \Illuminate\Support\Carbon::parse($supervisor['last_activity_at'])->diffForHumans() }}</span>
+                                @else
+                                    never
+                                @endif
+                            </div>
+                        </article>
+                    @empty
+                        <div class="col-span-full rounded-xl border border-dashed border-zinc-300 bg-white/70 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-400">
+                            No supervisors with fulfillment permissions found.
+                        </div>
+                    @endforelse
+                </div>
+            </section>
+        @endif
+
+        <div id="panel-queue" role="tabpanel" aria-labelledby="tab-queue" class="mt-4 grid gap-4 xl:grid-cols-2" x-show="!{{ $this->isAdmin ? 'true' : 'false' }} || adminTab === 'queue'">
+            <section class="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
+                <div class="mb-3 flex items-center justify-between">
+                    <flux:heading size="sm">{{ __('messages.unclaimed_tasks') }}</flux:heading>
+                    <flux:badge color="gray">{{ $this->queueCards->count() }}</flux:badge>
+                </div>
+                <div class="space-y-3">
+                    @forelse ($this->queueCards as $fulfillment)
+                        @php
+                            $minutes = (int) now()->diffInMinutes($fulfillment->created_at ?? now());
+                            $priority = $minutes >= 30 ? 'high' : ($minutes >= 10 ? 'medium' : 'normal');
+                            $priorityDot = $priority === 'high' ? 'bg-red-500' : ($priority === 'medium' ? 'bg-amber-500' : 'bg-emerald-500');
+                            $requirementsToken = $this->requirementsToken($fulfillment->orderItem?->requirements_payload);
+                        @endphp
+                        <article
+                            wire:key="queue-card-{{ $fulfillment->id }}"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 translate-y-2"
+                            x-transition:enter-end="opacity-100 translate-y-0"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 translate-y-0"
+                            x-transition:leave-end="opacity-0 -translate-y-1"
+                            class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-700/80 dark:bg-zinc-900/90"
+                        >
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="space-y-1">
+                                    <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $fulfillment->orderItem?->name ?? __('messages.unknown_item') }}</div>
+                                    <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ $fulfillment->order?->user?->email ?? __('messages.unknown_user') }}</div>
+
+                                    @if ($this->isAdmin)
+                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                                            {{ __('messages.claimed_by') }}:
+                                            <span class="font-medium text-zinc-700 dark:text-zinc-200">
+                                                {{ $fulfillment->claimer?->name ?? $fulfillment->claimer?->username ?? ($fulfillment->claimed_by ? '#'.$fulfillment->claimed_by : __('messages.unassigned')) }}
+                                            </span>
+                                        </div>
+                                    @endif
+                                    <div class="mt-1 inline-flex flex-wrap items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+                                        <span class="rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 font-mono text-[11px] text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-300">
+                                            {{ $fulfillment->order?->order_number ?? ('#'.$fulfillment->order_id) }}
+                                        </span>
+                                        @if ($requirementsToken)
+                                            <span class="rounded-md border border-cyan-200 bg-cyan-50 px-1.5 py-0.5 font-mono text-[11px] text-cyan-800 dark:border-cyan-900/50 dark:bg-cyan-950/40 dark:text-cyan-200" title="{{ $requirementsToken }}">{{ $requirementsToken }}</span>
+                                        @else
+                                            <span class="rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[11px] text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-400">—</span>
+                                        @endif
+                                    </div>
+                                </div>
+                                <span class="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-600 dark:text-zinc-300">
+                                    <span class="h-2.5 w-2.5 rounded-full {{ $priorityDot }}"></span>
+                                    {{ ucfirst($priority) }}
+                                </span>
+                            </div>
+
+                            <div class="mt-3 flex flex-wrap items-center gap-2">
+                                <flux:badge color="amber">
+                                    <span x-text="relativeTime({{ (int) optional($fulfillment->created_at)->getTimestamp() * 1000 }})">{{ optional($fulfillment->created_at)->diffForHumans() }}</span>
+                                </flux:badge>
+                                <flux:badge color="cyan">{{ number_format((float) ($fulfillment->orderItem?->unit_price ?? 0), 2) }} {{ $fulfillment->order?->currency ?? 'USD' }}</flux:badge>
+                                @if (($fulfillment->orderItem?->amount_mode ?? ProductAmountMode::Fixed) === ProductAmountMode::Custom && $fulfillment->orderItem?->requested_amount !== null)
+                                    <flux:badge color="zinc">
+                                        {{ number_format((float) $fulfillment->orderItem->requested_amount) }}{{ $fulfillment->orderItem?->amount_unit_label ? ' '.$fulfillment->orderItem->amount_unit_label : '' }}
+                                    </flux:badge>
+                                @endif
+                            </div>
+
+                            <div class="mt-4 flex items-center gap-2">
+                                <div class="flex items-center gap-2">
+                                    <flux:button
+                                        variant="primary"
+                                        wire:click="claimFulfillment({{ $fulfillment->id }})"
+                                        :disabled="! $this->canClaimMore"
+                                        title="{{ $this->canClaimMore ? '' : __('messages.fulfillment_claim_limit_reached') }}"
+                                        wire:target="claimFulfillment({{ $fulfillment->id }})"
+                                        wire:loading.attr="disabled"
+                                    >
+                                        {{ __('messages.claim_task') }}
+                                    </flux:button>
+                                    @if ($this->isAdmin)
+                                        <flux:dropdown position="bottom start">
+                                            <flux:button variant="ghost" icon-trailing="chevron-down">Intervene</flux:button>
+                                            <flux:menu>
+                                                <flux:menu.item wire:click="openDetails({{ $fulfillment->id }})">Override / Force Assign</flux:menu.item>
+                                                <flux:menu.item wire:click="openForceCompleteModal({{ $fulfillment->id }})">Force complete</flux:menu.item>
+                                                <flux:menu.item wire:click="openForceFailModal({{ $fulfillment->id }})">Force fail</flux:menu.item>
+                                            </flux:menu>
+                                        </flux:dropdown>
+                                    @endif
+                                </div>
+                                @if ($this->isAdmin)
+                                    <flux:dropdown position="bottom start">
+                                        <flux:button variant="ghost" wire:click="openDetails({{ $fulfillment->id }})">
+                                            {{ __('messages.details') }}
+                                        </flux:button>
+                                    </flux:dropdown>
+                                @else
+                                    <flux:button variant="ghost" wire:click="openDetails({{ $fulfillment->id }})">
+                                        {{ __('messages.details') }}
+                                    </flux:button>
+                                @endif
+                            </div>
+                        </article>
+                    @empty
+                        <div class="rounded-2xl border border-dashed border-zinc-300 bg-white/70 px-4 py-10 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-400">
+                            {{ __('messages.no_fulfillments_hint') }}
+                        </div>
+                    @endforelse
+                </div>
+            </section>
+
+            <section class="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
+                <div class="mb-3 flex items-center justify-between">
+                    <flux:heading size="sm">{{ $this->isAdmin ? 'Processing tasks' : __('messages.my_tasks') }}</flux:heading>
+                    <flux:badge color="cyan">{{ $this->isAdmin ? $this->activeClaimedCount : $this->activeClaimedCount.'/5' }}</flux:badge>
+                </div>
+                <div class="space-y-3">
+                    @forelse ($this->myCards as $fulfillment)
+                        @php
+                            $minutes = (int) now()->diffInMinutes($fulfillment->created_at ?? now());
+                            $priority = $minutes >= 30 ? 'high' : ($minutes >= 10 ? 'medium' : 'normal');
+                            $priorityDot = $priority === 'high' ? 'bg-red-500' : ($priority === 'medium' ? 'bg-amber-500' : 'bg-emerald-500');
+                            $requirementsToken = $this->requirementsToken($fulfillment->orderItem?->requirements_payload);
+                            $adminOwnsTask = $this->isAdmin && $fulfillment->claimed_by === auth()->id();
+                        @endphp
+                        <article
+                            wire:key="my-card-{{ $fulfillment->id }}"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 translate-y-2"
+                            x-transition:enter-end="opacity-100 translate-y-0"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 translate-y-0"
+                            x-transition:leave-end="opacity-0 -translate-y-1"
+                            class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-700/80 dark:bg-zinc-900/90"
+                        >
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="space-y-1">
+                                    <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $fulfillment->orderItem?->name ?? __('messages.unknown_item') }}</div>
+                                    <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ $fulfillment->order?->user?->email ?? __('messages.unknown_user') }}</div>
+                                    @if ($this->isAdmin)
+                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                                            {{ __('messages.claimed_by') }}:
+                                            <span class="font-medium text-zinc-700 dark:text-zinc-200">
+                                                {{ $fulfillment->claimer?->name ?? $fulfillment->claimer?->username ?? ($fulfillment->claimed_by ? '#'.$fulfillment->claimed_by : __('messages.unassigned')) }}
+                                            </span>
+                                        </div>
+                                    @endif
+                                    <div class="mt-1 inline-flex flex-wrap items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+                                        <span class="rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 font-mono text-[11px] text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-300">
+                                            {{ $fulfillment->order?->order_number ?? ('#'.$fulfillment->order_id) }}
+                                        </span>
+                                        @if ($requirementsToken)
+                                            <span class="rounded-md border border-cyan-200 bg-cyan-50 px-1.5 py-0.5 font-mono text-[11px] text-cyan-800 dark:border-cyan-900/50 dark:bg-cyan-950/40 dark:text-cyan-200" title="{{ $requirementsToken }}">{{ $requirementsToken }}</span>
+                                        @else
+                                            <span class="rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[11px] text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-400">—</span>
+                                        @endif
+                                    </div>
+                                </div>
+                                <span class="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-600 dark:text-zinc-300">
+                                    <span class="h-2.5 w-2.5 rounded-full {{ $priorityDot }}"></span>
+                                    {{ ucfirst($priority) }}
+                                </span>
+                            </div>
+
+                            <div class="mt-3 flex flex-wrap items-center gap-2">
+                                <flux:badge color="amber">
+                                    <span x-text="relativeTime({{ (int) optional($fulfillment->created_at)->getTimestamp() * 1000 }})">{{ optional($fulfillment->created_at)->diffForHumans() }}</span>
+                                </flux:badge>
+                                <flux:badge color="cyan">{{ number_format((float) ($fulfillment->orderItem?->unit_price ?? 0), 2) }} {{ $fulfillment->order?->currency ?? 'USD' }}</flux:badge>
+                                @if (($fulfillment->orderItem?->amount_mode ?? ProductAmountMode::Fixed) === ProductAmountMode::Custom && $fulfillment->orderItem?->requested_amount !== null)
+                                    <flux:badge color="zinc">
+                                        {{ number_format((float) $fulfillment->orderItem->requested_amount) }}{{ $fulfillment->orderItem?->amount_unit_label ? ' '.$fulfillment->orderItem->amount_unit_label : '' }}
+                                    </flux:badge>
+                                @endif
+                                <flux:badge color="{{ $this->statusBadgeColor($fulfillment->status) }}">{{ __('messages.fulfillment_status_'.$fulfillment->status->value) }}</flux:badge>
+                            </div>
+
+                            <div class="mt-4 flex flex-wrap items-center gap-2">
+                                @if ($this->isAdmin && ! $adminOwnsTask)
+                                    <flux:dropdown position="bottom start">
+                                        <flux:button variant="ghost" icon-trailing="chevron-down">Intervene</flux:button>
+                                        <flux:menu>
+                                            @if (! in_array($fulfillment->status, [FulfillmentStatus::Completed, FulfillmentStatus::Failed], true))
+                                                <flux:menu.item wire:click="openForceCompleteModal({{ $fulfillment->id }})">Force complete</flux:menu.item>
+                                            @endif
+                                            @if (! in_array($fulfillment->status, [FulfillmentStatus::Completed, FulfillmentStatus::Failed], true))
+                                                <flux:menu.item wire:click="openForceFailModal({{ $fulfillment->id }})">Force fail</flux:menu.item>
+                                            @endif
+                                        </flux:menu>
+                                    </flux:dropdown>
+                                @else
+                                    @if (! in_array($fulfillment->status, [FulfillmentStatus::Completed, FulfillmentStatus::Failed], true))
+                                        <flux:button variant="primary" wire:click="openCompleteModal({{ $fulfillment->id }})" wire:loading.attr="disabled">
+                                            {{ __('messages.mark_completed') }}
+                                        </flux:button>
+                                    @endif
+                                    @if (! in_array($fulfillment->status, [FulfillmentStatus::Completed, FulfillmentStatus::Failed], true))
+                                        <flux:button variant="danger" wire:click="openFailModal({{ $fulfillment->id }})" wire:loading.attr="disabled">
+                                            {{ __('messages.mark_failed') }}
+                                        </flux:button>
+                                    @endif
+                                @endif
+                                @if ($fulfillment->status === FulfillmentStatus::Failed && ! $this->isAdmin)
+                                    <flux:button variant="ghost" wire:click="retryFulfillment({{ $fulfillment->id }})">
+                                        {{ __('messages.retry') }}
+                                    </flux:button>
+                                @endif
+                                <flux:button variant="ghost" wire:click="openDetails({{ $fulfillment->id }})">
+                                    {{ __('messages.details') }}
+                                </flux:button>
+                            </div>
+                        </article>
+                    @empty
+                        <div class="rounded-2xl border border-dashed border-zinc-300 bg-white/70 px-4 py-10 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-400">
+                            {{ __('messages.no_fulfillments_yet') }}
+                        </div>
+                    @endforelse
+                </div>
+            </section>
+        </div>
+
+        @if ($this->isAdmin)
+            <section id="panel-distribution" role="tabpanel" aria-labelledby="tab-distribution" class="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-950/50" x-show="adminTab === 'distribution'" x-cloak>
+                <div class="mb-3 flex items-center justify-between">
+                    <flux:heading size="sm">Supervisor distribution</flux:heading>
+                    <flux:badge color="gray">{{ $this->distributionBuckets->count() }} groups</flux:badge>
+                </div>
+                <div class="grid gap-3 lg:grid-cols-3">
+                    @forelse ($this->distributionBuckets as $bucket)
+                        <article class="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                            <div class="mb-2 flex items-center justify-between">
+                                <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $bucket['claimer_name'] }}</div>
+                                <flux:badge color="cyan">{{ $bucket['count'] }} tasks</flux:badge>
+                            </div>
+                            <div class="space-y-2">
+                                @foreach ($bucket['items'] as $item)
+                                    <div class="rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-xs text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                                        {{ $item->orderItem?->name ?? __('messages.unknown_item') }}
+                                    </div>
+                                @endforeach
+                            </div>
+                        </article>
+                    @empty
+                        <div class="col-span-full rounded-xl border border-dashed border-zinc-300 bg-white/70 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-400">
+                            No processing tasks assigned yet.
+                        </div>
+                    @endforelse
+                </div>
+            </section>
+
+            <section id="panel-table" role="tabpanel" aria-labelledby="tab-table" class="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-700 dark:bg-zinc-950/50" x-show="adminTab === 'table'" x-cloak>
+                <div class="mb-3 flex items-center justify-between">
+                    <flux:heading size="sm">Global task table</flux:heading>
+                    <flux:badge color="gray">{{ $this->allPage->total() }} total</flux:badge>
+                </div>
+                @if ($this->adminTableSupervisorId !== null)
+                    <div class="mb-3 flex flex-wrap items-center gap-2">
+                        <flux:badge color="zinc">Supervisor filter #{{ $this->adminTableSupervisorId }}</flux:badge>
+                        <flux:badge color="{{ ($this->adminTableStatusFilter ?? $this->statusFilter) === \App\Enums\FulfillmentStatus::Completed->value ? 'green' : (($this->adminTableStatusFilter ?? $this->statusFilter) === \App\Enums\FulfillmentStatus::Failed->value ? 'red' : 'zinc') }}">
+                            Status: {{ $this->adminTableStatusFilter ?? $this->statusFilter }}
+                        </flux:badge>
+                        <flux:button
+                            variant="ghost"
+                            size="sm"
+                            wire:click="$set('adminTableSupervisorId', null); $set('adminTableStatusFilter', null)"
+                        >
+                            Clear supervisor filter
+                        </flux:button>
+                    </div>
+                @endif
+                <div class="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
+                    <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
+                        <thead class="bg-zinc-50 dark:bg-zinc-800/60">
+                            <tr class="text-left text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                <th class="px-4 py-2">ID</th>
+                                <th class="px-4 py-2">Item</th>
+                                <th class="px-4 py-2">Supervisor</th>
+                                <th class="px-4 py-2">Status</th>
+                                <th class="px-4 py-2">Updated</th>
+                                <th class="px-4 py-2">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
-                            @foreach ($this->fulfillments as $fulfillment)
-                                <tr class="transition duration-150 hover:bg-zinc-50 dark:hover:bg-zinc-800/60" wire:key="fulfillment-{{ $fulfillment->id }}">
-                                    <td class="px-5 py-4">
-                                        <div class="font-semibold text-zinc-900 dark:text-zinc-100">
-                                            {{ $fulfillment->order?->order_number ?? '—' }}
-                                        </div>
-                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">
-                                            #{{ $fulfillment->order_id }}
-                                        </div>
+                            @forelse ($this->allPage as $fulfillment)
+                                <tr>
+                                    <td class="px-4 py-2 text-zinc-700 dark:text-zinc-200">#{{ $fulfillment->id }}</td>
+                                    <td class="px-4 py-2 text-zinc-700 dark:text-zinc-200">{{ $fulfillment->orderItem?->name ?? __('messages.unknown_item') }}</td>
+                                    <td class="px-4 py-2 text-zinc-700 dark:text-zinc-200">{{ $fulfillment->claimer?->name ?? $fulfillment->claimer?->username ?? '—' }}</td>
+                                    <td class="px-4 py-2">
+                                        <flux:badge color="{{ $this->statusBadgeColor($fulfillment->status) }}">{{ __('messages.fulfillment_status_'.$fulfillment->status->value) }}</flux:badge>
                                     </td>
-                                    <td class="px-5 py-4">
-                                        <div class="truncate font-semibold text-zinc-900 dark:text-zinc-100">
-                                            {{ $fulfillment->order?->user?->name ?? __('messages.unknown_user') }}
-                                        </div>
-                                        <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                                            {{ $fulfillment->order?->user?->email ?? '—' }}
-                                        </div>
-                                    </td>
-                                    <td class="px-5 py-4">
-                                        <div class="font-semibold text-zinc-900 dark:text-zinc-100">
-                                            {{ $fulfillment->orderItem?->name ?? __('messages.unknown_item') }}
-                                        </div>
-                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">
-                                            {{ $fulfillment->orderItem?->product?->slug ?? '—' }}
-                                        </div>
-                                    </td>
-                                    <td class="max-w-[14rem] px-5 py-4">
-                                        @php
-                                            $reqPayload = $fulfillment->orderItem?->requirements_payload ?? data_get($fulfillment->meta, 'requirements_payload');
-                                            $reqPairs = is_array($reqPayload)
-                                                ? $reqPayload
-                                                : (is_string($reqPayload) ? ['' => $reqPayload] : []);
-                                        @endphp
-                                        @if ($reqPairs !== [])
-                                            <div class="flex flex-wrap gap-1.5" title="{{ collect($reqPairs)->map(fn ($v, $k) => $k !== '' ? $k.': '.(is_string($v) ? $v : json_encode($v)) : $v)->implode(', ') }}">
-                                                @foreach ($reqPairs as $key => $val)
-                                                    @php
-                                                        $displayVal = is_string($val) ? $val : json_encode($val);
-                                                    @endphp
-                                                    <span class="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-1.5 py-0.5 dark:bg-zinc-800/80">
-                                                        @if ($key !== '')
-                                                            <span class="text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{{ $key }}</span>
-                                                            <span class="text-[11px] text-zinc-700 dark:text-zinc-300">{{ Str::limit($displayVal, 20) }}</span>
-                                                        @else
-                                                            <span class="text-[11px] text-zinc-700 dark:text-zinc-300">{{ Str::limit($displayVal, 24) }}</span>
-                                                        @endif
-                                                    </span>
-                                                @endforeach
-                                            </div>
-                                        @else
-                                            <span class="text-zinc-400 dark:text-zinc-500">—</span>
-                                        @endif
-                                    </td>
-                                    <td class="px-5 py-4">
-                                        @php
-                                            $retryCount = (int) data_get($fulfillment->meta, 'retry_count', 0);
-                                            $refundStatus = data_get($fulfillment->meta, 'refund.status');
-                                            $isRefunded = $refundStatus === WalletTransaction::STATUS_POSTED;
-                                            $isRefundPending = $refundStatus === WalletTransaction::STATUS_PENDING;
-                                        @endphp
-                                        <flux:badge color="{{ $this->statusBadgeColor($fulfillment->status) }}">
-                                            {{ __('messages.fulfillment_status_'.$fulfillment->status->value) }}
-                                        </flux:badge>
-                                        @if ($retryCount > 0)
-                                            <flux:badge color="amber">
-                                                {{ __('messages.retried_times', ['count' => $retryCount]) }}
-                                            </flux:badge>
-                                        @endif
-                                        @if ($refundStatus === 'pending')
-                                            <flux:badge color="amber">
-                                                {{ __('messages.refund_requested') }}
-                                            </flux:badge>
-                                        @elseif ($refundStatus === 'posted')
-                                            <flux:badge color="green">
-                                                {{ __('messages.refunded') }}
-                                            </flux:badge>
-                                        @elseif ($refundStatus === 'rejected')
-                                            <flux:badge color="red">
-                                                {{ __('messages.refund_rejected') }}
-                                            </flux:badge>
-                                        @endif
-                                    </td>
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
-                                        {{ $fulfillment->updated_at?->format('M d, Y H:i') ?? '—' }}
-                                    </td>
-                                    <td class="px-5 py-4 text-end">
-                                        <flux:dropdown position="bottom" align="end">
-                                            <flux:button variant="ghost" icon="ellipsis-vertical" class="!rounded-lg !border !border-zinc-200/80 !bg-white !px-2.5 hover:!bg-zinc-100 dark:!border-zinc-700 dark:!bg-zinc-800 dark:hover:!bg-zinc-700" />
+                                    <td class="px-4 py-2 text-zinc-500 dark:text-zinc-400">{{ optional($fulfillment->updated_at)->diffForHumans() }}</td>
+                                    <td class="px-4 py-2">
+                                        <flux:dropdown position="bottom end">
+                                            <flux:button variant="ghost" size="sm" icon-trailing="chevron-down">Actions</flux:button>
                                             <flux:menu>
-                                                @if ($isRefundPending)
-                                                    <flux:menu.item icon="eye" wire:click="openDetails({{ $fulfillment->id }})">
-                                                        {{ __('messages.details') }}
-                                                    </flux:menu.item>
-                                                @elseif ($fulfillment->status === FulfillmentStatus::Failed && $isRefunded)
-                                                    <flux:menu.item icon="eye" wire:click="openDetails({{ $fulfillment->id }})">
-                                                        {{ __('messages.details') }}
-                                                    </flux:menu.item>
-                                                @else
-                                                    @if ($fulfillment->status === FulfillmentStatus::Queued)
-                                                        <flux:menu.item icon="clock" wire:click="markProcessing({{ $fulfillment->id }})">
-                                                            {{ __('messages.mark_processing') }}
-                                                        </flux:menu.item>
-                                                    @endif
-                                                    @if (! in_array($fulfillment->status, [FulfillmentStatus::Completed, FulfillmentStatus::Failed], true))
-                                                        <flux:menu.item icon="check-circle" wire:click="openCompleteModal({{ $fulfillment->id }})">
-                                                            {{ __('messages.mark_completed') }}
-                                                        </flux:menu.item>
-                                                    @endif
-                                                    @if ($fulfillment->status !== FulfillmentStatus::Completed)
-                                                        <flux:menu.item icon="exclamation-triangle" wire:click="openFailModal({{ $fulfillment->id }})">
-                                                            {{ __('messages.mark_failed') }}
-                                                        </flux:menu.item>
-                                                    @endif
-                                                    @if ($fulfillment->status === FulfillmentStatus::Failed)
-                                                        <flux:menu.item icon="arrow-path" wire:click="retryFulfillment({{ $fulfillment->id }})">
-                                                            {{ __('messages.retry') }}
-                                                        </flux:menu.item>
-                                                    @endif
-                                                    <flux:menu.separator />
-                                                    <flux:menu.item icon="eye" wire:click="openDetails({{ $fulfillment->id }})">
-                                                        {{ __('messages.details') }}
-                                                    </flux:menu.item>
-                                                @endif
+                                                <flux:menu.item wire:click="openDetails({{ $fulfillment->id }})">Inspect</flux:menu.item>
+                                                <flux:menu.item wire:click="openForceCompleteModal({{ $fulfillment->id }})">Force complete</flux:menu.item>
+                                                <flux:menu.item wire:click="openForceFailModal({{ $fulfillment->id }})">Force fail</flux:menu.item>
                                             </flux:menu>
                                         </flux:dropdown>
                                     </td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="px-4 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">No tasks match current filters.</td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
-                @endif
-            </div>
-        </div>
-
-        <div class="mt-4 border-t border-zinc-200 px-5 py-4 dark:border-zinc-800">
-            {{ $this->fulfillments->links() }}
-        </div>
+                </div>
+                <div class="mt-3">{{ $this->allPage->links() }}</div>
+            </section>
+        @endif
     </section>
 
     <flux:modal
@@ -555,6 +1286,14 @@ new class extends Component
                                 $order = $this->selectedFulfillment->order;
                                 $orderItem = $this->selectedFulfillment->orderItem;
                                 $currency = $order?->currency ?? 'USD';
+                                $isCustomAmount = ($orderItem?->amount_mode ?? ProductAmountMode::Fixed) === ProductAmountMode::Custom;
+                                $rawEntryPrice = (float) ($orderItem?->entry_price ?? 0);
+                                if ($isCustomAmount && $rawEntryPrice <= 0) {
+                                    $rawEntryPrice = (float) data_get($orderItem?->pricing_meta, 'entry_price', 0);
+                                }
+                                $entryPriceTotal = $isCustomAmount && $orderItem?->requested_amount !== null
+                                    ? ($rawEntryPrice * (float) $orderItem->requested_amount)
+                                    : null;
                             @endphp
                             <dl class="grid gap-3 text-sm sm:grid-cols-2">
                                 <div class="rounded-lg border border-zinc-200 bg-white/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
@@ -581,14 +1320,50 @@ new class extends Component
                                         {{ $orderItem?->name ?? '—' }}
                                     </dd>
                                 </div>
-                                <div class="rounded-lg border border-zinc-200 bg-white/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/40 sm:col-span-2">
+                                <div class="rounded-lg border border-zinc-200 bg-white/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
                                     <dt class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                                        {{ __('messages.unit_price') }}
+                                        {{ $isCustomAmount ? __('messages.entry_price') : __('messages.entry_price') }}
                                     </dt>
                                     <dd class="mt-1 text-sm text-zinc-900 dark:text-zinc-100" dir="ltr">
-                                        {{ $orderItem?->unit_price ?? '—' }} {{ $currency }}
+                                        @if ($isCustomAmount && $entryPriceTotal !== null)
+                                            {{ number_format($entryPriceTotal, 2) }} {{ $currency }}
+                                        @else
+                                            {{ number_format($orderItem?->entry_price, 2) ?? '—' }} {{ $currency }}
+                                        @endif
                                     </dd>
                                 </div>
+                                @if (! $isCustomAmount)
+                                    <div class="rounded-lg border border-zinc-200 bg-white/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
+                                        <dt class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                            {{ __('messages.unit_price') }}
+                                        </dt>
+                                        <dd class="mt-1 text-sm text-zinc-900 dark:text-zinc-100" dir="ltr">
+                                            {{ $orderItem?->unit_price ?? '—' }} {{ $currency }}
+                                        </dd>
+                                    </div>
+                                @endif
+                                @if ($isCustomAmount)
+                                    <div class="rounded-lg border border-zinc-200 bg-white/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
+                                        <dt class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                            {{ __('messages.order_item_purchased_amount') }}
+                                        </dt>
+                                        <dd class="mt-1 text-sm text-zinc-900 dark:text-zinc-100" dir="ltr">
+                                            @if ($orderItem?->requested_amount !== null)
+                                                {{ number_format((float) $orderItem->requested_amount) }}{{ $orderItem?->amount_unit_label ? ' '.$orderItem->amount_unit_label : '' }}
+                                            @else
+                                                —
+                                            @endif
+                                        </dd>
+                                    </div>
+                                    <div class="rounded-lg border border-zinc-200 bg-white/70 p-3 dark:border-zinc-700 dark:bg-zinc-900/40 sm:col-span-2">
+                                        <dt class="text-[11px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                            {{ __('messages.line_total') }}
+                                        </dt>
+                                        <dd class="mt-1 text-sm text-zinc-900 dark:text-zinc-100" dir="ltr">
+                                            {{ $orderItem?->line_total !== null ? number_format((float) $orderItem->line_total, 2) : '—' }} {{ $currency }}
+                                        </dd>
+                                    </div>
+                                @endif
                             </dl>
                         </div>
                     </div>
@@ -711,7 +1486,7 @@ new class extends Component
             </div>
             <flux:switch
                 class="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
-                wire:model.live="autoDonePayload"
+                wire:model.defer="autoDonePayload"
             />
         </div>
 
