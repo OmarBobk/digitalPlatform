@@ -134,18 +134,43 @@ new class extends Component
                             </td>
                             <td class="px-4 py-3">{{ str_replace('_', ' ', $bug->scenario) }}</td>
                             <td class="px-4 py-3 align-top">
-                                <div x-data="{ expanded: false }" class="max-w-xl">
+                                <div
+                                    x-data="{
+                                        expanded: false,
+                                        needsToggle: false,
+                                        evaluateToggle() {
+                                            const el = this.$refs.description;
+                                            if (!el) {
+                                                this.needsToggle = false;
+                                                return;
+                                            }
+
+                                            if (this.expanded) {
+                                                this.needsToggle = true;
+                                                return;
+                                            }
+
+                                            this.needsToggle = el.scrollHeight > el.clientHeight + 1;
+                                        },
+                                    }"
+                                    x-init="$nextTick(() => evaluateToggle())"
+                                    x-on:resize.window.debounce.150ms="evaluateToggle()"
+                                    class="max-w-xl"
+                                >
                                     <p
+                                        x-ref="description"
                                         x-bind:style="expanded ? '' : '-webkit-line-clamp: 3; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden;'"
                                         class="whitespace-pre-line break-words text-sm text-zinc-700 dark:text-zinc-300"
                                     >
                                         {{ $bug->description ?: '—' }}
                                     </p>
 
-                                    @if (filled($bug->description) && mb_strlen($bug->description) > 160)
+                                    @if (filled($bug->description))
                                         <button
                                             type="button"
                                             x-on:click="expanded = ! expanded"
+                                            x-on:click="$nextTick(() => evaluateToggle())"
+                                            x-show="needsToggle"
                                             class="mt-1 text-xs font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
                                         >
                                             <span x-show="! expanded">{{ __('Show more') }}</span>
