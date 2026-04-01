@@ -278,6 +278,40 @@ The system has four **roles**. Your menus depend on **permissions** your company
 
 ---
 
+### Scenario Name: Buy Now custom amount + pricing estimate (important)
+
+**Who is acting:** Customer
+
+**Goal:** Verify the custom amount pricing system is accurate and safely validated.
+
+**Steps:**
+
+1. Open a product that uses **custom amount** (your team should give you one test product).
+2. Open the **Buy Now** modal.
+3. Enter an amount and watch the live **estimate** panel.
+4. Try a valid amount that follows product rules and place the order.
+5. Open the created order and compare shown prices.
+
+**Expected Result:**
+
+- Estimate appears and updates quickly while typing.
+- Checkout succeeds for valid values.
+- Final charged total is consistent between checkout message, order details, and wallet transaction.
+
+**Validation tests (must run):**
+
+- Enter amount below minimum → clear error.
+- Enter amount above maximum → clear error.
+- Enter amount not matching step rule (for example step is 5, enter 12) → clear error.
+- Leave amount empty → clear error.
+
+**Stress / error tests:**
+
+- Type/change amount very quickly for 10-15 seconds.
+- The page should not break; if temporary warning appears, user can still continue after entering a valid value.
+
+---
+
 ### Scenario Name: View orders and order details
 
 **Who is acting:** Customer
@@ -568,20 +602,59 @@ The system has four **roles**. Your menus depend on **permissions** your company
 
 ---
 
-### Scenario Name: Fulfillments — mark as processing
+### Scenario Name: Fulfillments — claim task from unclaimed queue
 
-**Who is acting:** Admin
+**Who is acting:** Staff with fulfillment access (Admin or another allowed staff account)
 
-**Goal:** Move a queued item to processing (if the button exists for that row).
+**Goal:** Move one task from **Unclaimed** into your own processing list.
 
 **Steps:**
 
-1. Find a fulfillment in **Queued** status (test data).
-2. Click the action to **start processing** / **mark processing** (exact label on screen).
+1. Open **Fulfillments**.
+2. In **Unclaimed tasks**, click **Claim task** on one row.
+3. Check **Processing tasks / My tasks** area.
 
 **Expected Result:**
 
-- Status becomes **Processing**; success message.
+- Success message appears.
+- Task disappears from unclaimed list and appears in your processing list.
+
+---
+
+### Scenario Name: Fulfillments — claim limit for non-admin users
+
+**Who is acting:** Salesperson or Supervisor account that can process fulfillments
+
+**Goal:** Confirm non-admin users cannot keep more than 5 active claimed tasks.
+
+**Steps:**
+
+1. Claim tasks one by one until you have 5 active tasks.
+2. Try to claim one more.
+
+**Expected Result:**
+
+- Claim button is disabled or blocked with a clear warning.
+- You cannot exceed the 5-task limit.
+
+---
+
+### Scenario Name: Fulfillments — admin oversight tabs and interventions
+
+**Who is acting:** Admin
+
+**Goal:** Validate new operations views and admin intervention actions.
+
+**Steps:**
+
+1. Open **Fulfillments**.
+2. Switch between tabs: **Queue View**, **Supervisor Distribution**, **Global Task Table**.
+3. From queue or table, use **Intervene** menu (Force complete / Force fail) on a test task.
+
+**Expected Result:**
+
+- Each tab loads with correct counts.
+- Intervention actions open the right modals and apply to the selected task.
 
 ---
 
@@ -647,7 +720,7 @@ The system has four **roles**. Your menus depend on **permissions** your company
 
 ### Scenario Name: Fulfillments — retry
 
-**Who is acting:** Admin
+**Who is acting:** Staff processing fulfillments (non-admin path is important)
 
 **Goal:** Put a failed delivery back in the queue.
 
@@ -912,6 +985,27 @@ The system has four **roles**. Your menus depend on **permissions** your company
 
 ---
 
+### Scenario Name: File access control — topup proofs and bug attachments
+
+**Who is acting:** Customer + Admin + one unauthorized test account
+
+**Goal:** Ensure sensitive files can only be opened by allowed users.
+
+**Steps:**
+
+1. As customer, open **your own** topup proof file.
+2. As admin, open the same proof from Topups.
+3. As another customer (not owner), try opening that proof link directly.
+4. For bug reports, open one bug attachment as authorized bug staff.
+5. Try the same bug attachment link as a user without bug permission.
+
+**Expected Result:**
+
+- Allowed users can open files.
+- Unauthorized users are blocked (no file exposure).
+
+---
+
 ## Part C — Salesperson
 
 **Default (seeded permissions):** Usually **Dashboard**, **Orders**, **Notifications**.  
@@ -1012,6 +1106,16 @@ Usually **no** Topups, Refunds, Fulfillments, or catalog editing — unless your
 3. Open **Bug Inbox** (sidebar → **Bug Reports**).
 
 **Expected:** The new report appears in the list; open it to see steps and screenshots.
+
+---
+
+### Fulfillment event visibility by role (live updates permissions)
+
+1. Open **Fulfillments** with an account that has fulfillment view access (not necessarily admin).
+2. Trigger a fulfillment change from another session.
+3. Watch for auto-update for a few seconds.
+
+**Expected:** Live updates work for accounts with fulfillment access, not only admin.
 
 ---
 
@@ -1116,6 +1220,7 @@ Use this as a **full regression** list. Check each box when done.
 - [ ] My orders (`/orders`)
 - [ ] Order detail (`/orders/{order number}`)
 - [ ] Notifications (`/notifications`)
+- [ ] Buy Now custom amount product (min/max/step + estimate checks)
 - [ ] Language switch (EN / AR)
 - [ ] 404 page (`/404` or wrong link)
 
@@ -1148,6 +1253,7 @@ Use this as a **full regression** list. Check each box when done.
 ### Bug attachments (logged-in users)
 
 - [ ] Open a bug attachment link only when your team gives you a **safe test link** — must be logged in as someone allowed to see that report
+- [ ] Topup proof link access check (`/topup-proofs/{proof}`) — owner/admin allowed, others blocked
 
 ### Account settings (Fortify)
 
@@ -1167,8 +1273,11 @@ Quick **must-pass** list:
 - [ ] **Checkout** (success **or** clear “not enough balance”)
 - [ ] **Wallet** + **top-up request** + **Admin** sees it
 - [ ] **Orders** (customer list + staff list)
+- [ ] **Pricing system**: custom amount min/max/step validation works, and totals are consistent
+- [ ] **Pricing precision**: decimal-heavy prices still match between checkout, order details, and wallet
 - [ ] **Notifications** (customer + staff)
 - [ ] **Admin dashboard** + **Users** list
+- [ ] **Fulfillment claim flow**: claim task works, non-admin 5-task cap enforced, admin intervention works
 - [ ] **Bug Inbox** opens; **Report Bug** submits a test row (if your Admin has bug access)
 - [ ] **Website settings** save (Admin only) — optional if time is short
 

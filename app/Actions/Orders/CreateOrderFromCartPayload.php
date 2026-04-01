@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Orders;
 
 use App\Actions\Packages\ResolvePackageRequirements;
+use App\Domain\Pricing\PricingEngine;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\ProductAmountMode;
@@ -12,7 +13,6 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
 use App\Notifications\OrderPriceFlooredNotification;
-use App\Services\CustomerPriceService;
 use App\Services\NotificationRecipientService;
 use App\Services\SystemEventService;
 use Illuminate\Support\Collection;
@@ -23,8 +23,6 @@ use Illuminate\Validation\ValidationException;
 
 class CreateOrderFromCartPayload
 {
-    private const DEFAULT_CUSTOM_AMOUNT_HARD_CAP = 100000;
-
     /**
      * Create a server-side order snapshot from untrusted cart payload.
      * Fee uses config('billing.checkout_fee_fixed').
@@ -87,8 +85,7 @@ class CreateOrderFromCartPayload
             $subtotal = 0.0;
             $flooredItemsCount = 0;
 
-            $priceService = app(CustomerPriceService::class);
-            $priceOverrides = $priceService->getUserOverridesFor($user);
+            $pricingEngine = app(PricingEngine::class);
 
             foreach ($normalizedItems as $index => $item) {
                 $product = $products->get($item['product_id']);
@@ -115,37 +112,35 @@ class CreateOrderFromCartPayload
                 $pricingMeta = null;
 
                 if ($amountMode === ProductAmountMode::Custom) {
-                    $requestedAmount = $this->validateCustomAmount($product, $item, $index);
+                    $requestedAmount = $item['requested_amount'] ?? null;
                     $quantity = 1;
-                    if ($entryPrice === null || $entryPrice <= 0) {
-                        throw ValidationException::withMessages([
-                            "items.$index.product_id" => 'Invalid entry price for custom product.',
-                        ]);
-                    }
-
+                    $quote = $pricingEngine->quote($product, 1, (int) $requestedAmount, $user);
+                    $validatedAmount = (int) $quote->requestedAmount;
                     $computedEntryTotal = (float) bcmul(
-                        (string) $requestedAmount,
-                        number_format($entryPrice, 6, '.', ''),
+                        (string) $validatedAmount,
+                        number_format((float) $entryPrice, 6, '.', ''),
                         6
                     );
-                    $price = $priceService->finalPriceForAmount($product, $requestedAmount, $user, $priceOverrides);
-                    $unitPrice = $price['final_price'];
-                    $lineTotal = $unitPrice;
+                    $price = $quote->toArray();
+                    $unitPrice = $quote->unitPrice;
+                    $lineTotal = $quote->finalTotal;
                     $pricingMeta = [
                         'mode' => ProductAmountMode::Custom->value,
-                        'requested_amount' => $requestedAmount,
+                        'requested_amount' => $validatedAmount,
                         'entry_price' => $entryPrice,
                         'computed_entry_total' => $computedEntryTotal,
                     ];
+                    $requestedAmount = $validatedAmount;
                 } else {
                     if ($quantity <= 0) {
                         throw ValidationException::withMessages([
                             "items.$index.quantity" => 'Fixed amount products require quantity greater than zero.',
                         ]);
                     }
-                    $price = $priceService->finalPriceForQuantity($product, $quantity, $user, $priceOverrides);
-                    $unitPrice = $price['unit_price'];
-                    $lineTotal = round((float) $price['final_total'], 2);
+                    $quote = $pricingEngine->quote($product, $quantity, null, $user);
+                    $price = $quote->toArray();
+                    $unitPrice = $quote->unitPrice;
+                    $lineTotal = round((float) $quote->finalTotal, 2);
                 }
 
                 if (($price['meta']['is_floor_applied'] ?? false) === true) {
@@ -296,50 +291,5 @@ class CreateOrderFromCartPayload
         throw ValidationException::withMessages($messages !== [] ? $messages : [
             "items.$index.requirements" => 'Missing or invalid requirements.',
         ]);
-    }
-
-    /**
-     * @param  array<string, mixed>  $item
-     */
-    private function validateCustomAmount(Product $product, array $item, int $index): int
-    {
-        $requestedAmountRaw = $item['requested_amount'] ?? null;
-        $requestedAmount = filter_var($requestedAmountRaw, FILTER_VALIDATE_INT);
-        $minimum = $product->custom_amount_min;
-        $maximum = $product->custom_amount_max;
-        $step = $product->custom_amount_step ?? 1;
-        $hardCap = (int) config('billing.custom_amount_hard_cap', self::DEFAULT_CUSTOM_AMOUNT_HARD_CAP);
-
-        if ($requestedAmount === false || $requestedAmount <= 0) {
-            throw ValidationException::withMessages([
-                "items.$index.requested_amount" => 'Requested amount must be a positive integer.',
-            ]);
-        }
-
-        if ($hardCap > 0 && $requestedAmount > $hardCap) {
-            throw ValidationException::withMessages([
-                "items.$index.requested_amount" => "Requested amount may not be greater than {$hardCap}.",
-            ]);
-        }
-
-        if ($minimum !== null && $requestedAmount < $minimum) {
-            throw ValidationException::withMessages([
-                "items.$index.requested_amount" => "Requested amount must be at least {$minimum}.",
-            ]);
-        }
-
-        if ($maximum !== null && $requestedAmount > $maximum) {
-            throw ValidationException::withMessages([
-                "items.$index.requested_amount" => "Requested amount may not be greater than {$maximum}.",
-            ]);
-        }
-
-        if ($step !== null && $step > 1 && $requestedAmount % $step !== 0) {
-            throw ValidationException::withMessages([
-                "items.$index.requested_amount" => "Requested amount must be in increments of {$step}.",
-            ]);
-        }
-
-        return (int) $requestedAmount;
     }
 }

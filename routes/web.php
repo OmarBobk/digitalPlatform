@@ -3,6 +3,7 @@
 use App\Exports\UsersExport;
 use App\Http\Controllers\Api\PushTokenController;
 use App\Http\Controllers\BugAttachmentController;
+use App\Http\Controllers\BuyNowCustomAmountQuoteController;
 use App\Http\Controllers\TopupProofController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
@@ -40,6 +41,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('/notifications', 'pages::frontend.notifications')->name('notifications.index');
     Route::get('/topup-proofs/{proof}', [TopupProofController::class, 'show'])->name('topup-proofs.show');
     Route::get('/bug-attachments/{attachment}', [BugAttachmentController::class, 'show'])->name('bug-attachments.show');
+    Route::post('/api/pricing/buy-now-custom-amount-quote', BuyNowCustomAmountQuoteController::class)
+        ->name('api.pricing.buy-now-custom-amount-quote');
 });
 
 Route::post('api/admin/push/register-token', [PushTokenController::class, 'register'])

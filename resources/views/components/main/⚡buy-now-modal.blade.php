@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 use App\Actions\Orders\CheckoutFromPayload;
 use App\Actions\Packages\ResolvePackageRequirements;
+use App\Domain\Pricing\PricingEngine;
 use App\Enums\OrderStatus;
 use App\Enums\ProductAmountMode;
 use App\Models\Package;
-use App\Models\LoyaltyTierConfig;
-use App\Models\PricingRule;
 use App\Models\Product;
-use App\Services\CustomerPriceService;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
@@ -26,7 +24,6 @@ new class extends Component
     public string $buyNowAmountMode = ProductAmountMode::Fixed->value;
     public ?string $buyNowAmountUnitLabel = null;
     public ?float $buyNowEntryPrice = null;
-    public float $buyNowOverrideDelta = 0.0;
     /** @var int|string Livewire can send empty string from number input; we normalize to int. */
     public int|string|null $buyNowRequestedAmount = null;
 
@@ -68,10 +65,6 @@ new class extends Component
      * @var array<int, array{final: ?float, per_unit: ?float, error: ?string}>
      */
     public array $packageOverlayLivePrices = [];
-    /** @var array<int, array{min: float, max: float, percentage: float}> */
-    public array $clientPricingRules = [];
-    public float $clientLoyaltyDiscountPercent = 0.0;
-
     public function openBuyNow(int $productId, bool $fromPackageOverlay = false, ?int $quantity = null, ?int $overlayCustomAmount = null): void
     {
         if (! auth()->check()) {
@@ -94,7 +87,6 @@ new class extends Component
         $this->buyNowAmountMode = (string) ($product['amount_mode'] ?? ProductAmountMode::Fixed->value);
         $this->buyNowAmountUnitLabel = $product['amount_unit_label'] ?? null;
         $this->buyNowEntryPrice = isset($product['entry_price']) ? (float) $product['entry_price'] : null;
-        $this->buyNowOverrideDelta = isset($product['override_delta']) ? (float) $product['override_delta'] : 0.0;
         $this->buyNowCustomAmountMin = isset($product['custom_amount_min']) ? (int) $product['custom_amount_min'] : null;
         $this->buyNowCustomAmountMax = isset($product['custom_amount_max']) ? (int) $product['custom_amount_max'] : null;
         $this->buyNowCustomAmountStep = max(1, (int) ($product['custom_amount_step'] ?? 1));
@@ -113,8 +105,14 @@ new class extends Component
                     ->whereKey($productId)
                     ->where('is_active', true)
                     ->first();
-                if ($productForAmountCheck !== null && $this->validateCustomAmountAgainstProduct($productForAmountCheck, $overlayCustomAmount) === null) {
-                    $initialAmount = $overlayCustomAmount;
+                if ($productForAmountCheck !== null) {
+                    try {
+                        app(\App\Domain\Pricing\CustomAmountValidator::class)
+                            ->validate($productForAmountCheck, $overlayCustomAmount, 'buyNowRequestedAmount');
+                        $initialAmount = $overlayCustomAmount;
+                    } catch (ValidationException) {
+                        // Fallback to minimum/default when overlay amount is not valid.
+                    }
                 }
             }
             $this->buyNowRequestedAmount = $initialAmount;
@@ -148,7 +146,6 @@ new class extends Component
         }
 
         $this->buyNowPriceError = null;
-        $this->loadClientPricingRules();
         $this->seedBuyNowPricingOnOpen();
     }
 
@@ -176,7 +173,6 @@ new class extends Component
             'buyNowPriceError',
             'buyNowFinalPerUnitRate',
             'buyNowEntryPrice',
-            'buyNowOverrideDelta',
             'packageOverlayLivePrices',
         ]);
         $this->resetValidation();
@@ -212,27 +208,19 @@ new class extends Component
             return;
         }
 
-        $priceService = app(CustomerPriceService::class);
+        $pricingEngine = app(PricingEngine::class);
         $user = auth()->user();
-        $overrides = $user !== null ? $priceService->getUserOverridesFor($user) : [];
 
         if ($this->buyNowAmountMode === ProductAmountMode::Custom->value) {
-            $amount = (int) $this->buyNowRequestedAmount;
-            $error = $this->validateCustomAmountAgainstProduct($product, $amount);
-
-            if ($error !== null) {
-                $this->buyNowPriceError = $error;
-
-                return;
-            }
-
             try {
-                $prices = $priceService->finalPriceForAmount($product, $amount, $user, $overrides);
-                $final = $prices['final_price'];
-                $this->buyNowLineFinalPrice = $final;
-                $this->buyNowFinalPerUnitRate = $amount > 0
-                    ? (float) bcdiv(number_format($final, 8, '.', ''), (string) $amount, 8)
-                    : null;
+                $quote = $pricingEngine->quote($product, 1, (int) $this->buyNowRequestedAmount, $user);
+                $this->buyNowLineFinalPrice = $quote->finalTotal;
+                $this->buyNowFinalPerUnitRate = $quote->unitPrice;
+            } catch (ValidationException $exception) {
+                $this->buyNowLineFinalPrice = null;
+                $this->buyNowFinalPerUnitRate = null;
+                $this->buyNowPriceError = collect($exception->errors())->flatten()->first()
+                    ?? __('messages.invalid_value', ['field' => __('messages.amount')]);
             } catch (\InvalidArgumentException $exception) {
                 $this->buyNowLineFinalPrice = null;
                 $this->buyNowFinalPerUnitRate = null;
@@ -245,9 +233,8 @@ new class extends Component
             return;
         }
 
-        $qty = max(1, (int) $this->buyNowQuantity);
-        $prices = $priceService->finalPriceForQuantity($product, $qty, $user, $overrides);
-        $this->buyNowLineFinalPrice = (float) $prices['final_total'];
+        $quote = $pricingEngine->quote($product, max(1, (int) $this->buyNowQuantity), null, $user);
+        $this->buyNowLineFinalPrice = $quote->finalTotal;
     }
 
     public function refreshBuyNowLinePrice(): void
@@ -293,94 +280,27 @@ new class extends Component
             return;
         }
 
-        $priceService = app(CustomerPriceService::class);
+        $pricingEngine = app(PricingEngine::class);
         $user = auth()->user();
-        $overrides = $user !== null ? $priceService->getUserOverridesFor($user) : [];
-
-        $qty = max(1, (int) $this->buyNowQuantity);
-        $prices = $priceService->finalPriceForQuantity($product, $qty, $user, $overrides);
-        $this->buyNowLineFinalPrice = (float) $prices['final_total'];
+        $quote = $pricingEngine->quote($product, max(1, (int) $this->buyNowQuantity), null, $user);
+        $this->buyNowLineFinalPrice = $quote->finalTotal;
     }
 
     public function repriceCustomAmount(int $productId, mixed $requestedAmount): void
     {
-        $userId = auth()->id() ?? request()->ip() ?? 'guest';
-        $rateLimitKey = sprintf('cart-reprice:%s:%d', (string) $userId, $productId);
-        $allowed = false;
-        RateLimiter::attempt($rateLimitKey, 20, function () use (&$allowed): void {
-            $allowed = true;
-        }, 60);
+        $result = app(\App\Actions\Cart\RepriceCustomAmountLinePrice::class)->handle(
+            productId: $productId,
+            requestedAmount: $requestedAmount,
+            user: auth()->user(),
+            rateLimiterIdentity: (string) (auth()->id() ?? request()->ip() ?? 'guest'),
+        );
 
-        if (! $allowed) {
-            $this->dispatch('cart-custom-amount-priced', productId: $productId, message: __('messages.something_went_wrong_checkout'));
+        if (($result['ok'] ?? false) !== true) {
+            if (($result['silent'] ?? false) === true) {
+                return;
+            }
 
-            return;
-        }
-
-        $amount = (int) $requestedAmount;
-
-        if ($amount <= 0) {
-            $this->dispatch('cart-custom-amount-priced', productId: $productId, message: __('messages.required_field', ['field' => __('messages.amount')]));
-
-            return;
-        }
-
-        $product = Product::query()
-            ->select([
-                'id',
-                'entry_price',
-                'amount_mode',
-                'custom_amount_min',
-                'custom_amount_max',
-                'custom_amount_step',
-            ])
-            ->whereKey($productId)
-            ->where('is_active', true)
-            ->first();
-
-        if ($product === null || ($product->amount_mode ?? ProductAmountMode::Fixed) !== ProductAmountMode::Custom) {
-            return;
-        }
-
-        $minimum = $product->custom_amount_min;
-        $maximum = $product->custom_amount_max;
-        $step = $product->custom_amount_step ?? 1;
-
-        if ($minimum !== null && $amount < $minimum) {
-            $this->dispatch('cart-custom-amount-priced', productId: $productId, message: __('messages.min_value', ['field' => __('messages.amount'), 'min' => $minimum]));
-
-            return;
-        }
-
-        if ($maximum !== null && $amount > $maximum) {
-            $this->dispatch('cart-custom-amount-priced', productId: $productId, message: __('messages.max_value', ['field' => __('messages.amount'), 'max' => $maximum]));
-
-            return;
-        }
-
-        if ($step > 1 && $amount % $step !== 0) {
-            $this->dispatch('cart-custom-amount-priced', productId: $productId, message: __('messages.invalid_value', ['field' => __('messages.amount')]));
-
-            return;
-        }
-
-        $entryPrice = $product->entry_price !== null ? (float) $product->entry_price : null;
-
-        if ($entryPrice === null) {
-            $this->dispatch('cart-custom-amount-priced', productId: $productId, message: __('messages.invalid_value', ['field' => __('messages.amount')]));
-
-            return;
-        }
-
-        $priceService = app(CustomerPriceService::class);
-        $user = auth()->user();
-
-        try {
-            $prices = $user !== null
-                ? $priceService->finalPriceForAmount($product, $amount, $user, $priceService->getUserOverridesFor($user))
-                : $this->guestCustomAmountPrices($product, $amount, $priceService);
-        } catch (\InvalidArgumentException) {
-            $this->dispatch('cart-custom-amount-priced', productId: $productId, message: __('messages.invalid_value', ['field' => __('messages.amount')]));
+            $this->dispatch('cart-custom-amount-priced', productId: $productId, message: $result['message'] ?? null);
 
             return;
         }
@@ -388,8 +308,8 @@ new class extends Component
         $this->dispatch(
             'cart-custom-amount-priced',
             productId: $productId,
-            price: $prices['final_price'],
-            requestedAmount: $amount,
+            price: $result['price'],
+            requestedAmount: $result['requested_amount'],
             message: null,
         );
     }
@@ -493,8 +413,6 @@ new class extends Component
         $this->reset('buyNowError', 'buyNowSuccess', 'buyNowOrderNumber');
         $this->resetValidation();
         $this->resetBuyNowState();
-        $this->loadClientPricingRules();
-
         $package = Package::query()
             ->select(['id', 'name'])
             ->with(['products' => function ($query): void {
@@ -531,12 +449,11 @@ new class extends Component
 
         $placeholderImage = asset('images/promotions/promo-placeholder.svg');
         $resolver = app(ResolvePackageRequirements::class);
-        $priceService = app(CustomerPriceService::class);
+        $pricingEngine = app(PricingEngine::class);
         $user = auth()->user();
-        $overrides = $user !== null ? $priceService->getUserOverridesFor($user) : [];
 
         $this->packageProducts = $package->products
-            ->map(fn (Product $product): array => $this->mapProduct($product, $resolver, $priceService, $user, $placeholderImage, $overrides))
+            ->map(fn (Product $product): array => $this->mapProduct($product, $resolver, $pricingEngine, $user, $placeholderImage))
             ->all();
         $this->selectedPackageId = $package->id;
         $this->selectedPackageName = $package->name;
@@ -701,7 +618,6 @@ new class extends Component
         $this->buyNowPriceError = null;
         $this->buyNowFinalPerUnitRate = null;
         $this->buyNowEntryPrice = null;
-        $this->buyNowOverrideDelta = 0.0;
         $this->packageOverlayLivePrices = [];
     }
 
@@ -765,32 +681,22 @@ new class extends Component
             return;
         }
 
-        $error = $this->validateCustomAmountAgainstProduct($product, $amount);
-
-        if ($error !== null) {
-            $this->packageOverlayLivePrices[$productId] = [
-                'final' => null,
-                'per_unit' => null,
-                'error' => $error,
-            ];
-
-            return;
-        }
-
-        $priceService = app(CustomerPriceService::class);
+        $pricingEngine = app(PricingEngine::class);
         $user = auth()->user();
 
         try {
-            $prices = $user !== null
-                ? $priceService->finalPriceForAmount($product, $amount, $user, $priceService->getUserOverridesFor($user))
-                : $this->guestCustomAmountPrices($product, $amount, $priceService);
-            $final = $prices['final_price'];
+            $quote = $pricingEngine->quote($product, 1, $amount, $user);
             $this->packageOverlayLivePrices[$productId] = [
-                'final' => $final,
-                'per_unit' => $amount > 0
-                    ? (float) bcdiv(number_format($final, 8, '.', ''), (string) $amount, 8)
-                    : null,
+                'final' => $quote->finalTotal,
+                'per_unit' => $quote->unitPrice,
                 'error' => null,
+            ];
+        } catch (ValidationException $exception) {
+            $this->packageOverlayLivePrices[$productId] = [
+                'final' => null,
+                'per_unit' => null,
+                'error' => collect($exception->errors())->flatten()->first()
+                    ?? __('messages.invalid_value', ['field' => __('messages.amount')]),
             ];
         } catch (\InvalidArgumentException) {
             $this->packageOverlayLivePrices[$productId] = [
@@ -799,54 +705,6 @@ new class extends Component
                 'error' => __('messages.invalid_value', ['field' => __('messages.entry_price')]),
             ];
         }
-    }
-
-    private function validateCustomAmountAgainstProduct(Product $product, int $amount): ?string
-    {
-        if ($amount <= 0) {
-            return __('messages.required_field', ['field' => __('messages.amount')]);
-        }
-
-        $minimum = $product->custom_amount_min;
-        $maximum = $product->custom_amount_max;
-        $step = $product->custom_amount_step ?? 1;
-
-        if ($minimum !== null && $amount < $minimum) {
-            return __('messages.min_value', ['field' => __('messages.amount'), 'min' => $minimum]);
-        }
-
-        if ($maximum !== null && $amount > $maximum) {
-            return __('messages.max_value', ['field' => __('messages.amount'), 'max' => $maximum]);
-        }
-
-        if ($step > 1 && $amount % $step !== 0) {
-            return __('messages.invalid_value', ['field' => __('messages.amount')]);
-        }
-
-        $entryPrice = $product->entry_price !== null ? (float) $product->entry_price : null;
-
-        if ($entryPrice === null || $entryPrice <= 0) {
-            return __('messages.invalid_value', ['field' => __('messages.entry_price')]);
-        }
-
-        return null;
-    }
-
-    /**
-     * @return array{base_price: float, discount_amount: float, final_price: float, tier_name: string|null, meta: array<string, mixed>}
-     */
-    private function guestCustomAmountPrices(Product $product, int $amount, CustomerPriceService $priceService): array
-    {
-        $entryPrice = (float) $product->entry_price;
-        $computedEntryTotal = (float) bcmul(
-            (string) $amount,
-            number_format($entryPrice, 6, '.', ''),
-            6
-        );
-        $pricingProduct = clone $product;
-        $pricingProduct->setAttribute('entry_price', $computedEntryTotal);
-
-        return $priceService->priceFor($pricingProduct, null, []);
     }
 
     /**
@@ -895,20 +753,35 @@ new class extends Component
 
         $placeholderImage = asset('images/promotions/promo-placeholder.svg');
         $resolver = app(ResolvePackageRequirements::class);
-        $priceService = app(CustomerPriceService::class);
+        $pricingEngine = app(PricingEngine::class);
         $user = auth()->user();
-        $overrides = $user !== null ? $priceService->getUserOverridesFor($user) : [];
 
-        return $this->mapProduct($product, $resolver, $priceService, $user, $placeholderImage, $overrides);
+        return $this->mapProduct($product, $resolver, $pricingEngine, $user, $placeholderImage);
     }
 
-    /**
-     * @param  array<int, float>  $overrides
-     */
-    private function mapProduct(Product $product, ResolvePackageRequirements $resolver, CustomerPriceService $priceService, ?\App\Models\User $user, string $placeholderImage, array $overrides): array
+    private function mapProduct(Product $product, ResolvePackageRequirements $resolver, PricingEngine $pricingEngine, ?\App\Models\User $user, string $placeholderImage): array
     {
         $resolved = $resolver->handle($product->package?->requirements ?? collect());
-        $prices = $priceService->priceFor($product, $user, $overrides);
+        $defaultAmount = ($product->amount_mode ?? ProductAmountMode::Fixed) === ProductAmountMode::Custom
+            ? (int) ($product->custom_amount_min ?? $product->custom_amount_step ?? 1)
+            : null;
+
+        try {
+            $quote = $pricingEngine->quote($product, 1, $defaultAmount, $user);
+        } catch (ValidationException|\InvalidArgumentException) {
+            $quote = new \App\Domain\Pricing\PriceQuoteDTO(
+                amountMode: ($product->amount_mode ?? ProductAmountMode::Fixed)->value,
+                basePrice: 0.0,
+                discountAmount: 0.0,
+                finalPrice: 0.0,
+                finalTotal: 0.0,
+                unitPrice: 0.0,
+                quantity: 1,
+                requestedAmount: $defaultAmount,
+                tierName: null,
+                meta: [],
+            );
+        }
 
         return [
             'id' => $product->id,
@@ -916,11 +789,10 @@ new class extends Component
             'package_name' => $product->package?->name,
             'name' => $product->name,
             'entry_price' => $product->entry_price !== null ? (float) $product->entry_price : null,
-            'override_delta' => isset($overrides[$product->id]) ? (float) $overrides[$product->id] : 0.0,
-            'price' => $prices['final_price'],
-            'base_price' => $prices['base_price'],
-            'discount_amount' => $prices['discount_amount'],
-            'tier_name' => $prices['tier_name'],
+            'price' => $quote->finalTotal,
+            'base_price' => $quote->basePrice,
+            'discount_amount' => $quote->discountAmount,
+            'tier_name' => $quote->tierName,
             'amount_mode' => ($product->amount_mode ?? ProductAmountMode::Fixed)->value,
             'amount_unit_label' => $product->amount_unit_label,
             'custom_amount_min' => $product->custom_amount_min,
@@ -936,36 +808,6 @@ new class extends Component
         ];
     }
 
-    private function loadClientPricingRules(): void
-    {
-        if ($this->clientPricingRules !== []) {
-            return;
-        }
-
-        $useWholesale = auth()->check() && auth()->user()?->hasRole('salesperson');
-
-        $this->clientPricingRules = PricingRule::query()
-            ->where('is_active', true)
-            ->orderBy('priority')
-            ->get(['min_price', 'max_price', 'retail_percentage', 'wholesale_percentage'])
-            ->map(fn (PricingRule $rule): array => [
-                'min' => (float) $rule->min_price,
-                'max' => (float) $rule->max_price,
-                'percentage' => (float) ($useWholesale ? $rule->wholesale_percentage : $rule->retail_percentage),
-            ])
-            ->all();
-
-        $this->clientLoyaltyDiscountPercent = 0.0;
-        $user = auth()->user();
-        if ($user !== null && $user->loyaltyRole() !== null) {
-            $tierName = $user->loyalty_tier?->value ?? 'bronze';
-            $tier = LoyaltyTierConfig::query()
-                ->forRole($user->loyaltyRole())
-                ->where('name', $tierName)
-                ->first();
-            $this->clientLoyaltyDiscountPercent = $tier !== null ? (float) $tier->discount_percentage : 0.0;
-        }
-    }
 };
 ?>
 
@@ -988,10 +830,6 @@ new class extends Component
         $buyNowCustomEstimateConfig = [
             'amountInputStr' => $buyNowRequestedAmountInput ?? '',
             'rate' => $buyNowFinalPerUnitRate,
-            'entryPrice' => $buyNowEntryPrice,
-            'pricingRules' => $clientPricingRules,
-            'overrideDelta' => $buyNowOverrideDelta,
-            'loyaltyDiscountPercent' => $clientLoyaltyDiscountPercent,
             'serverError' => $buyNowPriceError,
             'amountMin' => $buyNowCustomAmountMin,
             'amountMax' => $buyNowCustomAmountMax,
@@ -1082,10 +920,6 @@ new class extends Component
                                 $overlayRowStep = max(1, (int) ($product['custom_amount_step'] ?? 1));
                                 $overlayRowEstimateConfig = [
                                     'rate' => $overlayPerUnit !== null ? (float) $overlayPerUnit : null,
-                                    'entryPrice' => $product['entry_price'] ?? null,
-                                    'pricingRules' => $clientPricingRules,
-                                    'overrideDelta' => $product['override_delta'] ?? 0,
-                                    'loyaltyDiscountPercent' => $clientLoyaltyDiscountPercent,
                                     'serverError' => $overlayError,
                                     'amountMin' => $product['custom_amount_min'] ?? null,
                                     'amountMax' => $product['custom_amount_max'] ?? null,
@@ -1246,7 +1080,7 @@ new class extends Component
                                             x-on:click="
                                                 $store.cart.add(product, qty);
                                                 const item = $store.cart.items.find((entry) => entry.id === product.id);
-                                                if (item && amountValid) {
+                                                if (item && digitsParsed > 0) {
                                                     item.quantity = 1;
                                                     item.requested_amount = digitsParsed;
                                                     item.requested_amount_input = $store.cart.formatGroupedIntegerForAmount(digitsParsed);
@@ -1581,7 +1415,7 @@ new class extends Component
                         {{ __('main.pay_now') }}
                     </flux:button>
                 @elseif ($buyNowAmountMode === \App\Enums\ProductAmountMode::Custom->value)
-                    {{-- Native button: Flux's nested markup + Livewire morph (cloneNode) can evaluate Alpine before the parent x-data scope is attached. --}}
+                    {{-- Native button: Flux's nested markup + Livewire morph (cloneNode) can evaluate Alpine before parent x-data is attached. --}}
                     <button
                         type="button"
                         class="relative inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium disabled:opacity-75 dark:disabled:opacity-75 disabled:cursor-default disabled:pointer-events-none h-10 text-sm rounded-lg ps-4 pe-4 bg-[var(--color-accent)] hover:bg-[color-mix(in_oklab,_var(--color-accent),_transparent_10%)] text-[var(--color-accent-foreground)] border border-black/10 dark:border-0 shadow-[inset_0px_1px_--theme(--color-white/.2)]"

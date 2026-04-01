@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Actions\Cart;
 
+use App\Domain\Pricing\PricingEngine;
 use App\Enums\ProductAmountMode;
 use App\Models\Product;
 use App\Models\User;
-use App\Services\CustomerPriceService;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\ValidationException;
 
 final class RepriceCustomAmountLinePrice
 {
@@ -25,12 +26,6 @@ final class RepriceCustomAmountLinePrice
 
         if (! $allowed) {
             return ['ok' => false, 'message' => __('messages.something_went_wrong_checkout')];
-        }
-
-        $amount = (int) $requestedAmount;
-
-        if ($amount <= 0) {
-            return ['ok' => false, 'message' => __('messages.required_field', ['field' => __('messages.amount')])];
         }
 
         $product = Product::query()
@@ -50,51 +45,36 @@ final class RepriceCustomAmountLinePrice
             return ['ok' => false, 'silent' => true, 'message' => ''];
         }
 
-        $minimum = $product->custom_amount_min;
-        $maximum = $product->custom_amount_max;
-        $step = $product->custom_amount_step ?? 1;
+        $pricingEngine = app(PricingEngine::class);
 
-        if ($minimum !== null && $amount < $minimum) {
-            return ['ok' => false, 'message' => __('messages.min_value', ['field' => __('messages.amount'), 'min' => $minimum])];
-        }
+        try {
+            $quote = $pricingEngine->quote($product, 1, (int) $requestedAmount, $user);
+        } catch (ValidationException $exception) {
+            $message = collect($exception->errors())->flatten()->first()
+                ?? __('messages.invalid_value', ['field' => __('messages.amount')]);
 
-        if ($maximum !== null && $amount > $maximum) {
-            return ['ok' => false, 'message' => __('messages.max_value', ['field' => __('messages.amount'), 'max' => $maximum])];
-        }
-
-        if ($step > 1 && $amount % $step !== 0) {
+            return ['ok' => false, 'message' => $message];
+        } catch (\InvalidArgumentException) {
             return ['ok' => false, 'message' => __('messages.invalid_value', ['field' => __('messages.amount')])];
         }
-
-        $entryPrice = $product->entry_price !== null ? (float) $product->entry_price : null;
-
-        if ($entryPrice === null) {
-            return ['ok' => false, 'message' => __('messages.invalid_value', ['field' => __('messages.amount')])];
-        }
-
-        $computedEntryTotal = (float) bcmul(
-            (string) $amount,
-            number_format($entryPrice, 6, '.', ''),
-            6
-        );
-        $pricingProduct = clone $product;
-        $pricingProduct->setAttribute('entry_price', $computedEntryTotal);
-
-        $priceService = app(CustomerPriceService::class);
-        $overrides = $user !== null ? $priceService->getUserOverridesFor($user) : [];
-        $prices = $priceService->priceFor($pricingProduct, $user, $overrides);
 
         $meta = [
             'mode' => ProductAmountMode::Custom->value,
-            'requested_amount' => $amount,
-            'entry_price' => $entryPrice,
-            'computed_entry_total' => $computedEntryTotal,
+            'requested_amount' => $quote->requestedAmount,
+            'entry_price' => $product->entry_price !== null ? (float) $product->entry_price : null,
+            'computed_entry_total' => $product->entry_price !== null && $quote->requestedAmount !== null
+                ? (float) bcmul(
+                    (string) $quote->requestedAmount,
+                    number_format((float) $product->entry_price, 6, '.', ''),
+                    6
+                )
+                : null,
         ];
 
         return [
             'ok' => true,
-            'price' => (float) $prices['final_price'],
-            'requested_amount' => $amount,
+            'price' => $quote->finalTotal,
+            'requested_amount' => (int) $quote->requestedAmount,
             'meta' => $meta,
         ];
     }

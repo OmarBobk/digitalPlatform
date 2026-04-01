@@ -45,57 +45,12 @@ document.addEventListener('alpine:init', () => {
             return customAmountEstimate.amountInvalidReason(ctx) === null;
         },
 
-        pricingRules(ctx) {
-            return Array.isArray(ctx.pricingRules) ? ctx.pricingRules : [];
-        },
-
-        estimatedFinalFromRules(ctx) {
-            const rules = customAmountEstimate.pricingRules(ctx);
-            const entryPrice = Number(ctx.entryPrice);
-            const amount = customAmountEstimate.digitsParsed(ctx);
-            if (rules.length === 0 || Number.isNaN(entryPrice) || entryPrice <= 0 || amount <= 0) {
-                return null;
-            }
-
-            const baseTotal = amount * entryPrice;
-            const matchedRule = rules.find((rule) => {
-                const min = Number(rule?.min);
-                const max = Number(rule?.max);
-                return ! Number.isNaN(min) && ! Number.isNaN(max) && baseTotal >= min && baseTotal < max;
-            });
-
-            if (! matchedRule) {
-                return null;
-            }
-
-            const percentage = Number(matchedRule?.percentage ?? 0);
-            const baseWithRule = customAmountEstimate.round2(
-                baseTotal * (1 + (Number.isNaN(percentage) ? 0 : percentage / 100))
-            );
-            const overrideDelta = Number(ctx.overrideDelta ?? 0);
-            const adjustedBase = customAmountEstimate.round2(baseWithRule + (Number.isNaN(overrideDelta) ? 0 : overrideDelta));
-            const loyaltyDiscountPercent = Number(ctx.loyaltyDiscountPercent ?? 0);
-            const discountAmount = customAmountEstimate.round2(
-                adjustedBase * ((Number.isNaN(loyaltyDiscountPercent) ? 0 : loyaltyDiscountPercent) / 100)
-            );
-            const finalWithDiscount = customAmountEstimate.round2(adjustedBase - discountAmount);
-
-            return finalWithDiscount < baseTotal
-                ? customAmountEstimate.round2(baseTotal)
-                : finalWithDiscount;
-        },
-
         estimatedFinal(ctx) {
             if (ctx.serverError) {
                 return null;
             }
             if (! customAmountEstimate.amountValid(ctx)) {
                 return null;
-            }
-
-            const fromRules = customAmountEstimate.estimatedFinalFromRules(ctx);
-            if (fromRules !== null) {
-                return fromRules;
             }
 
             if (ctx.rate === null || ctx.rate === undefined) {
@@ -183,10 +138,6 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('buyNowCustomAmountEstimate', (config) => ({
         amountInputStr: config.amountInputStr ?? '',
         rate: config.rate,
-        entryPrice: config.entryPrice ?? null,
-        pricingRules: Array.isArray(config.pricingRules) ? config.pricingRules : [],
-        overrideDelta: Number(config.overrideDelta ?? 0),
-        loyaltyDiscountPercent: Number(config.loyaltyDiscountPercent ?? 0),
         serverError: config.serverError ?? null,
         amountMin: config.amountMin ?? null,
         amountMax: config.amountMax ?? null,
@@ -228,10 +179,6 @@ document.addEventListener('alpine:init', () => {
         product: config.product,
         amountInputStr: config.amountInputStr ?? '',
         rate: config.rate,
-        entryPrice: config.entryPrice ?? null,
-        pricingRules: Array.isArray(config.pricingRules) ? config.pricingRules : [],
-        overrideDelta: Number(config.overrideDelta ?? 0),
-        loyaltyDiscountPercent: Number(config.loyaltyDiscountPercent ?? 0),
         serverError: config.serverError ?? null,
         amountMin: config.amountMin ?? null,
         amountMax: config.amountMax ?? null,
