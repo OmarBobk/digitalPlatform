@@ -3,6 +3,8 @@
  * Only runs when window.Laravel?.isAdmin === true.
  * Asks for notification permission first (so the prompt shows before/without PWA install),
  * then gets FCM token and registers with backend.
+ *
+ * Push sounds: registered in app.js (listener) so it loads before this async chunk.
  */
 
 import { getApps, initializeApp } from 'firebase/app';

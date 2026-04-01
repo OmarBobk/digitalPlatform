@@ -110,6 +110,33 @@ function delay(ms) {
     return new Promise(function (r) { setTimeout(r, ms); });
 }
 
+/**
+ * Prefer playing sound in an open tab (HTMLAudioElement) — better autoplay behavior than SW AudioContext,
+ * especially on mobile. Falls back to playNotificationSound() when no window clients.
+ *
+ * @returns {Promise<{ hadClients: boolean }>}
+ */
+function notifyClientsToPlaySound(resolvedPath) {
+    const base = self.location.origin;
+    const path = resolveSoundPath(resolvedPath);
+    const fullUrl = path.startsWith('http') ? path : base + (path.startsWith('/') ? path : '/' + path);
+    return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
+        if (!clientList || clientList.length === 0) {
+            console.log('[sw] no window clients — will try SW audio fallback');
+            return { hadClients: false };
+        }
+        console.log('[sw] posting KARMAN_PLAY_PUSH_SOUND to', clientList.length, 'client(s)');
+        clientList.forEach(function (client) {
+            try {
+                client.postMessage({ type: 'KARMAN_PLAY_PUSH_SOUND', url: fullUrl });
+            } catch (e) {
+                console.log('[sw] client.postMessage failed', e);
+            }
+        });
+        return { hadClients: true };
+    });
+}
+
 self.addEventListener('push', (event) => {
     console.log('[sw] push event', event.data ? 'has data' : 'no data');
     if (!event.data) return;
@@ -140,9 +167,17 @@ self.addEventListener('push', (event) => {
     const showPromise = self.registration.showNotification(title, options)
         .then(function () { console.log('[sw] showNotification done'); })
         .catch(function (e) { console.log('[sw] showNotification failed', e); });
+
     const soundPromise = sound
-        ? showPromise.then(function () { return delay(150); }).then(function () { return playNotificationSound(sound); })
+        ? notifyClientsToPlaySound(rawSound || sound).then(function (result) {
+            if (result && result.hadClients) {
+                console.log('[sw] sound delegated to page — skipping SW Web Audio');
+                return Promise.resolve();
+            }
+            return delay(150).then(function () { return playNotificationSound(sound); });
+        })
         : Promise.resolve();
+
     event.waitUntil(Promise.all([showPromise, soundPromise]));
 });
 

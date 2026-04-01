@@ -1065,6 +1065,32 @@ document.addEventListener('alpine:init', () => {
 import './echo';
 import './bug-reporter';
 
+/**
+ * Admin FCM: service worker posts here so the page plays sound via HTMLAudioElement
+ * (more reliable than Web Audio inside the SW, especially on mobile).
+ * Registered before async firebase-push chunk so the first push is not missed.
+ */
+const KARMAN_PUSH_SOUND_MSG = 'KARMAN_PLAY_PUSH_SOUND';
+
+if (typeof window !== 'undefined' && window.Laravel?.isAdmin === true && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+        const d = event.data;
+        if (!d || d.type !== KARMAN_PUSH_SOUND_MSG || typeof d.url !== 'string') {
+            return;
+        }
+        try {
+            const audio = new Audio(d.url);
+            audio.setAttribute('playsinline', '');
+            const p = audio.play();
+            if (p !== undefined && typeof p.then === 'function') {
+                p.catch(() => {});
+            }
+        } catch {
+            /* ignore */
+        }
+    });
+}
+
 if (window.Laravel?.isAdmin === true) {
     import('./firebase-push');
 }
