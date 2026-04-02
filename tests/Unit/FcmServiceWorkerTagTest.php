@@ -7,6 +7,8 @@ test('service worker does not set notification tag (prevents overwriting)', func
     $swContents = file_get_contents($swPath);
     expect(is_string($swContents))->toBeTrue();
     expect($swContents)->not->toMatch('/\btag\s*:/');
+    expect($swContents)->toContain('skipWaiting');
+    expect($swContents)->toContain('clients.claim');
 
     $pushSwPath = realpath(__DIR__.'/../../public/push-sw.js');
     expect(file_exists($pushSwPath))->toBeTrue();

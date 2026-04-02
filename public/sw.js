@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "offline-cache-v1";
+const CACHE_NAME = "offline-cache-v2";
 const OFFLINE_URL = '/offline.html';
 
 const filesToCache = [
@@ -12,6 +12,7 @@ self.addEventListener("install", (event) => {
         caches.open(CACHE_NAME)
             .then((cache) => cache.addAll(filesToCache))
     );
+    self.skipWaiting();
 });
 
 self.addEventListener("fetch", (event) => {
