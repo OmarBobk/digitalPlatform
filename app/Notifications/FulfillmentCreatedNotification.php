@@ -30,7 +30,7 @@ class FulfillmentCreatedNotification extends BaseNotification
         return [
             'title' => __('notifications.fulfillment_created_title'),
             'body' => $this->message,
-            'sound' => '/sounds/topup.mp3',
+            'sound' => '/sounds/fulfillment.mp3',
             'url' => $path ?: '/fulfillments',
         ];
     }

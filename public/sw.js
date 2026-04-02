@@ -50,7 +50,7 @@ self.addEventListener('activate', (event) => {
 });
 
 // --- Push notification (FCM) ---
-const DEFAULT_SOUND_PATH = '/sounds/topup.mp3';
+const DEFAULT_SOUND_PATH = '/sounds/fulfillment.mp3';
 /** Same-origin tabs listen in app.js; works when clients.matchAll returns 0 (common with FCM + PWA). */
 const PUSH_SOUND_BROADCAST = 'karman-push-sound';
 const PUSH_SOUND_MSG_TYPE = 'KARMAN_PLAY_PUSH_SOUND';
