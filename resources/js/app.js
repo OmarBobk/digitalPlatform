@@ -1066,20 +1066,25 @@ import './echo';
 import './bug-reporter';
 
 /**
- * Admin FCM: service worker posts here so the page plays sound via HTMLAudioElement
- * (more reliable than Web Audio inside the SW, especially on mobile).
- * Registered before async firebase-push chunk so the first push is not missed.
+ * Admin FCM: play push sound in the page (HTMLAudioElement). SW uses BroadcastChannel + postMessage
+ * because clients.matchAll often returns 0 while a tab is still open.
  */
 const KARMAN_PUSH_SOUND_MSG = 'KARMAN_PLAY_PUSH_SOUND';
+const KARMAN_PUSH_SOUND_CHANNEL = 'karman-push-sound';
 
-if (typeof window !== 'undefined' && window.Laravel?.isAdmin === true && 'serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('message', (event) => {
-        const d = event.data;
-        if (!d || d.type !== KARMAN_PUSH_SOUND_MSG || typeof d.url !== 'string') {
+if (typeof window !== 'undefined' && window.Laravel?.isAdmin === true) {
+    let lastKarmanPushSoundAt = 0;
+    function playKarmanPushSound(url) {
+        if (typeof url !== 'string' || url === '') {
             return;
         }
+        const now = Date.now();
+        if (now - lastKarmanPushSoundAt < 500) {
+            return;
+        }
+        lastKarmanPushSoundAt = now;
         try {
-            const audio = new Audio(d.url);
+            const audio = new Audio(url);
             audio.setAttribute('playsinline', '');
             const p = audio.play();
             if (p !== undefined && typeof p.then === 'function') {
@@ -1088,7 +1093,32 @@ if (typeof window !== 'undefined' && window.Laravel?.isAdmin === true && 'servic
         } catch {
             /* ignore */
         }
-    });
+    }
+
+    if (typeof BroadcastChannel !== 'undefined') {
+        try {
+            const pushSoundBc = new BroadcastChannel(KARMAN_PUSH_SOUND_CHANNEL);
+            pushSoundBc.addEventListener('message', (event) => {
+                const d = event.data;
+                if (!d || d.type !== KARMAN_PUSH_SOUND_MSG) {
+                    return;
+                }
+                playKarmanPushSound(d.url);
+            });
+        } catch {
+            /* ignore */
+        }
+    }
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (event) => {
+            const d = event.data;
+            if (!d || d.type !== KARMAN_PUSH_SOUND_MSG || typeof d.url !== 'string') {
+                return;
+            }
+            playKarmanPushSound(d.url);
+        });
+    }
 }
 
 if (window.Laravel?.isAdmin === true) {

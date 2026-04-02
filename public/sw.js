@@ -42,12 +42,17 @@ self.addEventListener('activate', (event) => {
                     }
                 })
             );
+        }).then(function () {
+            return self.clients.claim();
         })
     );
 });
 
 // --- Push notification (FCM) ---
 const DEFAULT_SOUND_PATH = '/sounds/topup.mp3';
+/** Same-origin tabs listen in app.js; works when clients.matchAll returns 0 (common with FCM + PWA). */
+const PUSH_SOUND_BROADCAST = 'karman-push-sound';
+const PUSH_SOUND_MSG_TYPE = 'KARMAN_PLAY_PUSH_SOUND';
 
 function resolveSoundPath(sound) {
     if (!sound || sound === 'default') return DEFAULT_SOUND_PATH;
@@ -111,29 +116,45 @@ function delay(ms) {
 }
 
 /**
- * Prefer playing sound in an open tab (HTMLAudioElement) — better autoplay behavior than SW AudioContext,
- * especially on mobile. Falls back to playNotificationSound() when no window clients.
+ * Deliver sound URL to open tabs: BroadcastChannel (reliable when matchAll is empty) + postMessage to clients.
  *
- * @returns {Promise<{ hadClients: boolean }>}
+ * @returns {Promise<{ pageMayPlay: boolean }>}
  */
 function notifyClientsToPlaySound(resolvedPath) {
     const base = self.location.origin;
     const path = resolveSoundPath(resolvedPath);
     const fullUrl = path.startsWith('http') ? path : base + (path.startsWith('/') ? path : '/' + path);
-    return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
-        if (!clientList || clientList.length === 0) {
-            console.log('[sw] no window clients — will try SW audio fallback');
-            return { hadClients: false };
+
+    var broadcastSent = false;
+    try {
+        if (typeof BroadcastChannel !== 'undefined') {
+            var bc = new BroadcastChannel(PUSH_SOUND_BROADCAST);
+            bc.postMessage({ type: PUSH_SOUND_MSG_TYPE, url: fullUrl });
+            bc.close();
+            broadcastSent = true;
+            console.log('[sw] BroadcastChannel push sound', fullUrl);
         }
-        console.log('[sw] posting KARMAN_PLAY_PUSH_SOUND to', clientList.length, 'client(s)');
-        clientList.forEach(function (client) {
-            try {
-                client.postMessage({ type: 'KARMAN_PLAY_PUSH_SOUND', url: fullUrl });
-            } catch (e) {
-                console.log('[sw] client.postMessage failed', e);
-            }
-        });
-        return { hadClients: true };
+    } catch (e) {
+        console.log('[sw] BroadcastChannel failed', e);
+    }
+
+    return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
+        var n = clientList ? clientList.length : 0;
+        if (n === 0) {
+            console.log('[sw] clients.matchAll: 0 window clients (BroadcastChannel still notified listeners)');
+        } else {
+            console.log('[sw] posting', PUSH_SOUND_MSG_TYPE, 'to', n, 'client(s)');
+        }
+        if (clientList) {
+            clientList.forEach(function (client) {
+                try {
+                    client.postMessage({ type: PUSH_SOUND_MSG_TYPE, url: fullUrl });
+                } catch (e) {
+                    console.log('[sw] client.postMessage failed', e);
+                }
+            });
+        }
+        return { pageMayPlay: n > 0 || broadcastSent };
     });
 }
 
@@ -170,8 +191,8 @@ self.addEventListener('push', (event) => {
 
     const soundPromise = sound
         ? notifyClientsToPlaySound(rawSound || sound).then(function (result) {
-            if (result && result.hadClients) {
-                console.log('[sw] sound delegated to page — skipping SW Web Audio');
+            if (result && result.pageMayPlay) {
+                console.log('[sw] sound delegated to page (BroadcastChannel and/or postMessage) — skipping SW Web Audio');
                 return Promise.resolve();
             }
             return delay(150).then(function () { return playNotificationSound(sound); });
