@@ -177,7 +177,6 @@ self.addEventListener('push', (event) => {
     console.log('[sw] notification', { title: title, rawSound: rawSound, sound: sound });
     const options = {
         body: body,
-        tag: 'push-' + (data.url || 'default'),
         data: { url: url },
         silent: false,
         vibrate: [400, 100, 400, 100, 400]
