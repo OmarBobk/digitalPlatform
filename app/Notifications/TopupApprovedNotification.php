@@ -20,10 +20,11 @@ class TopupApprovedNotification extends BaseNotification
         return new self(
             sourceType: TopupRequest::class,
             sourceId: $topupRequest->id,
-            title: __('notifications.topup_approved_title'),
-            message: __('notifications.topup_approved_message', [
+            titleKey: 'notifications.topup_approved_title',
+            messageKey: 'notifications.topup_approved_message',
+            messageParams: [
                 'amount_display' => $amountDisplay,
-            ]),
+            ],
             url: Route::has('wallet') ? route('wallet') : null
         );
     }

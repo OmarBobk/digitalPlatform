@@ -19,6 +19,10 @@ Route::get('language/{locale}', function (string $locale) {
     session()->put('locale', $locale);
     session()->save();
 
+    if (auth()->check()) {
+        auth()->user()?->forceFill(['locale' => $locale])->save();
+    }
+
     app()->setLocale($locale);
 
     return redirect()->back();

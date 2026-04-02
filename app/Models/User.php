@@ -6,6 +6,7 @@ namespace App\Models;
 use App\Enums\LoyaltyTier;
 use App\Enums\Timezone;
 use App\Enums\WalletType;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -16,7 +17,7 @@ use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable
+class User extends Authenticatable implements HasLocalePreference
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, HasRoles, Notifiable, TwoFactorAuthenticatable;
@@ -30,6 +31,7 @@ class User extends Authenticatable
         'name',
         'username',
         'email',
+        'locale',
         'password',
         'is_active',
         'phone',
@@ -68,6 +70,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'timezone' => Timezone::class,
+            'locale' => 'string',
             'blocked_at' => 'datetime',
             'last_login_at' => 'datetime',
             'loyalty_tier' => LoyaltyTier::class,
@@ -169,5 +172,10 @@ class User extends Authenticatable
         }
 
         return null;
+    }
+
+    public function preferredLocale(): string
+    {
+        return in_array($this->locale, ['en', 'ar'], true) ? $this->locale : config('app.locale', 'en');
     }
 }

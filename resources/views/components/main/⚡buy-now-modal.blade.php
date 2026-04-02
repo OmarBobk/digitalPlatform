@@ -1381,7 +1381,7 @@ new class extends Component
                             @if (($requirement['type'] ?? '') === 'select' && ! empty($requirement['options']))
                                 <select
                                     class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 shadow-sm outline-none transition focus:border-(--color-accent) dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
-                                    wire:model.blur="buyNowRequirements.{{ $requirementKey }}"
+                                    wire:model.live="buyNowRequirements.{{ $requirementKey }}"
                                 >
                                     <option value="">--</option>
                                     @foreach ($requirement['options'] as $option)
@@ -1393,7 +1393,7 @@ new class extends Component
                                     class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 shadow-sm outline-none transition focus:border-(--color-accent) dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
                                     type="{{ ($requirement['type'] ?? '') === 'number' ? 'number' : 'text' }}"
                                     placeholder="{{ $requirementKey }}"
-                                    wire:model.live.blur="buyNowRequirements.{{ $requirementKey }}"
+                                    wire:model.live="buyNowRequirements.{{ $requirementKey }}"
                                 />
                             @endif
                             @error("buyNowRequirements.$requirementKey")

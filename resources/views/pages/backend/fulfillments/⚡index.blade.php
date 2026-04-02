@@ -33,6 +33,10 @@ new class extends Component
 
     #[Url]
     public string $search = '';
+    #[Url]
+    public string $customerSearch = '';
+    #[Url]
+    public string $orderSearch = '';
     public string $statusFilter = 'all';
     public int $perPage = 10;
     #[Url]
@@ -49,6 +53,7 @@ new class extends Component
     public bool $autoDonePayload = false;
     public ?int $adminTableSupervisorId = null;
     public ?string $adminTableStatusFilter = null;
+    public int|string|null $userFilterId = null;
     public array $hiddenQueueFulfillmentIds = [];
     public array $hiddenMyFulfillmentIds = [];
     public array $prependedQueueFulfillmentIds = [];
@@ -70,9 +75,10 @@ new class extends Component
 
     public function resetFilters(): void
     {
-        $this->reset(['search', 'statusFilter', 'perPage']);
+        $this->reset(['search', 'customerSearch', 'orderSearch', 'statusFilter', 'perPage']);
         $this->adminTableSupervisorId = null;
         $this->adminTableStatusFilter = null;
+        $this->userFilterId = null;
         $this->hiddenQueueFulfillmentIds = [];
         $this->hiddenMyFulfillmentIds = [];
         $this->prependedQueueFulfillmentIds = [];
@@ -94,8 +100,25 @@ new class extends Component
 
         $this->adminTableSupervisorId = $supervisorId;
         $this->adminTableStatusFilter = $resolvedStatus->value;
+        $this->userFilterId = $supervisorId;
         $this->resetPage();
         $this->dispatch('open-admin-table-tab');
+    }
+
+    public function updatedUserFilterId(mixed $value): void
+    {
+        $this->userFilterId = filled($value) ? (int) $value : null;
+        $this->resetPage();
+    }
+
+    public function updatedCustomerSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedOrderSearch(): void
+    {
+        $this->resetPage();
     }
 
     public function openDetails(int $fulfillmentId): void
@@ -325,9 +348,24 @@ new class extends Component
             'all',
             auth()->id(),
             $this->isAdmin,
-            $this->adminTableSupervisorId,
-            null
+            $this->selectedUserFilterId(),
+            null,
+            $this->customerSearch,
+            $this->orderSearch
         );
+    }
+
+    public function getSupervisorFilterUsersProperty(): Collection
+    {
+        return User::query()
+            ->where(function ($query): void {
+                $query
+                    ->permission('manage_fulfillments')
+                    ->orWhereHas('roles', fn ($roleQuery) => $roleQuery->where('name', 'admin'));
+            })
+            ->select(['id', 'name', 'username'])
+            ->orderBy('name')
+            ->get();
     }
 
     public function getQueueCardsProperty(): Collection
@@ -356,7 +394,7 @@ new class extends Component
             ->whereNull('claimed_by')
             ->with([
                 'order:id,user_id,order_number,total,currency',
-                'order.user:id,name,email',
+                'order.user:id,name,email,username',
                 'orderItem:id,order_id,product_id,name,requirements_payload',
                 'orderItem.product:id,name',
             ])
@@ -391,7 +429,7 @@ new class extends Component
             ->where('claimed_by', auth()->id())
             ->with([
                 'order:id,user_id,order_number,total,currency',
-                'order.user:id,name,email',
+                'order.user:id,name,email,username',
                 'orderItem:id,order_id,product_id,package_id,name,quantity,requirements_payload',
                 'orderItem.product:id,name,slug',
                 'claimer:id,username,name',
@@ -723,6 +761,15 @@ new class extends Component
         return null;
     }
 
+    private function selectedUserFilterId(): ?int
+    {
+        if (filled($this->userFilterId)) {
+            return (int) $this->userFilterId;
+        }
+
+        return $this->adminTableSupervisorId;
+    }
+
     protected function statusBadgeColor(FulfillmentStatus $status): string
     {
         return match ($status) {
@@ -979,7 +1026,7 @@ new class extends Component
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0 space-y-1">
                                     <div class="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $fulfillment->orderItem?->name ?? __('messages.unknown_item') }}</div>
-                                    <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">{{ $fulfillment->order?->user?->email ?? __('messages.unknown_user') }}</div>
+                                    <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">Username: {{ $fulfillment->order?->user?->username ?? __('messages.unknown_user') }}</div>
 
                                     @if ($this->isAdmin)
                                         <div class="text-xs text-zinc-500 dark:text-zinc-400">
@@ -1106,7 +1153,7 @@ new class extends Component
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0 space-y-1">
                                     <div class="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $fulfillment->orderItem?->name ?? __('messages.unknown_item') }}</div>
-                                    <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">{{ $fulfillment->order?->user?->email ?? __('messages.unknown_user') }}</div>
+                                    <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">Username: {{ $fulfillment->order?->user?->username ?? __('messages.unknown_user') }}</div>
                                     @if ($this->isAdmin)
                                         <div class="text-xs text-zinc-500 dark:text-zinc-400">
                                             {{ __('messages.claimed_by') }}:
@@ -1233,6 +1280,49 @@ new class extends Component
                     <flux:heading size="sm">Global task table</flux:heading>
                     <flux:badge color="gray">{{ $this->allPage->total() }} total</flux:badge>
                 </div>
+                <div class="mb-3 grid gap-3 md:grid-cols-3">
+                    <div>
+                        <label for="supervisor-filter" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            Assignee
+                        </label>
+                        <select
+                            id="supervisor-filter"
+                            wire:model.live="userFilterId"
+                            class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 shadow-sm outline-none transition focus:border-cyan-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+                        >
+                            <option value="">All users</option>
+                            @foreach ($this->supervisorFilterUsers as $supervisor)
+                                <option value="{{ $supervisor->id }}">
+                                    {{ $supervisor->name ?: $supervisor->username ?: ('#'.$supervisor->id) }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label for="customer-search" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            Customer
+                        </label>
+                        <input
+                            id="customer-search"
+                            type="text"
+                            wire:model.live.debounce.350ms="customerSearch"
+                            placeholder="Name / email / username / ID"
+                            class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 shadow-sm outline-none transition focus:border-cyan-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+                        />
+                    </div>
+                    <div>
+                        <label for="order-search" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            Order
+                        </label>
+                        <input
+                            id="order-search"
+                            type="text"
+                            wire:model.live.debounce.350ms="orderSearch"
+                            placeholder="Order # / order ID"
+                            class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 shadow-sm outline-none transition focus:border-cyan-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+                        />
+                    </div>
+                </div>
                 @if ($this->adminTableSupervisorId !== null)
                     <div class="mb-3 flex flex-wrap items-center gap-2">
                         <flux:badge color="zinc">Supervisor filter #{{ $this->adminTableSupervisorId }}</flux:badge>
@@ -1242,7 +1332,7 @@ new class extends Component
                         <flux:button
                             variant="ghost"
                             size="sm"
-                            wire:click="$set('adminTableSupervisorId', null); $set('adminTableStatusFilter', null)"
+                            wire:click="$set('adminTableSupervisorId', null); $set('adminTableStatusFilter', null); $set('userFilterId', null)"
                         >
                             Clear supervisor filter
                         </flux:button>
@@ -1253,6 +1343,7 @@ new class extends Component
                         <thead class="bg-zinc-50 dark:bg-zinc-800/60">
                             <tr class="text-left text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                                 <th class="px-4 py-2">ID</th>
+                                <th class="px-4 py-2">Order ID</th>
                                 <th class="px-4 py-2">Item</th>
                                 <th class="px-4 py-2">Supervisor</th>
                                 <th class="px-4 py-2">Status</th>
@@ -1264,6 +1355,7 @@ new class extends Component
                             @forelse ($this->allPage as $fulfillment)
                                 <tr>
                                     <td class="px-4 py-2 text-zinc-700 dark:text-zinc-200">#{{ $fulfillment->id }}</td>
+                                    <td class="px-4 py-2 text-zinc-700 dark:text-zinc-200">#{{ $fulfillment->order_id }}</td>
                                     <td class="px-4 py-2 text-zinc-700 dark:text-zinc-200">{{ $fulfillment->orderItem?->name ?? __('messages.unknown_item') }}</td>
                                     <td class="px-4 py-2 text-zinc-700 dark:text-zinc-200">{{ $fulfillment->claimer?->name ?? $fulfillment->claimer?->username ?? '—' }}</td>
                                     <td class="px-4 py-2">
@@ -1283,7 +1375,7 @@ new class extends Component
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-4 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">No tasks match current filters.</td>
+                                    <td colspan="7" class="px-4 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">No tasks match current filters.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -1516,27 +1608,40 @@ new class extends Component
                 </flux:text>
             </div>
 
-        <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300">
-            <div>
-                <div class="font-semibold text-zinc-900 dark:text-zinc-100">
-                    {{ __('messages.done_payload_toggle') }}
+        <div
+            x-data="{ autoDonePayloadUi: false, deliveredPayload: @entangle('deliveredPayloadInput').defer }"
+            class="space-y-4"
+        >
+            <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300">
+                <div>
+                    <div class="font-semibold text-zinc-900 dark:text-zinc-100">
+                        {{ __('messages.done_payload_toggle') }}
+                    </div>
+                    <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                        {{ __('messages.done_payload_hint') }}
+                    </div>
                 </div>
-                <div class="text-xs text-zinc-500 dark:text-zinc-400">
-                    {{ __('messages.done_payload_hint') }}
-                </div>
+                <flux:switch
+                    class="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                    x-model="autoDonePayloadUi"
+                    x-on:change="
+                        if (autoDonePayloadUi) {
+                            deliveredPayload = 'DONE';
+                        } else if ((deliveredPayload ?? '').toString().trim() === 'DONE') {
+                            deliveredPayload = '';
+                        }
+                    "
+                />
             </div>
-            <flux:switch
-                class="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
-                wire:model.defer="autoDonePayload"
-            />
-        </div>
 
             <flux:textarea
                 name="deliveredPayloadInput"
                 label="{{ __('messages.delivery_payload') }}"
                 rows="4"
                 wire:model.defer="deliveredPayloadInput"
+                x-model="deliveredPayload"
             />
+        </div>
 
             <div class="flex flex-wrap items-center gap-2">
                 <flux:spacer />

@@ -15,11 +15,12 @@ class PaymentFailedNotification extends BaseNotification
         return new self(
             sourceType: Order::class,
             sourceId: $order->id,
-            title: __('notifications.payment_failed_title'),
-            message: __('notifications.payment_failed_message', [
+            titleKey: 'notifications.payment_failed_title',
+            messageKey: 'notifications.payment_failed_message',
+            messageParams: [
                 'order_number' => $order->order_number,
                 'reason' => $reason,
-            ]),
+            ],
             url: Route::has('cart') ? route('cart') : null
         );
     }
@@ -29,15 +30,16 @@ class PaymentFailedNotification extends BaseNotification
      */
     public static function forUser(User $user, string $reason, ?string $orderNumber = null): self
     {
-        $message = $orderNumber !== null
-            ? __('notifications.payment_failed_message', ['order_number' => $orderNumber, 'reason' => $reason])
-            : __('notifications.payment_failed_message_no_order', ['reason' => $reason]);
-
         return new self(
             sourceType: User::class,
             sourceId: $user->id,
-            title: __('notifications.payment_failed_title'),
-            message: $message,
+            titleKey: 'notifications.payment_failed_title',
+            messageKey: $orderNumber !== null
+                ? 'notifications.payment_failed_message'
+                : 'notifications.payment_failed_message_no_order',
+            messageParams: $orderNumber !== null
+                ? ['order_number' => $orderNumber, 'reason' => $reason]
+                : ['reason' => $reason],
             url: Route::has('cart') ? route('cart') : null
         );
     }

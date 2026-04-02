@@ -5,6 +5,7 @@ use App\Actions\Fulfillments\ClaimFulfillment;
 use App\Actions\Fulfillments\CompleteFulfillment;
 use App\Actions\Fulfillments\CreateFulfillmentsForOrder;
 use App\Actions\Fulfillments\FailFulfillment;
+use App\Actions\Fulfillments\GetFulfillments;
 use App\Actions\Fulfillments\RetryFulfillment;
 use App\Actions\Fulfillments\StartFulfillment;
 use App\Enums\FulfillmentLogLevel;
@@ -418,6 +419,84 @@ test('single claim success marks fulfillment as processing and claimed', functio
     expect($claimed->claimed_by)->toBe($supervisor->id);
     expect($claimed->claimed_at)->not->toBeNull();
     expect($claimed->status)->toBe(FulfillmentStatus::Processing);
+});
+
+test('get fulfillments can filter by claimed supervisor', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+    $firstSupervisor = User::factory()->create();
+    $secondSupervisor = User::factory()->create();
+
+    $firstFulfillment = makeFulfillment();
+    $firstFulfillment->update([
+        'status' => FulfillmentStatus::Processing,
+        'claimed_by' => $firstSupervisor->id,
+        'claimed_at' => now(),
+    ]);
+
+    $secondFulfillment = makeFulfillment();
+    $secondFulfillment->update([
+        'status' => FulfillmentStatus::Processing,
+        'claimed_by' => $secondSupervisor->id,
+        'claimed_at' => now(),
+    ]);
+
+    $filtered = app(GetFulfillments::class)->handle(
+        '',
+        'all',
+        20,
+        'all',
+        $admin->id,
+        true,
+        $firstSupervisor->id
+    );
+
+    expect($filtered->getCollection()->pluck('id')->all())->toContain($firstFulfillment->id);
+    expect($filtered->getCollection()->pluck('id')->all())->not->toContain($secondFulfillment->id);
+});
+
+test('get fulfillments can live-filter by customer and order search', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $firstFulfillment = makeFulfillment();
+    $secondFulfillment = makeFulfillment();
+
+    $firstOrder = $firstFulfillment->order()->firstOrFail();
+    $secondOrder = $secondFulfillment->order()->firstOrFail();
+    $firstCustomer = User::query()->findOrFail($firstOrder->user_id);
+
+    $byCustomer = app(GetFulfillments::class)->handle(
+        '',
+        'all',
+        20,
+        'all',
+        $admin->id,
+        true,
+        null,
+        null,
+        $firstCustomer->email,
+        null
+    );
+
+    expect($byCustomer->getCollection()->pluck('id')->all())->toContain($firstFulfillment->id);
+    expect($byCustomer->getCollection()->pluck('id')->all())->not->toContain($secondFulfillment->id);
+
+    $byOrder = app(GetFulfillments::class)->handle(
+        '',
+        'all',
+        20,
+        'all',
+        $admin->id,
+        true,
+        null,
+        null,
+        null,
+        $secondOrder->order_number
+    );
+
+    expect($byOrder->getCollection()->pluck('id')->all())->toContain($secondFulfillment->id);
+    expect($byOrder->getCollection()->pluck('id')->all())->not->toContain($firstFulfillment->id);
 });
 
 test('second claim attempt on same fulfillment fails', function () {

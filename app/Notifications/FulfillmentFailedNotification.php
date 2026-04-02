@@ -18,11 +18,12 @@ class FulfillmentFailedNotification extends BaseNotification
         return new self(
             sourceType: Fulfillment::class,
             sourceId: $fulfillment->id,
-            title: __('notifications.fulfillment_failed_title'),
-            message: __('notifications.fulfillment_failed_message', [
+            titleKey: 'notifications.fulfillment_failed_title',
+            messageKey: 'notifications.fulfillment_failed_message',
+            messageParams: [
                 'order_id' => $fulfillment->order_id,
                 'reason' => $reason,
-            ]),
+            ],
             url: $url
         );
     }

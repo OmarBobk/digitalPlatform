@@ -14,11 +14,12 @@ class LoyaltyTierChangedNotification extends BaseNotification
         return new self(
             sourceType: User::class,
             sourceId: $user->id,
-            title: __('notifications.loyalty_tier_changed_title'),
-            message: __('notifications.loyalty_tier_changed_message', [
+            titleKey: 'notifications.loyalty_tier_changed_title',
+            messageKey: 'notifications.loyalty_tier_changed_message',
+            messageParams: [
                 'previous_tier' => $previousTier,
                 'new_tier' => $newTier,
-            ]),
+            ],
             url: Route::has('loyalty') ? route('loyalty') : null
         );
     }

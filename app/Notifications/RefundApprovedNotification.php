@@ -17,11 +17,12 @@ class RefundApprovedNotification extends BaseNotification
         return new self(
             sourceType: WalletTransaction::class,
             sourceId: $transaction->id,
-            title: __('notifications.refund_approved_title'),
-            message: __('notifications.refund_approved_message', [
+            titleKey: 'notifications.refund_approved_title',
+            messageKey: 'notifications.refund_approved_message',
+            messageParams: [
                 'amount_display' => $amountDisplay,
                 'order_number' => $orderNumber,
-            ]),
+            ],
             url: Route::has('wallet') ? route('wallet') : null
         );
     }

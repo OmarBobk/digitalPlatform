@@ -27,11 +27,11 @@ return [
     'fulfillment_process_failed_title' => 'فشل تنفيذ الطلب',
     'fulfillment_process_failed_message' => 'فشل التنفيذ #:fulfillment_id (الطلب #:order_id). الخطأ: :error',
 
-    'fulfillment_completed_title' => 'تم توصيل صنف الطلب',
-    'fulfillment_completed_message' => 'تم توصيل صنف من طلبك (#:order_id).',
+    'fulfillment_completed_title' => 'تمت الطلبية بنجاح',
+    'fulfillment_completed_message' => 'تم توصيل طلبك رقم (#:order_id).',
 
-    'fulfillment_failed_title' => 'فشل توصيل صنف الطلب',
-    'fulfillment_failed_message' => 'فشل التوصيل لصنف من الطلب #:order_id. السبب: :reason. يمكنك طلب الاسترداد.',
+    'fulfillment_failed_title' => 'فشل توصيل الطلب',
+    'fulfillment_failed_message' => 'فشل توصيل الطلب #:order_id. السبب: :reason. يمكنك طلب الاسترداد.',
 
     'wallet_reconciled_title' => 'تم تصحيح رصيد المحفظة',
     'wallet_reconciled_message' => 'تم تسوية المحفظة #:wallet_id (المستخدم #:user_id). المخزون: :stored، المتوقع: :expected، الفرق: :diff.',

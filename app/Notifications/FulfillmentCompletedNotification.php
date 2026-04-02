@@ -18,10 +18,11 @@ class FulfillmentCompletedNotification extends BaseNotification
         return new self(
             sourceType: Fulfillment::class,
             sourceId: $fulfillment->id,
-            title: __('notifications.fulfillment_completed_title'),
-            message: __('notifications.fulfillment_completed_message', [
+            titleKey: 'notifications.fulfillment_completed_title',
+            messageKey: 'notifications.fulfillment_completed_message',
+            messageParams: [
                 'order_id' => $fulfillment->order_id,
-            ]),
+            ],
             url: $url
         );
     }

@@ -19,9 +19,13 @@ class GetFulfillments
         ?int $actorId = null,
         bool $isAdmin = false,
         ?int $claimedBy = null,
-        ?int $handledByActorId = null
+        ?int $handledByActorId = null,
+        ?string $customerSearch = null,
+        ?string $orderSearch = null
     ): LengthAwarePaginator {
         $search = trim($search);
+        $customerSearch = trim((string) $customerSearch);
+        $orderSearch = trim((string) $orderSearch);
 
         $isUnclaimedScope = $scope === 'unclaimed' || (! $isAdmin && $actorId !== null && $scope !== 'mine');
 
@@ -58,13 +62,13 @@ class GetFulfillments
                 $isUnclaimedScope
                     ? [
                         'order:id,user_id,order_number',
-                        'order.user:id,name,email',
+                        'order.user:id,name,email,username',
                         'orderItem:id,order_id,product_id,name,unit_price,amount_mode,requested_amount,amount_unit_label,line_total,requirements_payload',
                         'orderItem.product:id,slug',
                     ]
                     : [
                         'order:id,user_id,order_number,total,currency,created_at',
-                        'order.user:id,name,email',
+                        'order.user:id,name,email,username',
                         'orderItem:id,order_id,product_id,package_id,name,unit_price,quantity,amount_mode,requested_amount,amount_unit_label,line_total,requirements_payload',
                         'orderItem.product:id,name,slug',
                         'claimer:id,username,name',
@@ -135,6 +139,39 @@ class GetFulfillments
                     $query->where('name', 'like', $like)
                         ->orWhere('email', 'like', $like);
                 });
+            });
+        }
+
+        if ($customerSearch !== '') {
+            $query->whereHas('order.user', function (Builder $query) use ($customerSearch): void {
+                $like = '%'.$customerSearch.'%';
+
+                $query
+                    ->where('name', 'like', $like)
+                    ->orWhere('email', 'like', $like)
+                    ->orWhere('username', 'like', $like);
+
+                if (ctype_digit($customerSearch)) {
+                    $query->orWhere('id', (int) $customerSearch);
+                }
+            });
+        }
+
+        if ($orderSearch !== '') {
+            $query->where(function (Builder $query) use ($orderSearch): void {
+                $like = '%'.$orderSearch.'%';
+
+                $query->whereHas('order', function (Builder $orderQuery) use ($like, $orderSearch): void {
+                    $orderQuery->where('order_number', 'like', $like);
+
+                    if (ctype_digit($orderSearch)) {
+                        $orderQuery->orWhere('id', (int) $orderSearch);
+                    }
+                });
+
+                if (ctype_digit($orderSearch)) {
+                    $query->orWhere('order_id', (int) $orderSearch);
+                }
             });
         }
 

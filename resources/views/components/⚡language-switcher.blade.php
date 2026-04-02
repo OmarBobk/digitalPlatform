@@ -25,6 +25,10 @@ new class extends Component
         </flux:button>
 
         <flux:menu>
+            <div class="px-2 py-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                {{ __('messages.language') }}: <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ strtoupper($currentLocale) }}</span>
+            </div>
+            <flux:menu.separator />
             <flux:menu.radio.group>
                 <flux:menu.item
                     :href="route('language.switch', ['locale' => 'en'])"
@@ -47,6 +51,10 @@ new class extends Component
                     {{ __('messages.arabic') }}
                 </flux:menu.item>
             </flux:menu.radio.group>
+            <flux:menu.separator />
+            <div class="px-2 py-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+                {{ __('messages.notifications') }} · {{ __('messages.language') }}
+            </div>
         </flux:menu>
     </flux:dropdown>
 </div>

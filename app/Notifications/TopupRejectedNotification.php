@@ -20,11 +20,12 @@ class TopupRejectedNotification extends BaseNotification
         return new self(
             sourceType: TopupRequest::class,
             sourceId: $topupRequest->id,
-            title: __('notifications.topup_rejected_title'),
-            message: __('notifications.topup_rejected_message', [
+            titleKey: 'notifications.topup_rejected_title',
+            messageKey: 'notifications.topup_rejected_message',
+            messageParams: [
                 'amount_display' => $amountDisplay,
-                'reason' => $reason ?? __('notifications.no_reason_given'),
-            ]),
+                'reason' => $reason ?? 'notifications.no_reason_given',
+            ],
             url: Route::has('wallet') ? route('wallet') : null
         );
     }

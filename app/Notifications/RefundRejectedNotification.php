@@ -17,11 +17,12 @@ class RefundRejectedNotification extends BaseNotification
         return new self(
             sourceType: WalletTransaction::class,
             sourceId: $transaction->id,
-            title: __('notifications.refund_rejected_title'),
-            message: __('notifications.refund_rejected_message', [
+            titleKey: 'notifications.refund_rejected_title',
+            messageKey: 'notifications.refund_rejected_message',
+            messageParams: [
                 'amount_display' => $amountDisplay,
                 'order_number' => $orderNumber,
-            ]),
+            ],
             url: Route::has('orders.index') ? route('orders.index') : null
         );
     }
