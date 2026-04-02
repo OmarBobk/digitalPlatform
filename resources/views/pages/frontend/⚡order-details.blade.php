@@ -316,7 +316,7 @@ new #[Layout('layouts::frontend')] class extends Component
                     $requirementsEntries = $this->requirementsEntries($item->requirements_payload);
                 @endphp
 
-                <div id="item-{{ $item->id }}" class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900" wire:key="order-item-{{ $item->id }}">
+                <div id="item-{{ $item->id }}" class="min-w-0 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900" wire:key="order-item-{{ $item->id }}">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div class="space-y-1">
                             <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
@@ -413,7 +413,7 @@ new #[Layout('layouts::frontend')] class extends Component
                                         && ! $isRefundPosted;
                                 @endphp
 
-                                <div class="rounded-xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-800/60" wire:key="fulfillment-unit-{{ $fulfillment->id }}">
+                                <div class="min-w-0 rounded-xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-800/60" wire:key="fulfillment-unit-{{ $fulfillment->id }}">
                                     <div class="flex flex-wrap items-center justify-between gap-3">
                                         <div>
                                             <div class="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -444,7 +444,7 @@ new #[Layout('layouts::frontend')] class extends Component
                                         @if ($fulfillment->status === FulfillmentStatus::Completed)
                                             @if ($payloadEntries !== [])
                                                 <div
-                                                    class="space-y-2"
+                                                    class="min-w-0 space-y-2"
                                                     x-data="{
                                                         revealed: false,
                                                         copiedIndex: null,
@@ -485,20 +485,21 @@ new #[Layout('layouts::frontend')] class extends Component
                                                             </flux:button>
                                                         </div>
                                                     </div>
-                                                    <div class="grid gap-2 rounded-xl border border-zinc-200 bg-white p-3 text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
+                                                    <div class="grid min-w-0 gap-2 overflow-hidden rounded-xl border border-zinc-200 bg-white p-3 text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
                                                         <template x-for="(entry, entryIndex) in entries" :key="entryIndex">
-                                                            <div class="flex flex-wrap items-center justify-between gap-2">
-                                                                <div class="flex flex-col gap-1">
+                                                            <div class="flex min-w-0 flex-wrap items-start justify-between gap-2">
+                                                                <div class="flex min-w-0 flex-1 flex-col gap-1">
                                                                     <span
                                                                         class="text-[11px] uppercase tracking-wide"
                                                                         x-bind:class="entry.sensitive ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-500 dark:text-zinc-400'"
                                                                         x-text="entry.key"
                                                                     ></span>
-                                                                    <span class="font-mono text-xs text-zinc-900 dark:text-zinc-100">
+                                                                    <span class="block max-w-full break-all font-mono text-xs text-zinc-900 dark:text-zinc-100">
                                                                         <span x-text="revealed ? decode(entry.encoded) : entry.masked"></span>
                                                                     </span>
                                                                 </div>
                                                                 <flux:button
+                                                                    class="shrink-0"
                                                                     x-show="entry.sensitive"
                                                                     variant="ghost"
                                                                     size="xs"

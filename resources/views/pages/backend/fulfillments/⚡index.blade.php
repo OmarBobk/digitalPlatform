@@ -121,6 +121,16 @@ new class extends Component
         $this->resetPage();
     }
 
+    /**
+     * Order number plus fulfillment id so multiple fulfillments for the same order stay distinct in supervisor UI.
+     */
+    public function fulfillmentOrderReference(Fulfillment $fulfillment): string
+    {
+        $base = $fulfillment->order?->order_number ?? ('#'.$fulfillment->order_id);
+
+        return $base.'F'.$fulfillment->id;
+    }
+
     public function openDetails(int $fulfillmentId): void
     {
         $fulfillment = Fulfillment::query()->findOrFail($fulfillmentId);
@@ -1038,7 +1048,7 @@ new class extends Component
                                     @endif
                                     <div class="mt-1 inline-flex flex-wrap items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
                                         <span class="rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 font-mono text-[11px] text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-300">
-                                            {{ $fulfillment->order?->order_number ?? ('#'.$fulfillment->order_id) }}
+                                            {{ $this->fulfillmentOrderReference($fulfillment) }}
                                         </span>
                                         @if ($requirementsToken)
                                             <span class="inline-block max-w-[11rem] truncate rounded-md border border-cyan-200 bg-cyan-50 px-1.5 py-0.5 font-mono text-[11px] text-cyan-800 dark:border-cyan-900/50 dark:bg-cyan-950/40 dark:text-cyan-200 sm:max-w-none" title="{{ $requirementsToken }}">{{ $requirementsToken }}</span>
@@ -1164,7 +1174,7 @@ new class extends Component
                                     @endif
                                     <div class="mt-1 inline-flex flex-wrap items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
                                         <span class="rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 font-mono text-[11px] text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-300">
-                                            {{ $fulfillment->order?->order_number ?? ('#'.$fulfillment->order_id) }}
+                                            {{ $this->fulfillmentOrderReference($fulfillment) }}
                                         </span>
                                         @if ($requirementsToken)
                                             <span class="inline-block max-w-[11rem] truncate rounded-md border border-cyan-200 bg-cyan-50 px-1.5 py-0.5 font-mono text-[11px] text-cyan-800 dark:border-cyan-900/50 dark:bg-cyan-950/40 dark:text-cyan-200 sm:max-w-none" title="{{ $requirementsToken }}">{{ $requirementsToken }}</span>
@@ -1355,7 +1365,7 @@ new class extends Component
                             @forelse ($this->allPage as $fulfillment)
                                 <tr>
                                     <td class="px-4 py-2 text-zinc-700 dark:text-zinc-200">#{{ $fulfillment->id }}</td>
-                                    <td class="px-4 py-2 text-zinc-700 dark:text-zinc-200">#{{ $fulfillment->order_id }}</td>
+                                    <td class="px-4 py-2 font-mono text-zinc-700 dark:text-zinc-200">{{ $this->fulfillmentOrderReference($fulfillment) }}</td>
                                     <td class="px-4 py-2 text-zinc-700 dark:text-zinc-200">{{ $fulfillment->orderItem?->name ?? __('messages.unknown_item') }}</td>
                                     <td class="px-4 py-2 text-zinc-700 dark:text-zinc-200">{{ $fulfillment->claimer?->name ?? $fulfillment->claimer?->username ?? '—' }}</td>
                                     <td class="px-4 py-2">
@@ -1401,7 +1411,7 @@ new class extends Component
                             {{ __('messages.fulfillment_details') }}
                         </flux:heading>
                         <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">
-                            {{ $this->selectedFulfillment->order?->order_number ?? '—' }}
+                            {{ $this->fulfillmentOrderReference($this->selectedFulfillment) }}
                         </flux:text>
                     </div>
                     <flux:badge color="{{ $this->statusBadgeColor($this->selectedFulfillment->status) }}">

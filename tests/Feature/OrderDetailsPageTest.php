@@ -154,6 +154,20 @@ test('delivered payload renders masked by default', function () {
         ->assertSee($payload['server']);
 });
 
+test('delivered payload section includes overflow-safe classes for long masked codes', function () {
+    $user = User::factory()->create();
+    $longCode = str_repeat('a', 200).'Z9X7';
+    $orderPayload = makeCompletedOrder($user, ['code' => $longCode]);
+
+    $html = $this->actingAs($user)
+        ->get(route('orders.show', $orderPayload['order']->order_number))
+        ->assertOk()
+        ->getContent();
+
+    expect($html)->toContain('break-all')
+        ->and($html)->toContain('min-w-0');
+});
+
 test('order details page shows refund actions only for failed items', function () {
     $user = User::factory()->create();
     $order = makeOrderWithItem($user, FulfillmentStatus::Queued);

@@ -278,6 +278,13 @@ new class extends Component
                                     <td class="px-5 py-4 text-end">
                                         <div class="flex flex-wrap items-center justify-end gap-2">
                                             @if ($topupRequest->status === TopupRequestStatus::Pending)
+                                                <flux:button
+                                                    size="sm"
+                                                    variant="primary"
+                                                    wire:click="approveTopup({{ $topupRequest->id }})"
+                                                >
+                                                    {{ __('messages.approve') }}
+                                                </flux:button>
                                                 @if ($topupRequest->proofs->isNotEmpty())
                                                     <flux:button
                                                         size="sm"

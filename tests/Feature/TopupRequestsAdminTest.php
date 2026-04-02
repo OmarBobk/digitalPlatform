@@ -50,3 +50,26 @@ test('admin can approve topup and credit wallet', function () {
     expect($topupRequest->status)->toBe(TopupRequestStatus::Approved);
     expect($topupRequest->approved_by)->toBe($admin->id);
 });
+
+test('pending topup without proof still shows approve action', function () {
+    $permission = Permission::firstOrCreate(['name' => 'manage_topups']);
+    $role = Role::firstOrCreate(['name' => 'admin']);
+    $role->givePermissionTo($permission);
+
+    $admin = User::factory()->create();
+    $admin->assignRole($role);
+
+    $customer = User::factory()->create();
+
+    app(CreateTopupRequestAction::class)->handle([
+        'user_id' => $customer->id,
+        'method' => TopupMethod::ShamCash,
+        'amount' => 25,
+        'currency' => 'USD',
+        'status' => TopupRequestStatus::Pending,
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test('pages::backend.topups.index')
+        ->assertSeeHtml('wire:click="approveTopup(');
+});

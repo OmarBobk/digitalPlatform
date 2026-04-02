@@ -499,6 +499,56 @@ test('get fulfillments can live-filter by customer and order search', function (
     expect($byOrder->getCollection()->pluck('id')->all())->not->toContain($firstFulfillment->id);
 });
 
+test('fulfillment supervisor queue shows distinct order reference per unit on same order', function () {
+    $supervisor = User::factory()->create();
+    $supervisor->givePermissionTo(['view_fulfillments', 'manage_fulfillments']);
+
+    $user = User::factory()->create();
+    $category = Category::factory()->create([
+        'order' => fake()->unique()->numberBetween(1, 1000000),
+    ]);
+    $package = Package::factory()->create([
+        'category_id' => $category->id,
+        'order' => fake()->unique()->numberBetween(1, 1000000),
+    ]);
+    $product = Product::factory()->create(['package_id' => $package->id, 'entry_price' => 10]);
+
+    $order = Order::create([
+        'user_id' => $user->id,
+        'order_number' => 'ORD-SUP-REF-X',
+        'currency' => 'USD',
+        'subtotal' => 20,
+        'fee' => 0,
+        'total' => 20,
+        'status' => OrderStatus::Paid,
+    ]);
+
+    OrderItem::create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'package_id' => $package->id,
+        'name' => $product->name,
+        'unit_price' => 10,
+        'quantity' => 2,
+        'line_total' => 20,
+        'status' => OrderItemStatus::Pending,
+    ]);
+
+    (new CreateFulfillmentsForOrder)->handle($order);
+
+    $fulfillmentIds = Fulfillment::query()->where('order_id', $order->id)->orderBy('id')->pluck('id')->all();
+
+    expect($fulfillmentIds)->toHaveCount(2);
+
+    $refFirst = 'ORD-SUP-REF-XF'.$fulfillmentIds[0];
+    $refSecond = 'ORD-SUP-REF-XF'.$fulfillmentIds[1];
+
+    Livewire::actingAs($supervisor)
+        ->test('pages::backend.fulfillments.index')
+        ->assertSee($refFirst, false)
+        ->assertSee($refSecond, false);
+});
+
 test('second claim attempt on same fulfillment fails', function () {
     $first = User::factory()->create();
     $second = User::factory()->create();
