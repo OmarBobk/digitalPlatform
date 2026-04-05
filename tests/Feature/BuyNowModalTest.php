@@ -126,6 +126,51 @@ it('shows requirement fields when opening buy now from package overlay', functio
         ->assertSee('Product One');
 });
 
+it('reprice buy now custom amount on blur matches server tiers like cart reprice', function (): void {
+    PricingRule::query()->delete();
+    PricingRule::create([
+        'min_price' => 0,
+        'max_price' => 100,
+        'wholesale_percentage' => 0,
+        'retail_percentage' => 10,
+        'priority' => 0,
+        'is_active' => true,
+    ]);
+    PricingRule::create([
+        'min_price' => 100,
+        'max_price' => 1000,
+        'wholesale_percentage' => 0,
+        'retail_percentage' => 5,
+        'priority' => 1,
+        'is_active' => true,
+    ]);
+
+    $user = User::factory()->create();
+    $package = Package::factory()->create(['is_active' => true]);
+    $product = Product::factory()->for($package)->create([
+        'is_active' => true,
+        'amount_mode' => ProductAmountMode::Custom,
+        'amount_unit_label' => 'Unit',
+        'custom_amount_min' => 1000,
+        'custom_amount_max' => 1_000_000,
+        'custom_amount_step' => 1000,
+        'entry_price' => 0.01,
+    ]);
+
+    $component = Livewire::actingAs($user)
+        ->test('main.buy-now-modal')
+        ->call('openBuyNow', $product->id, false, 1);
+
+    expect((float) $component->get('buyNowLineFinalPrice'))->toBe(11.0)
+        ->and((float) $component->get('buyNowFinalPerUnitRate'))->toBe(0.011);
+
+    $component->call('repriceBuyNowCustomAmount', 20_000);
+
+    expect((float) $component->get('buyNowLineFinalPrice'))->toBe(210.0)
+        ->and((float) $component->get('buyNowFinalPerUnitRate'))->toBe(0.0105)
+        ->and($component->get('buyNowRequestedAmount'))->toBe(20_000);
+});
+
 it('computes live line total when opening buy now for custom amount product', function (): void {
     PricingRule::create([
         'min_price' => 0,

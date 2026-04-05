@@ -131,164 +131,187 @@ new class extends Component
 };
 ?>
 
-<div class="flex h-full w-full flex-1 flex-col gap-6">
-    <section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-        <div class="space-y-1">
-            <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
+<div class="admin-customer-funds flex h-full w-full flex-1 flex-col gap-8">
+    <header class="cf-reveal relative grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+        <div class="max-w-2xl space-y-3">
+            <p class="cf-display text-xs font-semibold tracking-[0.2em] text-[var(--cf-primary)] uppercase">
+                {{ __('messages.nav_financials') }}
+            </p>
+            <flux:heading size="lg" class="cf-display text-3xl tracking-tight text-[var(--cf-foreground)] md:text-4xl">
                 {{ __('messages.customer_funds') }}
             </flux:heading>
-            <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">
+            <flux:text class="max-w-xl text-sm leading-relaxed text-[var(--cf-muted-foreground)]">
                 {{ __('messages.customer_funds_intro') }}
             </flux:text>
         </div>
+        <div
+            class="hidden h-24 w-full max-w-xs skew-x-[-8deg] rounded-xl border border-[var(--cf-border)] bg-[var(--cf-card-elevated)] opacity-90 lg:block"
+            aria-hidden="true"
+        >
+            <div class="h-full w-full rounded-[inherit] bg-gradient-to-br from-[var(--cf-primary-soft)] to-transparent"></div>
+        </div>
+    </header>
 
-        <div class="mt-6 grid gap-4 sm:grid-cols-2">
-            <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/60 dark:bg-amber-950/30">
-                <div class="flex items-center gap-2">
-                    <div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
-                        <flux:icon icon="banknotes" class="size-5 text-amber-600 dark:text-amber-400" />
-                    </div>
-                    <div>
-                        <flux:text class="text-sm font-medium text-amber-800 dark:text-amber-200">
-                            {{ __('messages.total_customer_liability') }}
-                        </flux:text>
-                        <flux:text class="mt-0.5 block text-2xl font-bold text-amber-900 dark:text-amber-100">
-                            {{ config('billing.currency_symbol', '$') }}{{ number_format($this->totalLiability, 2) }}
-                        </flux:text>
-                        <flux:text class="text-xs text-amber-700/80 dark:text-amber-300/80">
-                            {{ __('messages.customer_funds_liability_hint') }}
-                        </flux:text>
-                    </div>
+    <div class="grid gap-4 sm:grid-cols-2">
+        <div class="cf-reveal cf-reveal-delay-1 cf-stat-card cf-stat-card--primary">
+            <div class="flex items-start gap-3">
+                <div class="cf-icon-ring shrink-0">
+                    <flux:icon icon="banknotes" class="size-5" />
                 </div>
-            </div>
-            <div class="rounded-xl border border-sky-200 bg-sky-50 p-4 dark:border-sky-800/60 dark:bg-sky-950/30">
-                <div class="flex items-center gap-2">
-                    <div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-sky-100 dark:bg-sky-900/50">
-                        <flux:icon icon="users" class="size-5 text-sky-600 dark:text-sky-400" />
-                    </div>
-                    <div>
-                        <flux:text class="text-sm font-medium text-sky-800 dark:text-sky-200">
-                            {{ __('messages.customer_wallets_count') }}
-                        </flux:text>
-                        <flux:text class="mt-0.5 block text-2xl font-bold text-sky-900 dark:text-sky-100">
-                            {{ number_format($this->customerWalletsCount) }}
-                        </flux:text>
-                        <flux:text class="text-xs text-sky-700/80 dark:text-sky-300/80">
-                            {{ __('messages.customer_wallets_count_hint') }}
-                        </flux:text>
-                    </div>
+                <div class="min-w-0 flex-1 space-y-1">
+                    <flux:text class="text-sm font-medium text-[var(--cf-muted-foreground)]">
+                        {{ __('messages.total_customer_liability') }}
+                    </flux:text>
+                    <flux:text class="cf-display block text-3xl font-bold tracking-tight text-[var(--cf-primary)] tabular-nums" dir="ltr">
+                        {{ config('billing.currency_symbol', '$') }}{{ number_format($this->totalLiability, 2) }}
+                    </flux:text>
+                    <flux:text class="text-xs text-[var(--cf-muted-foreground)]">
+                        {{ __('messages.customer_funds_liability_hint') }}
+                    </flux:text>
                 </div>
             </div>
         </div>
-
-        <div class="mt-6 overflow-hidden rounded-2xl border border-zinc-100 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-            <div class="border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
-                <flux:heading size="sm" class="text-zinc-900 dark:text-zinc-100">
-                    {{ __('messages.customer_balances_breakdown') }}
-                </flux:heading>
-            </div>
-            <div class="overflow-x-auto">
-                @if ($this->customerWallets->isEmpty())
-                    <div class="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
-                        <flux:heading size="sm" class="text-zinc-900 dark:text-zinc-100">
-                            {{ __('messages.no_customer_wallets') }}
-                        </flux:heading>
-                        <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">
-                            {{ __('messages.no_customer_wallets_hint') }}
-                        </flux:text>
-                    </div>
-                @else
-                    <table class="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
-                        <thead class="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400">
-                            <tr>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.customer') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.email') }}</th>
-                                <th class="px-5 py-3 text-end font-semibold">{{ __('messages.balance') }}</th>
-                                <th class="px-5 py-3 text-end font-semibold">{{ __('messages.actions') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
-                            @foreach ($this->customerWallets as $wallet)
-                                @php
-                                    $balance = (float) $wallet->balance;
-                                    $balanceColor = $balance > 0 ? 'text-emerald-600 dark:text-emerald-400' : ($balance < 0 ? 'text-red-600 dark:text-red-400' : 'text-zinc-600 dark:text-zinc-400');
-                                @endphp
-                                <tr class="transition hover:bg-zinc-50 dark:hover:bg-zinc-800/60" wire:key="wallet-{{ $wallet->id }}">
-                                    <td class="px-5 py-4">
-                                        <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $wallet->user?->name ?? __('messages.unknown') }}</div>
-                                        @if ($wallet->user?->username)
-                                            <div class="text-xs text-zinc-500 dark:text-zinc-400">@{{ $wallet->user->username }}</div>
-                                        @endif
-                                    </td>
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
-                                        {{ $wallet->user?->email ?? '—' }}
-                                    </td>
-                                    <td class="px-5 py-4 text-end">
-                                        <span class="inline-flex items-center rounded-lg px-2.5 py-1 font-semibold tabular-nums {{ $balance > 0 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : ($balance < 0 ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400') }}" dir="ltr">
-                                            {{ config('billing.currency_symbol', '$') }}{{ number_format($balance, 2) }}
-                                        </span>
-                                    </td>
-                                    <td class="px-5 py-4 text-end">
-                                        <flux:button
-                                            size="sm"
-                                            variant="ghost"
-                                            icon="information-circle"
-                                            wire:click="openDetailModal({{ $wallet->id }})"
-                                            aria-label="{{ __('messages.view_balance_details') }}"
-                                        >
-                                            {{ __('messages.view') }}
-                                        </flux:button>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                @endif
-            </div>
-
-            @if ($this->customerWallets->isNotEmpty())
-                <div class="border-t border-zinc-100 px-5 py-4 dark:border-zinc-800">
-                    {{ $this->customerWallets->links() }}
+        <div class="cf-reveal cf-reveal-delay-2 cf-stat-card cf-stat-card--secondary">
+            <div class="flex items-start gap-3">
+                <div class="cf-icon-ring cf-icon-ring--cool shrink-0">
+                    <flux:icon icon="users" class="size-5" />
                 </div>
+                <div class="min-w-0 flex-1 space-y-1">
+                    <flux:text class="text-sm font-medium text-[var(--cf-muted-foreground)]">
+                        {{ __('messages.customer_wallets_count') }}
+                    </flux:text>
+                    <flux:text class="cf-display block text-3xl font-bold tracking-tight text-[var(--cf-foreground)] tabular-nums">
+                        {{ number_format($this->customerWalletsCount) }}
+                    </flux:text>
+                    <flux:text class="text-xs text-[var(--cf-muted-foreground)]">
+                        {{ __('messages.customer_wallets_count_hint') }}
+                    </flux:text>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="cf-reveal cf-reveal-delay-3 cf-table-shell">
+        <div class="cf-table-head px-5 py-4">
+            <flux:heading size="sm" class="cf-display text-[var(--cf-foreground)]">
+                {{ __('messages.customer_balances_breakdown') }}
+            </flux:heading>
+        </div>
+        <div class="overflow-x-auto">
+            @if ($this->customerWallets->isEmpty())
+                <div class="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
+                    <flux:heading size="sm" class="cf-display text-[var(--cf-foreground)]">
+                        {{ __('messages.no_customer_wallets') }}
+                    </flux:heading>
+                    <flux:text class="max-w-sm text-sm text-[var(--cf-muted-foreground)]">
+                        {{ __('messages.no_customer_wallets_hint') }}
+                    </flux:text>
+                </div>
+            @else
+                <table class="min-w-full divide-y divide-[var(--cf-border)] text-sm">
+                    <thead class="text-xs tracking-wide text-[var(--cf-muted-foreground)] uppercase">
+                        <tr>
+                            <th class="px-5 py-3 text-start font-semibold">{{ __('messages.customer') }}</th>
+                            <th class="px-5 py-3 text-start font-semibold">{{ __('messages.email') }}</th>
+                            <th class="px-5 py-3 text-end font-semibold">{{ __('messages.balance') }}</th>
+                            <th class="px-5 py-3 text-end font-semibold">{{ __('messages.actions') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[var(--cf-border)]">
+                        @foreach ($this->customerWallets as $wallet)
+                            @php
+                                $balance = (float) $wallet->balance;
+                                $balanceBadge =
+                                    $balance > 0
+                                        ? 'bg-[var(--cf-success-soft)] text-[var(--cf-success)]'
+                                        : ($balance < 0
+                                            ? 'bg-[var(--cf-destructive-soft)] text-[var(--cf-destructive)]'
+                                            : 'bg-[var(--cf-card-elevated)] text-[var(--cf-muted-foreground)]');
+                            @endphp
+                            <tr
+                                class="transition-colors duration-200 hover:bg-[var(--cf-card-elevated)]"
+                                wire:key="wallet-{{ $wallet->id }}"
+                            >
+                                <td class="px-5 py-4">
+                                    <div class="font-medium text-[var(--cf-foreground)]">{{ $wallet->user?->name ?? __('messages.unknown') }}</div>
+                                    @if ($wallet->user?->username)
+                                        <div class="text-xs text-[var(--cf-muted-foreground)]">@{{ $wallet->user->username }}</div>
+                                    @endif
+                                </td>
+                                <td class="px-5 py-4 text-[var(--cf-muted-foreground)]">
+                                    {{ $wallet->user?->email ?? '—' }}
+                                </td>
+                                <td class="px-5 py-4 text-end">
+                                    <span
+                                        class="inline-flex items-center rounded-lg px-2.5 py-1 font-semibold tabular-nums {{ $balanceBadge }}"
+                                        dir="ltr"
+                                    >
+                                        {{ config('billing.currency_symbol', '$') }}{{ number_format($balance, 2) }}
+                                    </span>
+                                </td>
+                                <td class="px-5 py-4 text-end">
+                                    <flux:button
+                                        size="sm"
+                                        variant="ghost"
+                                        icon="information-circle"
+                                        class="text-[var(--cf-primary)] hover:bg-[var(--cf-primary-soft)] hover:text-[var(--cf-primary)]"
+                                        wire:click="openDetailModal({{ $wallet->id }})"
+                                        aria-label="{{ __('messages.view_balance_details') }}"
+                                    >
+                                        {{ __('messages.view') }}
+                                    </flux:button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             @endif
         </div>
+
+        @if ($this->customerWallets->isNotEmpty())
+            <div class="cf-pagination border-t border-[var(--cf-border)] px-5 py-4">
+                {{ $this->customerWallets->links() }}
+            </div>
+        @endif
     </section>
 
     <flux:modal
         wire:model.self="showDetailModal"
         variant="floating"
-        class="w-[calc(100%-2rem)] max-w-2xl p-4 sm:p-6 sm:pt-14"
+        class="admin-themed-modal w-[calc(100%-2rem)] max-w-2xl p-4 sm:p-6 sm:pt-14"
         @close="closeDetailModal"
         @cancel="closeDetailModal"
     >
         @if ($this->selectedWallet)
-            <div class="space-y-4">
+            <div class="space-y-4 text-[var(--cf-foreground)]">
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div class="min-w-0">
-                        <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
+                        <flux:heading size="lg" class="cf-display text-[var(--cf-foreground)]">
                             {{ $this->selectedWallet->user?->name ?? __('messages.unknown') }}
                         </flux:heading>
-                        <flux:text class="mt-1 truncate block text-sm text-zinc-600 dark:text-zinc-400">
+                        <flux:text class="mt-1 block truncate text-sm text-[var(--cf-muted-foreground)]">
                             {{ $this->selectedWallet->user?->email ?? '—' }}
                         </flux:text>
                     </div>
-                    <div class="shrink-0 self-start rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 dark:border-emerald-800/60 dark:bg-emerald-950/30">
-                        <flux:text class="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                    <div
+                        class="shrink-0 self-start rounded-xl border border-[var(--cf-border)] bg-[var(--cf-success-soft)] px-4 py-2"
+                    >
+                        <flux:text class="text-xs font-medium text-[var(--cf-success)]">
                             {{ __('messages.balance') }}
                         </flux:text>
-                        <flux:text class="block text-xl font-bold text-emerald-800 dark:text-emerald-200" dir="ltr">
+                        <flux:text class="cf-display block text-xl font-bold text-[var(--cf-foreground)] tabular-nums" dir="ltr">
                             {{ config('billing.currency_symbol', '$') }}{{ number_format((float) $this->selectedWallet->balance, 2) }}
                         </flux:text>
                     </div>
                 </div>
 
-                <flux:text class="block text-sm text-zinc-600 dark:text-zinc-400">
+                <flux:text class="block text-sm text-[var(--cf-muted-foreground)]">
                     {{ __('messages.balance_breakdown_intro') }}
                 </flux:text>
 
                 @if ($this->balanceBreakdown->isEmpty())
-                    <div class="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-8 text-center dark:border-zinc-700 dark:bg-zinc-800/60">
-                        <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">
+                    <div class="rounded-xl border border-[var(--cf-border)] bg-[var(--cf-card-elevated)] px-4 py-8 text-center">
+                        <flux:text class="text-sm text-[var(--cf-muted-foreground)]">
                             {{ __('messages.no_wallet_transactions') }}
                         </flux:text>
                     </div>
@@ -299,16 +322,19 @@ new class extends Component
                             @foreach ($this->balanceBreakdown as $row)
                                 <article
                                     wire:key="breakdown-mob-{{ $row['type']->value }}"
-                                    class="flex flex-col gap-2 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900"
+                                    class="flex flex-col gap-2 rounded-xl border border-[var(--cf-border)] bg-[var(--cf-background)] p-4"
                                     role="listitem"
                                 >
                                     <div class="flex items-center justify-between gap-2">
-                                        <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ $row['typeLabel'] }}</span>
-                                        <span class="shrink-0 font-semibold tabular-nums {{ $row['net'] >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300' }}" dir="ltr">
+                                        <span class="font-medium text-[var(--cf-foreground)]">{{ $row['typeLabel'] }}</span>
+                                        <span
+                                            class="shrink-0 font-semibold tabular-nums {{ $row['net'] >= 0 ? 'text-[var(--cf-success)]' : 'text-[var(--cf-destructive)]' }}"
+                                            dir="ltr"
+                                        >
                                             {{ $row['net'] >= 0 ? '+' : '-' }}{{ config('billing.currency_symbol', '$') }}{{ number_format(abs($row['net']), 2) }}
                                         </span>
                                     </div>
-                                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--cf-muted-foreground)]">
                                         @if ($row['credits'] > 0)
                                             <span dir="ltr">{{ __('messages.credits') }}: {{ config('billing.currency_symbol', '$') }}{{ number_format($row['credits'], 2) }}</span>
                                         @endif
@@ -322,9 +348,9 @@ new class extends Component
                     </div>
 
                     {{-- Desktop: table --}}
-                    <div class="hidden max-h-[50vh] overflow-auto rounded-xl border border-zinc-200 dark:border-zinc-700 sm:block">
-                        <table class="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
-                            <thead class="sticky top-0 z-10 bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400">
+                    <div class="hidden max-h-[50vh] overflow-auto rounded-xl border border-[var(--cf-border)] sm:block">
+                        <table class="min-w-full divide-y divide-[var(--cf-border)] text-sm">
+                            <thead class="sticky top-0 z-10 bg-[var(--cf-card)] text-xs tracking-wide text-[var(--cf-muted-foreground)] uppercase">
                                 <tr>
                                     <th class="px-4 py-3 text-start font-semibold">{{ __('messages.type') }}</th>
                                     <th class="px-4 py-3 text-end font-semibold">{{ __('messages.credits') }}</th>
@@ -332,19 +358,25 @@ new class extends Component
                                     <th class="px-4 py-3 text-end font-semibold">{{ __('messages.balance') }}</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            <tbody class="divide-y divide-[var(--cf-border)]">
                                 @foreach ($this->balanceBreakdown as $row)
-                                    <tr wire:key="breakdown-{{ $row['type']->value }}" class="hover:bg-zinc-50 dark:hover:bg-zinc-800/60">
-                                        <td class="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">
+                                    <tr
+                                        wire:key="breakdown-{{ $row['type']->value }}"
+                                        class="transition-colors duration-200 hover:bg-[var(--cf-card-elevated)]"
+                                    >
+                                        <td class="px-4 py-3 font-medium text-[var(--cf-foreground)]">
                                             {{ $row['typeLabel'] }}
                                         </td>
-                                        <td class="px-4 py-3 text-end tabular-nums text-emerald-600 dark:text-emerald-400" dir="ltr">
+                                        <td class="px-4 py-3 text-end tabular-nums text-[var(--cf-success)]" dir="ltr">
                                             {{ $row['credits'] > 0 ? config('billing.currency_symbol', '$').number_format($row['credits'], 2) : '—' }}
                                         </td>
-                                        <td class="px-4 py-3 text-end tabular-nums text-red-600 dark:text-red-400" dir="ltr">
+                                        <td class="px-4 py-3 text-end tabular-nums text-[var(--cf-destructive)]" dir="ltr">
                                             {{ $row['debits'] > 0 ? config('billing.currency_symbol', '$').number_format($row['debits'], 2) : '—' }}
                                         </td>
-                                        <td class="px-4 py-3 text-end font-semibold tabular-nums {{ $row['net'] >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300' }}" dir="ltr">
+                                        <td
+                                            class="px-4 py-3 text-end font-semibold tabular-nums {{ $row['net'] >= 0 ? 'text-[var(--cf-success)]' : 'text-[var(--cf-destructive)]' }}"
+                                            dir="ltr"
+                                        >
                                             {{ $row['net'] >= 0 ? '+' : '-' }}{{ config('billing.currency_symbol', '$') }}{{ number_format(abs($row['net']), 2) }}
                                         </td>
                                     </tr>
@@ -355,7 +387,11 @@ new class extends Component
                 @endif
 
                 <div class="flex justify-end">
-                    <flux:button variant="ghost" wire:click="closeDetailModal">
+                    <flux:button
+                        variant="ghost"
+                        class="text-[var(--cf-muted-foreground)] hover:bg-[var(--cf-card-elevated)] hover:text-[var(--cf-foreground)]"
+                        wire:click="closeDetailModal"
+                    >
                         {{ __('messages.close') }}
                     </flux:button>
                 </div>

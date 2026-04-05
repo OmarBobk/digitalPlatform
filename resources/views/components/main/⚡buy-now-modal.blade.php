@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 use App\Actions\Orders\CheckoutFromPayload;
 use App\Actions\Packages\ResolvePackageRequirements;
+use App\Domain\Pricing\CustomAmountValidator;
 use App\Domain\Pricing\PricingEngine;
 use App\Enums\OrderStatus;
 use App\Enums\ProductAmountMode;
 use App\Models\Package;
 use App\Models\Product;
+use App\Support\BuyNowClientPricingContext;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
@@ -55,7 +57,7 @@ new class extends Component
     public ?string $buyNowPriceError = null;
 
     /**
-     * Final line price ÷ amount at open (custom products). Client multiplies by typed amount for instant estimate; checkout still validates server-side.
+     * Final line price ÷ amount at open (custom products). When client tier math is active, Alpine uses rules from buyNowClientPricingContext(); otherwise this rate drives the estimate.
      */
     public ?float $buyNowFinalPerUnitRate = null;
 
@@ -65,6 +67,36 @@ new class extends Component
      * @var array<int, array{final: ?float, per_unit: ?float, error: ?string}>
      */
     public array $packageOverlayLivePrices = [];
+
+    /**
+     * @var array<int, array<string, mixed>>
+     */
+    public array $packageOverlayClientPricingContexts = [];
+
+    /**
+     * Active pricing rules + user flags for Alpine instant tier math (custom buy-now only).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function buyNowClientPricingContext(): ?array
+    {
+        if ($this->buyNowAmountMode !== ProductAmountMode::Custom->value || ! auth()->check() || $this->buyNowProductId === null) {
+            return null;
+        }
+
+        $product = Product::query()
+            ->select(['id', 'entry_price'])
+            ->whereKey($this->buyNowProductId)
+            ->where('is_active', true)
+            ->first();
+
+        if ($product === null) {
+            return null;
+        }
+
+        return BuyNowClientPricingContext::build(auth()->user(), $product);
+    }
+
     public function openBuyNow(int $productId, bool $fromPackageOverlay = false, ?int $quantity = null, ?int $overlayCustomAmount = null): void
     {
         if (! auth()->check()) {
@@ -174,6 +206,7 @@ new class extends Component
             'buyNowFinalPerUnitRate',
             'buyNowEntryPrice',
             'packageOverlayLivePrices',
+            'packageOverlayClientPricingContexts',
         ]);
         $this->resetValidation();
     }
@@ -284,6 +317,99 @@ new class extends Component
         $user = auth()->user();
         $quote = $pricingEngine->quote($product, max(1, (int) $this->buyNowQuantity), null, $user);
         $this->buyNowLineFinalPrice = $quote->finalTotal;
+    }
+
+    /**
+     * Same flow as cart/dropdown: blur → validate amount → server quote (tiers apply to entry total).
+     * Syncs Alpine rate via browser event (see x-on:buy-now-custom-amount-repriced.window).
+     */
+    public function repriceBuyNowCustomAmount(mixed $requestedAmount): void
+    {
+        $this->resetErrorBag('buyNowRequestedAmount');
+        $this->buyNowPriceError = null;
+
+        if (! auth()->check() || $this->buyNowProductId === null || $this->showPackageProducts) {
+            return;
+        }
+
+        if ($this->buyNowAmountMode !== ProductAmountMode::Custom->value) {
+            return;
+        }
+
+        $userId = (string) (auth()->id() ?? request()->ip() ?? 'guest');
+        $rateLimitKey = sprintf('buy-now-reprice:%s:%d', $userId, $this->buyNowProductId);
+        $allowed = RateLimiter::attempt($rateLimitKey, 20, fn (): bool => true, 60);
+
+        if (! $allowed) {
+            $this->buyNowPriceError = __('messages.something_went_wrong_checkout');
+            $this->dispatch(
+                'buy-now-custom-amount-repriced',
+                rate: $this->buyNowFinalPerUnitRate,
+                serverError: $this->buyNowPriceError,
+                amountInputStr: $this->buyNowRequestedAmountInput,
+                pricingContext: $this->buyNowClientPricingContext(),
+            );
+
+            return;
+        }
+
+        $product = Product::query()
+            ->select([
+                'id',
+                'entry_price',
+                'amount_mode',
+                'custom_amount_min',
+                'custom_amount_max',
+                'custom_amount_step',
+            ])
+            ->whereKey($this->buyNowProductId)
+            ->where('is_active', true)
+            ->first();
+
+        if ($product === null) {
+            return;
+        }
+
+        $validator = app(CustomAmountValidator::class);
+
+        try {
+            $amount = $validator->validate($product, $requestedAmount, 'buyNowRequestedAmount');
+        } catch (ValidationException $exception) {
+            throw $exception;
+        }
+
+        $this->buyNowRequestedAmount = $amount;
+        $this->buyNowRequestedAmountInput = $this->formatGroupedIntegerForDisplay($amount);
+
+        $pricingEngine = app(PricingEngine::class);
+        $user = auth()->user();
+
+        try {
+            $quote = $pricingEngine->quote($product, 1, $amount, $user);
+            $this->buyNowLineFinalPrice = $quote->finalTotal;
+            $this->buyNowFinalPerUnitRate = $quote->unitPrice;
+            $this->buyNowPriceError = null;
+        } catch (ValidationException $exception) {
+            $this->buyNowLineFinalPrice = null;
+            $this->buyNowFinalPerUnitRate = null;
+            $this->buyNowPriceError = collect($exception->errors())->flatten()->first()
+                ?? __('messages.invalid_value', ['field' => __('messages.amount')]);
+        } catch (\InvalidArgumentException $exception) {
+            $this->buyNowLineFinalPrice = null;
+            $this->buyNowFinalPerUnitRate = null;
+            $this->buyNowPriceError = $this->buyNowPriceErrorFromAmountException(
+                $exception,
+                $product->entry_price !== null ? (float) $product->entry_price : null
+            );
+        }
+
+        $this->dispatch(
+            'buy-now-custom-amount-repriced',
+            rate: $this->buyNowFinalPerUnitRate,
+            serverError: $this->buyNowPriceError,
+            amountInputStr: $this->buyNowRequestedAmountInput,
+            pricingContext: $this->buyNowClientPricingContext(),
+        );
     }
 
     public function repriceCustomAmount(int $productId, mixed $requestedAmount): void
@@ -619,11 +745,13 @@ new class extends Component
         $this->buyNowFinalPerUnitRate = null;
         $this->buyNowEntryPrice = null;
         $this->packageOverlayLivePrices = [];
+        $this->packageOverlayClientPricingContexts = [];
     }
 
     private function seedPackageOverlayLivePrices(): void
     {
         $this->packageOverlayLivePrices = [];
+        $this->packageOverlayClientPricingContexts = [];
 
         foreach ($this->packageProducts as $row) {
             if (($row['amount_mode'] ?? '') !== ProductAmountMode::Custom->value) {
@@ -631,6 +759,18 @@ new class extends Component
             }
 
             $productId = (int) $row['id'];
+
+            if (auth()->check()) {
+                $productForCtx = Product::query()
+                    ->select(['id', 'entry_price'])
+                    ->whereKey($productId)
+                    ->where('is_active', true)
+                    ->first();
+                if ($productForCtx !== null) {
+                    $this->packageOverlayClientPricingContexts[$productId] = BuyNowClientPricingContext::build(auth()->user(), $productForCtx);
+                }
+            }
+
             $defaultAmount = (int) ($row['custom_amount_min'] ?? $row['custom_amount_step'] ?? 1);
             $this->quotePackageProductPrice($productId, $defaultAmount, false);
         }
@@ -827,9 +967,11 @@ new class extends Component
         $bnMaskDec = $bnAmountMaskEn ? '.' : ',';
         $bnMaskThousands = $bnAmountMaskEn ? ',' : '.';
         $bnEstimateStep = max(1, (int) ($buyNowCustomAmountStep ?? 1));
+        $buyNowClientPricingContext = $this->buyNowClientPricingContext();
         $buyNowCustomEstimateConfig = [
             'amountInputStr' => $buyNowRequestedAmountInput ?? '',
             'rate' => $buyNowFinalPerUnitRate,
+            'pricingContext' => $buyNowClientPricingContext,
             'serverError' => $buyNowPriceError,
             'amountMin' => $buyNowCustomAmountMin,
             'amountMax' => $buyNowCustomAmountMax,
@@ -856,6 +998,12 @@ new class extends Component
         wire:key="buy-now-shell-{{ (string) ($buyNowProductId ?? '0') }}-{{ $buyNowAmountMode }}"
         @if ($buyNowAmountMode === \App\Enums\ProductAmountMode::Custom->value)
             x-data="buyNowCustomAmountEstimate({!! \Illuminate\Support\Js::from($buyNowCustomEstimateConfig)->toHtml() !!})"
+            x-on:buy-now-custom-amount-repriced.window="
+                if ($event.detail.rate !== undefined) { rate = $event.detail.rate; }
+                if ($event.detail.serverError !== undefined) { serverError = $event.detail.serverError; }
+                if ($event.detail.amountInputStr !== undefined && $event.detail.amountInputStr !== null) { amountInputStr = $event.detail.amountInputStr; }
+                if ($event.detail.pricingContext !== undefined) { pricingContext = $event.detail.pricingContext; }
+            "
         @else
             x-data
         @endif
@@ -920,6 +1068,7 @@ new class extends Component
                                 $overlayRowStep = max(1, (int) ($product['custom_amount_step'] ?? 1));
                                 $overlayRowEstimateConfig = [
                                     'rate' => $overlayPerUnit !== null ? (float) $overlayPerUnit : null,
+                                    'pricingContext' => $packageOverlayClientPricingContexts[$overlayPid] ?? null,
                                     'serverError' => $overlayError,
                                     'amountMin' => $product['custom_amount_min'] ?? null,
                                     'amountMax' => $product['custom_amount_max'] ?? null,
@@ -1011,16 +1160,16 @@ new class extends Component
                                                     </div>
                                                     <div class="mt-0.5 tabular-nums text-sm font-semibold text-zinc-900 dark:text-zinc-100" dir="{{ $bnNumericDir }}">
                                                         <span
-                                                            x-show="! serverError && rate !== null && rate !== undefined"
+                                                            x-show="! serverError && payableRate !== null && payableRate !== undefined"
                                                             class="inline-flex flex-wrap items-baseline gap-x-1"
                                                         >
-                                                            <span x-text="formatPerUnitRate(rate)"></span>
+                                                            <span x-text="formatPerUnitRate(payableRate)"></span>
                                                             @if (! empty($product['amount_unit_label']))
                                                                 <span class="text-xs font-normal text-zinc-500 dark:text-zinc-400">/ {{ $product['amount_unit_label'] }}</span>
                                                             @endif
                                                         </span>
                                                         <span
-                                                            x-show="serverError || rate === null || rate === undefined"
+                                                            x-show="serverError || payableRate === null || payableRate === undefined"
                                                             class="text-sm font-normal text-zinc-500 dark:text-zinc-400"
                                                         >—</span>
                                                     </div>
@@ -1393,7 +1542,7 @@ new class extends Component
                                     class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 shadow-sm outline-none transition focus:border-(--color-accent) dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
                                     type="{{ ($requirement['type'] ?? '') === 'number' ? 'number' : 'text' }}"
                                     placeholder="{{ $requirementKey }}"
-                                    wire:model.live="buyNowRequirements.{{ $requirementKey }}"
+                                    wire:model.livenow="buyNowRequirements.{{ $requirementKey }}"
                                 />
                             @endif
                             @error("buyNowRequirements.$requirementKey")
@@ -1410,7 +1559,7 @@ new class extends Component
                 <flux:button variant="ghost" wire:click="closeBuyNow">
                     {{ __('messages.cancel') }}
                 </flux:button>
-                @if ($buyNowAmountMode === \App\Enums\ProductAmountMode::Custom->value && $buyNowFinalPerUnitRate === null)
+                @if ($buyNowAmountMode === \App\Enums\ProductAmountMode::Custom->value && $buyNowFinalPerUnitRate === null && ! (($buyNowClientPricingContext ?? [])['client_pricable'] ?? false))
                     <flux:button variant="primary" disabled>
                         {{ __('main.pay_now') }}
                     </flux:button>
@@ -1421,8 +1570,8 @@ new class extends Component
                         class="relative inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium disabled:opacity-75 dark:disabled:opacity-75 disabled:cursor-default disabled:pointer-events-none h-10 text-sm rounded-lg ps-4 pe-4 bg-[var(--color-accent)] hover:bg-[color-mix(in_oklab,_var(--color-accent),_transparent_10%)] text-[var(--color-accent-foreground)] border border-black/10 dark:border-0 shadow-[inset_0px_1px_--theme(--color-white/.2)]"
                         wire:loading.attr="disabled"
                         wire:target="submitBuyNow"
-                        x-on:click.prevent="if (typeof amountValid !== 'undefined' && amountValid && typeof serverError !== 'undefined' && ! serverError && rate != null && {{ json_encode($this->buyNowCanSubmit) }}) { $wire.call('submitBuyNow', digitsParsed) }"
-                        x-bind:disabled="typeof amountValid === 'undefined' || typeof serverError === 'undefined' || typeof rate === 'undefined' ? true : (! amountValid || !! serverError || rate == null || {{ json_encode(! $this->buyNowCanSubmit) }})"
+                        x-on:click.prevent="if (typeof amountValid !== 'undefined' && amountValid && typeof serverError !== 'undefined' && ! serverError && payableRate != null && {{ json_encode($this->buyNowCanSubmit) }}) { $wire.call('submitBuyNow', digitsParsed) }"
+                        x-bind:disabled="typeof amountValid === 'undefined' || typeof serverError === 'undefined' || typeof payableRate === 'undefined' ? true : (! amountValid || !! serverError || payableRate == null || {{ json_encode(! $this->buyNowCanSubmit) }})"
                     >
                         {{ __('main.pay_now') }}
                     </button>

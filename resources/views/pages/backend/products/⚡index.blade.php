@@ -359,7 +359,7 @@ new class extends Component
 ?>
 
 <div
-    class="flex h-full w-full flex-1 flex-col gap-6"
+    class="admin-products flex h-full w-full flex-1 flex-col gap-8"
     x-data="{
         showFilters: false,
         showProductForm: false,
@@ -377,78 +377,87 @@ new class extends Component
     x-on:open-product-panel.window="showProductForm = true"
     data-test="products-page"
 >
-    <section class="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-        <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
-                <div class="flex size-14 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-950/50 dark:text-sky-400">
-                    <flux:icon icon="shopping-cart" class="size-6" />
-                </div>
-                <div class="flex flex-col gap-2">
-                    <div class="flex flex-col gap-1">
-                        <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
-                            {{ __('messages.products') }}
-                        </flux:heading>
-                        <flux:text class="text-zinc-600 dark:text-zinc-400">
-                            {{ __('messages.products_intro') }}
-                        </flux:text>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400" role="status" aria-live="polite">
-                        <span>{{ __('messages.showing') }}</span>
-                        <span class="font-semibold text-zinc-900 dark:text-zinc-100">
-                            {{ $this->products->count() }}
-                        </span>
-                        <span>{{ __('messages.of') }}</span>
-                        <span class="font-semibold text-zinc-900 dark:text-zinc-100">
-                            {{ $this->products->total() }}
-                        </span>
-                        <span>{{ __('messages.products') }}</span>
-                        @if ($statusFilter !== 'all')
-                            <flux:badge color="{{ $statusFilter === 'active' ? 'emerald' : 'amber' }}" size="sm" variant="subtle">
-                                {{ $statusFilter === 'active' ? __('messages.active') : __('messages.inactive_status') }}
-                            </flux:badge>
-                        @endif
-                    </div>
-                </div>
+    <header class="cf-reveal relative grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+        <div class="max-w-2xl space-y-3">
+            <p class="cf-display text-xs font-semibold tracking-[0.2em] text-[var(--cf-primary)] uppercase">
+                {{ __('messages.nav_content_management') }}
+            </p>
+            <flux:heading size="lg" class="cf-display text-3xl tracking-tight text-[var(--cf-foreground)] md:text-4xl">
+                {{ __('messages.products') }}
+            </flux:heading>
+            <flux:text class="max-w-xl text-sm leading-relaxed text-[var(--cf-muted-foreground)]">
+                {{ __('messages.products_intro') }}
+            </flux:text>
+        </div>
+        <div
+            class="hidden h-24 w-full max-w-xs skew-x-[-8deg] rounded-xl border border-[var(--cf-border)] bg-[var(--cf-card-elevated)] opacity-90 lg:block"
+            aria-hidden="true"
+        >
+            <div class="h-full w-full rounded-[inherit] bg-gradient-to-br from-[var(--cf-primary-soft)] to-transparent"></div>
+        </div>
+    </header>
+
+    <div class="cf-reveal cf-reveal-delay-1 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div class="cf-icon-ring cf-icon-ring--cool shrink-0">
+                <flux:icon icon="shopping-cart" class="size-6" />
             </div>
-            <div class="flex flex-wrap items-center gap-3">
-                <flux:button
-                    type="button"
-                    variant="primary"
-                    icon="plus"
-                    class="!bg-accent !text-accent-foreground hover:!bg-accent-hover"
-                    x-on:click="toggleProductForm()"
-                    x-bind:aria-expanded="showProductForm"
-                    aria-controls="product-form-section"
-                >
-                    {{ __('messages.new_product') }}
-                </flux:button>
-                <flux:button
-                    type="button"
-                    variant="outline"
-                    icon="adjustments-horizontal"
-                    class="border-zinc-300 text-zinc-700 hover:bg-sky-50 hover:border-sky-300 hover:text-sky-700 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-sky-950/30 dark:hover:border-sky-800 dark:hover:text-sky-300"
-                    x-on:click="showFilters = !showFilters"
-                    x-bind:aria-expanded="showFilters"
-                    aria-controls="products-filters"
-                >
-                    {{ __('messages.filters') }}
-                </flux:button>
-                <flux:button
-                    type="button"
-                    variant="outline"
-                    icon="arrow-path"
-                    class="border-zinc-300 text-zinc-700 hover:bg-zinc-50 hover:border-zinc-400 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:border-zinc-500"
-                    wire:click="$refresh"
-                    wire:loading.attr="disabled"
-                >
-                    {{ __('messages.refresh') }}
-                </flux:button>
+            <div class="flex flex-wrap items-center gap-2 text-xs text-[var(--cf-muted-foreground)]" role="status" aria-live="polite">
+                <span>{{ __('messages.showing') }}</span>
+                <span class="font-semibold tabular-nums text-[var(--cf-foreground)]">
+                    {{ $this->products->count() }}
+                </span>
+                <span>{{ __('messages.of') }}</span>
+                <span class="font-semibold tabular-nums text-[var(--cf-foreground)]">
+                    {{ $this->products->total() }}
+                </span>
+                <span>{{ __('messages.products') }}</span>
+                @if ($statusFilter !== 'all')
+                    <flux:badge color="{{ $statusFilter === 'active' ? 'emerald' : 'amber' }}" size="sm" variant="subtle">
+                        {{ $statusFilter === 'active' ? __('messages.active') : __('messages.inactive_status') }}
+                    </flux:badge>
+                @endif
             </div>
         </div>
+        <div class="flex flex-wrap items-center gap-3">
+            <flux:button
+                type="button"
+                variant="primary"
+                icon="plus"
+                class="!bg-[var(--cf-primary)] !text-[var(--cf-primary-foreground)] transition-colors duration-200 hover:brightness-110"
+                x-on:click="toggleProductForm()"
+                x-bind:aria-expanded="showProductForm"
+                aria-controls="product-form-section"
+            >
+                {{ __('messages.new_product') }}
+            </flux:button>
+            <flux:button
+                type="button"
+                variant="outline"
+                icon="adjustments-horizontal"
+                class="border-[var(--cf-border)] text-[var(--cf-foreground)] transition-colors duration-200 hover:border-[color-mix(in_srgb,var(--cf-primary)_40%,var(--cf-border))] hover:bg-[var(--cf-primary-soft)]"
+                x-on:click="showFilters = !showFilters"
+                x-bind:aria-expanded="showFilters"
+                aria-controls="products-filters"
+            >
+                {{ __('messages.filters') }}
+            </flux:button>
+            <flux:button
+                type="button"
+                variant="outline"
+                icon="arrow-path"
+                class="border-[var(--cf-border)] text-[var(--cf-muted-foreground)] transition-colors duration-200 hover:bg-[var(--cf-card-elevated)] hover:text-[var(--cf-foreground)]"
+                wire:click="$refresh"
+                wire:loading.attr="disabled"
+            >
+                {{ __('messages.refresh') }}
+            </flux:button>
+        </div>
+    </div>
 
-        <form
-            id="products-filters"
-            class="mt-6 rounded-xl border border-zinc-100 bg-zinc-50/80 p-6 dark:border-zinc-800 dark:bg-zinc-800/40"
+    <form
+        id="products-filters"
+        class="cf-reveal cf-reveal-delay-2 rounded-xl border border-[var(--cf-border)] bg-[var(--cf-card)] p-6"
             wire:submit.prevent="applyFilters"
             x-show="showFilters"
             x-cloak
@@ -504,19 +513,18 @@ new class extends Component
                         <flux:select.option value="inactive">{{ __('messages.inactive_status') }}</flux:select.option>
                     </flux:select>
                 </div>
-                <flux:button type="submit" variant="primary" icon="magnifying-glass" class="w-full sm:w-auto !bg-emerald-600 hover:!bg-emerald-700 dark:!bg-emerald-600 dark:hover:!bg-emerald-500">
+                <flux:button type="submit" variant="primary" icon="magnifying-glass" class="w-full sm:w-auto !bg-[var(--cf-primary)] !text-[var(--cf-primary-foreground)] transition-colors duration-200 hover:brightness-110">
                     {{ __('messages.apply') }}
                 </flux:button>
-                <flux:button type="button" variant="outline" icon="arrow-path" wire:click="resetFilters" class="w-full sm:w-auto border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800">
+                <flux:button type="button" variant="outline" icon="arrow-path" wire:click="resetFilters" class="w-full sm:w-auto border-[var(--cf-border)] text-[var(--cf-muted-foreground)] transition-colors duration-200 hover:bg-[var(--cf-card-elevated)] hover:text-[var(--cf-foreground)]">
                     {{ __('messages.reset') }}
                 </flux:button>
             </div>
         </form>
-    </section>
 
     <section
         id="product-form-section"
-        class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
+        class="cf-reveal cf-reveal-delay-3 rounded-xl border border-[var(--cf-border)] bg-[var(--cf-card)] p-6"
         x-show="showProductForm"
         x-cloak
         role="region"
@@ -524,10 +532,10 @@ new class extends Component
     >
         <form class="grid gap-5" wire:submit.prevent="saveProduct">
             <div class="flex flex-col gap-1">
-                <flux:heading id="product-form-heading" size="sm" class="text-zinc-900 dark:text-zinc-100">
+                <flux:heading id="product-form-heading" size="sm" class="cf-display text-[var(--cf-foreground)]">
                     {{ $editingProductId ? __('messages.edit_product') : __('messages.create_product') }}
                 </flux:heading>
-                <flux:text class="text-zinc-600 dark:text-zinc-400">
+                <flux:text class="text-[var(--cf-muted-foreground)]">
                     {{ $editingProductId ? __('messages.edit_product_hint') : __('messages.product_slug_auto') }}
                 </flux:text>
             </div>
@@ -602,7 +610,7 @@ new class extends Component
                     @error('productAmountMode')
                         <flux:text color="red">{{ $message }}</flux:text>
                     @enderror
-                    <flux:text class="text-zinc-600 dark:text-zinc-400">
+                    <flux:text class="text-[var(--cf-muted-foreground)]">
                         {{ __('messages.product_amount_mode_hint') }}
                     </flux:text>
                 </div>
@@ -677,22 +685,22 @@ new class extends Component
                     @error('productEntryPrice')
                         <flux:text color="red">{{ $message }}</flux:text>
                     @enderror
-                    <flux:text class="text-zinc-600 dark:text-zinc-400">
+                    <flux:text class="text-[var(--cf-muted-foreground)]">
                         {{ $productAmountMode === ProductAmountMode::Custom->value ? __('messages.entry_price_per_unit_hint') : __('messages.entry_price_fixed_hint') }}
                     </flux:text>
                 </div>
                 <div class="grid gap-2 md:col-span-2">
-                    <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ __('messages.derived_prices') }}</span>
-                    <div class="flex flex-wrap gap-6 rounded-lg border border-zinc-200 bg-zinc-50/50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800/50">
+                    <span class="text-sm font-medium text-[var(--cf-foreground)]">{{ __('messages.derived_prices') }}</span>
+                    <div class="flex flex-wrap gap-6 rounded-lg border border-[var(--cf-border)] bg-[var(--cf-background)] px-4 py-3">
                         <div class="flex flex-col gap-0.5">
-                            <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.retail_price') }}</span>
-                            <span class="tabular-nums font-mono text-base text-zinc-900 dark:text-zinc-100">
+                            <span class="text-xs text-[var(--cf-muted-foreground)]">{{ __('messages.retail_price') }}</span>
+                            <span class="font-mono text-base text-[var(--cf-primary)] tabular-nums">
                                 {{ $this->formatDerivedPricePreview($this->computedRetailPrice) }}
                             </span>
                         </div>
                         <div class="flex flex-col gap-0.5">
-                            <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.wholesale_price') }}</span>
-                            <span class="tabular-nums font-mono text-base text-zinc-900 dark:text-zinc-100">
+                            <span class="text-xs text-[var(--cf-muted-foreground)]">{{ __('messages.wholesale_price') }}</span>
+                            <span class="font-mono text-base text-[var(--cf-foreground)] tabular-nums">
                                 {{ $this->formatDerivedPricePreview($this->computedWholesalePrice) }}
                             </span>
                         </div>
@@ -709,12 +717,12 @@ new class extends Component
 
             <div class="flex flex-wrap items-center gap-2">
                 <flux:button
-                    class="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                    class="!bg-[var(--cf-primary)] !text-[var(--cf-primary-foreground)] transition-colors duration-200 hover:brightness-110 focus:!border-[var(--cf-primary)] focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
                     type="submit" variant="primary" icon="plus" wire:loading.attr="disabled" wire:target="saveProduct">
                     {{ $editingProductId ? __('messages.update_product') : __('messages.create_product') }}
                 </flux:button>
                 <flux:button
-                    class="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                    class="text-[var(--cf-muted-foreground)] hover:bg-[var(--cf-card-elevated)] hover:text-[var(--cf-foreground)] focus:!border-[var(--cf-primary)] focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
                     type="button" variant="ghost" x-on:click="toggleProductForm()">
                     {{ __('messages.cancel') }}
                 </flux:button>
@@ -722,7 +730,12 @@ new class extends Component
         </form>
     </section>
 
-    <section class="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900" aria-labelledby="products-table-heading">
+    <section class="cf-reveal cf-reveal-delay-4 cf-table-shell" aria-labelledby="products-table-heading">
+        <div class="cf-table-head px-5 py-4">
+            <flux:heading id="products-table-heading" size="sm" class="cf-display text-[var(--cf-foreground)]">
+                {{ __('messages.products') }}
+            </flux:heading>
+        </div>
 
         <div
             class="overflow-x-auto"
@@ -748,14 +761,17 @@ new class extends Component
             <div wire:loading.delay.remove wire:target="applyFilters,resetFilters,$refresh,nextPage,previousPage,gotoPage">
                 @if ($this->products->count() === 0)
                     <div class="flex flex-col items-center gap-3 p-10 text-center" role="status" aria-live="polite">
-                        <div class="flex size-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-300" aria-hidden="true">
+                        <div
+                            class="flex size-12 items-center justify-center rounded-full border border-[var(--cf-border)] bg-[var(--cf-card-elevated)] text-[var(--cf-muted-foreground)]"
+                            aria-hidden="true"
+                        >
                             <flux:icon icon="shopping-cart" class="size-5" />
                         </div>
                         <div class="flex flex-col gap-1">
-                            <flux:heading size="sm" class="text-zinc-900 dark:text-zinc-100">
+                            <flux:heading size="sm" class="cf-display text-[var(--cf-foreground)]">
                                 {{ __('messages.no_products_yet') }}
                             </flux:heading>
-                            <flux:text class="text-zinc-600 dark:text-zinc-400">
+                            <flux:text class="text-[var(--cf-muted-foreground)]">
                                 {{ __('messages.create_first_product') }}
                             </flux:text>
                         </div>
@@ -763,15 +779,15 @@ new class extends Component
                             type="button"
                             variant="primary"
                             icon="plus"
-                            class="!bg-accent !text-accent-foreground hover:!bg-accent-hover"
+                            class="!bg-[var(--cf-primary)] !text-[var(--cf-primary-foreground)] transition-colors duration-200 hover:brightness-110"
                             x-on:click="showProductForm = true"
                         >
                             {{ __('messages.add_product') }}
                         </flux:button>
                     </div>
                 @else
-                    <table class="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800" data-test="products-table">
-                        <thead class="bg-zinc-100 text-xs uppercase tracking-wide text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                    <table class="min-w-full divide-y divide-[var(--cf-border)] text-sm" data-test="products-table">
+                        <thead class="bg-[var(--cf-card)] text-xs uppercase tracking-wide text-[var(--cf-muted-foreground)]">
                             <tr>
                                 <th scope="col" class="px-5 py-3 text-start font-semibold">{{ __('messages.product') }}</th>
                                 <th scope="col" class="px-5 py-3 text-start font-semibold hidden sm:table-cell">{{ __('messages.package') }}</th>
@@ -783,19 +799,16 @@ new class extends Component
                                 <th scope="col" class="px-5 py-3 text-end font-semibold">{{ __('messages.actions') }}</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
-                            @foreach ($this->products as $index => $product)
-                                @php
-                                    $rowBg = $index % 2 === 0 ? 'bg-white dark:bg-zinc-900' : 'bg-zinc-50/50 dark:bg-zinc-800/30';
-                                @endphp
+                        <tbody class="divide-y divide-[var(--cf-border)]">
+                            @foreach ($this->products as $product)
                                 <tr
-                                    class="transition {{ $rowBg }} hover:bg-sky-50/50 dark:hover:bg-sky-950/20"
+                                    class="transition-colors duration-200 hover:bg-[var(--cf-card-elevated)]"
                                     wire:key="product-{{ $product->id }}"
                                 >
                                     <td class="px-5 py-4">
                                         <div class="min-w-0">
                                             <div class="flex flex-wrap items-center gap-2">
-                                                <span class="truncate font-semibold text-zinc-900 dark:text-zinc-100">
+                                                <span class="truncate font-semibold text-[var(--cf-foreground)]">
                                                     {{ $product->name }}
                                                 </span>
                                                 @if ($product->serial)
@@ -810,7 +823,7 @@ new class extends Component
                                                     </flux:badge>
                                                 @endif
                                             </div>
-                                            <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                                            <div class="text-xs text-[var(--cf-muted-foreground)]">
                                                 @if ($product->package)
                                                     /{{ $product->package->slug }}/{{ $product->slug }}
                                                 @else
@@ -818,7 +831,7 @@ new class extends Component
                                                 @endif
                                             </div>
                                             @if ($product->amount_mode === ProductAmountMode::Custom)
-                                                <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                                                <div class="text-xs text-[var(--cf-muted-foreground)]">
                                                     {{ __('messages.custom_amount_min') }}: {{ $product->custom_amount_min ?? '—' }}
                                                     · {{ __('messages.custom_amount_max') }}: {{ $product->custom_amount_max ?? '—' }}
                                                     @if ($product->custom_amount_step !== null)
@@ -827,28 +840,28 @@ new class extends Component
                                                 </div>
                                             @endif
                                             @if ($product->package)
-                                                <div class="text-xs text-zinc-500 dark:text-zinc-400 sm:hidden">
+                                                <div class="text-xs text-[var(--cf-muted-foreground)] sm:hidden">
                                                     {{ $product->package->name }}
                                                 </div>
                                             @endif
                                         </div>
                                     </td>
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300 hidden sm:table-cell">
+                                    <td class="hidden px-5 py-4 text-[var(--cf-muted-foreground)] sm:table-cell">
                                         {{ $product->package?->name ?? __('messages.no_package') }}
                                     </td>
-                                    <td class="px-5 py-4 text-end tabular-nums text-zinc-900 dark:text-zinc-100">
+                                    <td class="px-5 py-4 text-end text-[var(--cf-foreground)] tabular-nums">
                                         {{ $this->formatEntryPriceForTable($product) }}
                                     </td>
-                                    <td class="px-5 py-4 text-end tabular-nums text-zinc-900 dark:text-zinc-100">
+                                    <td class="px-5 py-4 text-end text-[var(--cf-foreground)] tabular-nums">
                                         {{ $this->formatDerivedPricePreview((float) $product->retail_price) }}
-                                        <div class="mt-0.5 text-left text-xs text-zinc-500 dark:text-zinc-400 lg:hidden">
+                                        <div class="mt-0.5 text-left text-xs text-[var(--cf-muted-foreground)] lg:hidden">
                                             {{ __('messages.wholesale_price') }} {{ $this->formatDerivedPricePreview((float) $product->wholesale_price) }}
                                         </div>
                                     </td>
-                                    <td class="px-5 py-4 text-end tabular-nums text-zinc-900 dark:text-zinc-100 hidden lg:table-cell">
+                                    <td class="hidden px-5 py-4 text-end text-[var(--cf-foreground)] tabular-nums lg:table-cell">
                                         {{ $this->formatDerivedPricePreview((float) $product->wholesale_price) }}
                                     </td>
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300 hidden xl:table-cell">
+                                    <td class="hidden px-5 py-4 text-[var(--cf-muted-foreground)] xl:table-cell">
                                         {{ $product->order ?? '—' }}
                                     </td>
                                     <td class="px-5 py-4">
@@ -862,7 +875,11 @@ new class extends Component
                                     </td>
                                     <td class="px-5 py-4 text-end">
                                         <flux:dropdown position="bottom" align="end">
-                                            <flux:button variant="ghost" icon="ellipsis-vertical" />
+                                            <flux:button
+                                                variant="ghost"
+                                                icon="ellipsis-vertical"
+                                                class="text-[var(--cf-muted-foreground)] hover:bg-[var(--cf-card-elevated)] hover:text-[var(--cf-foreground)]"
+                                            />
                                             <flux:menu>
                                                 <flux:menu.item icon="pencil" wire:click="startEditProduct({{ $product->id }})">
                                                     {{ __('messages.edit') }}
@@ -887,28 +904,30 @@ new class extends Component
             </div>
         </div>
 
-        <div class="border-t border-zinc-100 px-5 py-4 dark:border-zinc-800">
+        <div class="cf-pagination border-t border-[var(--cf-border)] px-5 py-4">
             {{ $this->products->links() }}
         </div>
     </section>
 
     <flux:modal
         wire:model.self="showDeleteProductModal"
-        class="max-w-md"
+        class="admin-themed-modal max-w-md"
         variant="floating"
         @close="cancelDeleteProduct"
         @cancel="cancelDeleteProduct"
     >
-        <div class="space-y-6">
+        <div class="space-y-6 text-[var(--cf-foreground)]">
             <div class="flex items-start gap-4">
-                <div class="flex size-11 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400">
+                <div
+                    class="flex size-11 shrink-0 items-center justify-center rounded-full border border-[var(--cf-border)] bg-[var(--cf-destructive-soft)] text-[var(--cf-destructive)]"
+                >
                     <flux:icon icon="trash" class="size-5" />
                 </div>
                 <div class="space-y-2">
-                    <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
+                    <flux:heading size="lg" class="cf-display text-[var(--cf-foreground)]">
                         {{ __('messages.delete_product_title') }}
                     </flux:heading>
-                    <flux:text class="text-zinc-600 dark:text-zinc-400">
+                    <flux:text class="text-[var(--cf-muted-foreground)]">
                         {{ __('messages.delete_product_body', ['name' => $deleteProductName]) }}
                     </flux:text>
                 </div>
@@ -916,7 +935,11 @@ new class extends Component
 
             <div class="flex flex-wrap items-center gap-2">
                 <div class="grow" aria-hidden="true"></div>
-                <flux:button variant="ghost" wire:click="cancelDeleteProduct">
+                <flux:button
+                    variant="ghost"
+                    class="text-[var(--cf-muted-foreground)] hover:bg-[var(--cf-card-elevated)] hover:text-[var(--cf-foreground)]"
+                    wire:click="cancelDeleteProduct"
+                >
                     {{ __('messages.cancel') }}
                 </flux:button>
                 <flux:button

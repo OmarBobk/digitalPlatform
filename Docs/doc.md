@@ -46,6 +46,11 @@
   - ###TODO: ###MAJOR### Record website views and how many users are logged in and who are they
   - ###TODO: ###MAJOR### Users hierarchy. 
   - ###TODO: Pricing Rules on the custom amount products is always hight
+  - ###TODO: Dashboard Page:
+    - #TODO: who is online by role
+  - ###TODO: Products page: add filter by package.
+  - ###TODO: Pretend a query or function or create a new page where the input is two fields Product serial -> new price ex: SOULCHILL-10K ->  3.00 and by that we can update the prices faster
+    - or maybe we just select the package name and then (supoose there are 10 products belong to this package) on the left hand you see the Product serial and on the right hand input fiels for the new price. 
   - 
 - Frontend:
   - ###DONE wallet transaction in /wallets should be more described
@@ -81,7 +86,24 @@ Cursor should take the best approach in everything code readability, maintance, 
 5. Review → fix issues
 
 
-
+Composer 1.5
+Opus 4.5
+GPT-5.2
+Gemini 3.1 Pro
+GPT-5.4 Mini
+GPT-5.4 Nano
+Haiku 4.5
+Codex 5.3 Spark
+Grok 4.20
+Sonnet 4.5
+Codex 5.1 Max
+GPT-5.1
+Gemini 3 Flash
+Codex 5.1 Mini
+Sonnet 4
+GPT-5 Mini
+Gemini 2.5 Flash
+Kimi K2.5
 General Engineering Rules:
 
 * Prefer SIMPLE over FLEXIBLE

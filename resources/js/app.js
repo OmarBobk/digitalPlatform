@@ -8,13 +8,79 @@ document.addEventListener('alpine:init', () => {
     }
 
     /**
-     * Shared custom-amount pricing estimate (one server round-trip for rate, client multiplies as user types).
+     * Shared custom-amount pricing estimate.
+     * When `pricingContext.client_pricable` + rules are present, tier math runs in Alpine (matches BuyNowClientPricingContext::previewFinalPrice).
+     * Otherwise uses server `rate` × amount (overrides, legacy).
      *
-     * @param {object} ctx Alpine component `this` with amountInputStr, rate, serverError, amountMin, amountMax, amountStep, messages
+     * @param {object} ctx Alpine component `this` with amountInputStr, rate, pricingContext, serverError, amountMin, amountMax, amountStep, messages
      */
     const customAmountEstimate = {
         round2(value) {
             return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+        },
+
+        bankersRound(value, decimals) {
+            const m = 10 ** decimals;
+            const x = value * m;
+            const f = Math.floor(x);
+            const frac = x - f;
+            if (Math.abs(frac - 0.5) < 1e-9) {
+                return (f % 2 === 0 ? f : f + 1) / m;
+            }
+
+            return Math.round(x) / m;
+        },
+
+        multiplyAmountByEntryPrice(amount, entryPrice) {
+            const ep = Number(entryPrice);
+            if (! Number.isFinite(ep) || ep <= 0) {
+                return NaN;
+            }
+            const b = ep.toFixed(6);
+            const result = parseFloat(b) * parseInt(String(amount), 10);
+
+            return Math.round(result * 1e6) / 1e6;
+        },
+
+        resolvePricingRule(entryTotal, rules) {
+            if (! Array.isArray(rules)) {
+                return null;
+            }
+            for (const rule of rules) {
+                const min = Number(rule.min);
+                const max = Number(rule.max);
+                if (min <= entryTotal && max > entryTotal) {
+                    return rule;
+                }
+            }
+
+            return null;
+        },
+
+        computeBuyNowFinal(pricingContext, amount) {
+            const entry = Number(pricingContext?.entry_price_per_unit);
+            if (! Number.isFinite(entry) || entry <= 0) {
+                return null;
+            }
+            const computedEntryTotal = customAmountEstimate.multiplyAmountByEntryPrice(amount, entry);
+            if (Number.isNaN(computedEntryTotal)) {
+                return null;
+            }
+            const rule = customAmountEstimate.resolvePricingRule(computedEntryTotal, pricingContext.rules);
+            if (! rule) {
+                return null;
+            }
+            const useWholesale = !! pricingContext.use_wholesale;
+            const pct = useWholesale ? Number(rule.wholesale_pct) : Number(rule.retail_pct);
+            const basePrice = customAmountEstimate.bankersRound(computedEntryTotal * (1 + pct / 100), 2);
+            const loyaltyPct = Number(pricingContext.loyalty_discount_percent ?? 0);
+            const discountAmount = customAmountEstimate.bankersRound(basePrice * loyaltyPct / 100, 2);
+            let finalPrice = customAmountEstimate.bankersRound(basePrice - discountAmount, 2);
+            if (finalPrice < computedEntryTotal) {
+                finalPrice = customAmountEstimate.bankersRound(computedEntryTotal, 2);
+            }
+
+            return finalPrice;
         },
 
         digitsParsed(ctx) {
@@ -53,6 +119,13 @@ document.addEventListener('alpine:init', () => {
                 return null;
             }
 
+            const pc = ctx.pricingContext;
+            if (pc && pc.client_pricable && Array.isArray(pc.rules) && pc.rules.length > 0) {
+                const final = customAmountEstimate.computeBuyNowFinal(pc, customAmountEstimate.digitsParsed(ctx));
+
+                return final === null ? null : customAmountEstimate.round2(final);
+            }
+
             if (ctx.rate === null || ctx.rate === undefined) {
                 return null;
             }
@@ -83,6 +156,15 @@ document.addEventListener('alpine:init', () => {
             if (reason === 'bad_step') {
                 return msgs.bad_step ?? '—';
             }
+            if (customAmountEstimate.amountValid(ctx)) {
+                const pc = ctx.pricingContext;
+                if (pc && pc.client_pricable && Array.isArray(pc.rules) && pc.rules.length > 0) {
+                    const n = customAmountEstimate.digitsParsed(ctx);
+                    if (customAmountEstimate.computeBuyNowFinal(pc, n) === null) {
+                        return msgs.price_unavailable ?? '—';
+                    }
+                }
+            }
             if (customAmountEstimate.amountValid(ctx) && (ctx.rate === null || ctx.rate === undefined)) {
                 return msgs.price_unavailable ?? '—';
             }
@@ -100,6 +182,15 @@ document.addEventListener('alpine:init', () => {
             const r = customAmountEstimate.amountInvalidReason(ctx);
             if (r === 'below_min' || r === 'above_max' || r === 'bad_step') {
                 return 'attention';
+            }
+            if (customAmountEstimate.amountValid(ctx)) {
+                const pc = ctx.pricingContext;
+                if (pc && pc.client_pricable && Array.isArray(pc.rules) && pc.rules.length > 0) {
+                    const n = customAmountEstimate.digitsParsed(ctx);
+                    if (customAmountEstimate.computeBuyNowFinal(pc, n) === null) {
+                        return 'attention';
+                    }
+                }
             }
             if (customAmountEstimate.amountValid(ctx) && (ctx.rate === null || ctx.rate === undefined)) {
                 return 'attention';
@@ -138,6 +229,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('buyNowCustomAmountEstimate', (config) => ({
         amountInputStr: config.amountInputStr ?? '',
         rate: config.rate,
+        pricingContext: config.pricingContext ?? null,
         serverError: config.serverError ?? null,
         amountMin: config.amountMin ?? null,
         amountMax: config.amountMax ?? null,
@@ -156,6 +248,24 @@ document.addEventListener('alpine:init', () => {
 
         get amountValid() {
             return customAmountEstimate.amountValid(this);
+        },
+
+        /**
+         * Per-unit rate for Pay Now: client tier math when pricable, else server rate.
+         */
+        get payableRate() {
+            const pc = this.pricingContext;
+            if (pc && pc.client_pricable && Array.isArray(pc.rules) && pc.rules.length > 0) {
+                const amt = customAmountEstimate.digitsParsed(this);
+                if (amt < 1) {
+                    return null;
+                }
+                const final = customAmountEstimate.computeBuyNowFinal(pc, amt);
+
+                return final === null ? null : final / amt;
+            }
+
+            return this.rate;
         },
 
         get estimatedFinal() {
@@ -179,6 +289,7 @@ document.addEventListener('alpine:init', () => {
         product: config.product,
         amountInputStr: config.amountInputStr ?? '',
         rate: config.rate,
+        pricingContext: config.pricingContext ?? null,
         serverError: config.serverError ?? null,
         amountMin: config.amountMin ?? null,
         amountMax: config.amountMax ?? null,
@@ -204,6 +315,21 @@ document.addEventListener('alpine:init', () => {
 
         get amountValid() {
             return customAmountEstimate.amountValid(this);
+        },
+
+        get payableRate() {
+            const pc = this.pricingContext;
+            if (pc && pc.client_pricable && Array.isArray(pc.rules) && pc.rules.length > 0) {
+                const amt = customAmountEstimate.digitsParsed(this);
+                if (amt < 1) {
+                    return null;
+                }
+                const final = customAmountEstimate.computeBuyNowFinal(pc, amt);
+
+                return final === null ? null : final / amt;
+            }
+
+            return this.rate;
         },
 
         get estimatedFinal() {

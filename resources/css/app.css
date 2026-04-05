@@ -39,6 +39,214 @@
     }
 }
 
+/*
+|--------------------------------------------------------------------------
+| Admin themed pages (Customer funds, Products, Fulfillments, …) — var(--cf-*)
+|--------------------------------------------------------------------------
+| Palette: near-black surfaces, gold primary, cool accent for secondary KPI.
+*/
+@layer theme {
+    :root {
+        --cf-background: #0a0a0a;
+        --cf-card: #1a1a1a;
+        --cf-card-elevated: #222222;
+        --cf-foreground: #ffffff;
+        --cf-muted-foreground: #9ca3af;
+        --cf-primary: #ffd700;
+        --cf-primary-foreground: #0a0a0a;
+        --cf-border: color-mix(in srgb, var(--cf-foreground) 12%, transparent);
+        --cf-ring: var(--cf-primary);
+        --cf-primary-soft: color-mix(in srgb, var(--cf-primary) 14%, var(--cf-card));
+        --cf-success: #34d399;
+        --cf-success-soft: color-mix(in srgb, var(--cf-success) 16%, var(--cf-card));
+        --cf-destructive: #f87171;
+        --cf-destructive-soft: color-mix(in srgb, var(--cf-destructive) 14%, var(--cf-card));
+        --cf-muted-surface: color-mix(in srgb, #38bdf8 12%, var(--cf-card));
+        --cf-muted-surface-border: color-mix(in srgb, #7dd3fc 35%, var(--cf-border));
+    }
+}
+
+@layer components {
+    .admin-customer-funds,
+    .admin-products,
+    .admin-fulfillments {
+        border-radius: 1rem;
+        background-color: var(--cf-background);
+        background-image:
+            radial-gradient(ellipse 100% 70% at 100% 0%, color-mix(in srgb, var(--cf-primary) 14%, transparent), transparent 50%),
+            radial-gradient(ellipse 70% 60% at 0% 100%, color-mix(in srgb, var(--cf-primary) 6%, transparent), transparent 45%);
+        padding: 1.25rem;
+        color: var(--cf-foreground);
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        box-shadow:
+            0 0 0 1px var(--cf-border),
+            0 24px 48px -24px color-mix(in srgb, var(--cf-primary) 12%, transparent);
+    }
+
+    .admin-customer-funds .cf-display,
+    .admin-products .cf-display,
+    .admin-fulfillments .cf-display {
+        font-family: 'Space Grotesk', Inter, ui-sans-serif, sans-serif;
+    }
+
+    @keyframes cf-slide-up {
+        from {
+            opacity: 0;
+            transform: translateY(0.75rem);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .admin-customer-funds .cf-reveal,
+    .admin-products .cf-reveal,
+    .admin-fulfillments .cf-reveal {
+        animation: cf-slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    }
+
+    .admin-customer-funds .cf-reveal-delay-1,
+    .admin-products .cf-reveal-delay-1,
+    .admin-fulfillments .cf-reveal-delay-1 {
+        animation-delay: 0.06s;
+    }
+
+    .admin-customer-funds .cf-reveal-delay-2,
+    .admin-products .cf-reveal-delay-2,
+    .admin-fulfillments .cf-reveal-delay-2 {
+        animation-delay: 0.12s;
+    }
+
+    .admin-customer-funds .cf-reveal-delay-3,
+    .admin-products .cf-reveal-delay-3,
+    .admin-fulfillments .cf-reveal-delay-3 {
+        animation-delay: 0.18s;
+    }
+
+    .admin-customer-funds .cf-reveal-delay-4,
+    .admin-products .cf-reveal-delay-4,
+    .admin-fulfillments .cf-reveal-delay-4 {
+        animation-delay: 0.24s;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .admin-customer-funds .cf-reveal,
+        .admin-products .cf-reveal,
+        .admin-fulfillments .cf-reveal {
+            animation: none;
+        }
+    }
+
+    .admin-customer-funds .cf-stat-card,
+    .admin-products .cf-stat-card,
+    .admin-fulfillments .cf-stat-card {
+        border-radius: 0.75rem;
+        border: 1px solid var(--cf-border);
+        background-color: var(--cf-card);
+        padding: 1rem;
+        transition:
+            transform 0.2s ease,
+            box-shadow 0.2s ease,
+            border-color 0.2s ease;
+    }
+
+    .admin-customer-funds .cf-stat-card:hover,
+    .admin-products .cf-stat-card:hover,
+    .admin-fulfillments .cf-stat-card:hover {
+        transform: translateY(-2px) scale(1.01);
+        box-shadow: 0 12px 40px -16px color-mix(in srgb, var(--cf-primary) 25%, transparent);
+        border-color: color-mix(in srgb, var(--cf-primary) 35%, var(--cf-border));
+    }
+
+    .admin-customer-funds .cf-stat-card--primary,
+    .admin-products .cf-stat-card--primary,
+    .admin-fulfillments .cf-stat-card--primary {
+        border-color: color-mix(in srgb, var(--cf-primary) 45%, var(--cf-border));
+        background: linear-gradient(135deg, var(--cf-primary-soft) 0%, var(--cf-card) 65%);
+    }
+
+    .admin-customer-funds .cf-stat-card--secondary,
+    .admin-products .cf-stat-card--secondary,
+    .admin-fulfillments .cf-stat-card--secondary {
+        border-color: var(--cf-muted-surface-border);
+        background: linear-gradient(135deg, var(--cf-muted-surface) 0%, var(--cf-card) 70%);
+    }
+
+    .admin-customer-funds .cf-icon-ring,
+    .admin-products .cf-icon-ring,
+    .admin-fulfillments .cf-icon-ring {
+        display: flex;
+        width: 2.5rem;
+        height: 2.5rem;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.5rem;
+        border: 1px solid var(--cf-border);
+        background-color: var(--cf-card-elevated);
+        color: var(--cf-primary);
+    }
+
+    .admin-customer-funds .cf-icon-ring--cool,
+    .admin-products .cf-icon-ring--cool,
+    .admin-fulfillments .cf-icon-ring--cool {
+        color: color-mix(in srgb, #7dd3fc 85%, var(--cf-foreground));
+    }
+
+    .admin-customer-funds .cf-table-shell,
+    .admin-products .cf-table-shell,
+    .admin-fulfillments .cf-table-shell {
+        overflow: hidden;
+        border-radius: 1rem;
+        border: 1px solid var(--cf-border);
+        background-color: var(--cf-card);
+    }
+
+    .admin-customer-funds .cf-table-head,
+    .admin-products .cf-table-head,
+    .admin-fulfillments .cf-table-head {
+        border-bottom: 1px solid var(--cf-border);
+        background-color: color-mix(in srgb, var(--cf-card-elevated) 85%, var(--cf-card));
+    }
+
+    .admin-customer-funds .cf-pagination p,
+    .admin-products .cf-pagination p,
+    .admin-fulfillments .cf-pagination p {
+        color: var(--cf-muted-foreground) !important;
+    }
+
+    .admin-customer-funds .cf-pagination nav [class*='border-gray'],
+    .admin-products .cf-pagination nav [class*='border-gray'],
+    .admin-fulfillments .cf-pagination nav [class*='border-gray'] {
+        background-color: var(--cf-card) !important;
+        border-color: var(--cf-border) !important;
+        color: var(--cf-muted-foreground) !important;
+    }
+
+    .admin-customer-funds .cf-pagination nav a[class*='border-gray']:hover,
+    .admin-products .cf-pagination nav a[class*='border-gray']:hover,
+    .admin-fulfillments .cf-pagination nav a[class*='border-gray']:hover {
+        color: var(--cf-primary) !important;
+        border-color: color-mix(in srgb, var(--cf-primary) 45%, var(--cf-border)) !important;
+        background-color: var(--cf-card-elevated) !important;
+    }
+
+    .admin-customer-funds .cf-pagination nav [aria-current='page'] span,
+    .admin-products .cf-pagination nav [aria-current='page'] span,
+    .admin-fulfillments .cf-pagination nav [aria-current='page'] span {
+        background-color: var(--cf-primary-soft) !important;
+        color: var(--cf-primary) !important;
+        border-color: color-mix(in srgb, var(--cf-primary) 55%, var(--cf-border)) !important;
+    }
+
+    .admin-themed-modal {
+        background-color: var(--cf-card) !important;
+        border: 1px solid var(--cf-border) !important;
+        color: var(--cf-foreground);
+    }
+}
+
 @layer base {
 
     *,
