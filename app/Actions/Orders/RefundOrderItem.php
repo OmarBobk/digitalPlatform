@@ -7,6 +7,7 @@ namespace App\Actions\Orders;
 use App\Actions\Fulfillments\AppendFulfillmentLog;
 use App\Enums\FulfillmentLogLevel;
 use App\Enums\FulfillmentStatus;
+use App\Enums\ProductAmountMode;
 use App\Enums\WalletTransactionDirection;
 use App\Enums\WalletTransactionType;
 use App\Models\Fulfillment;
@@ -94,7 +95,9 @@ class RefundOrderItem
                     ->firstOrFail();
             }
 
-            if ((float) $lockedItem->unit_price <= 0) {
+            $refundAmount = $this->refundAmountForFulfillment($lockedItem);
+
+            if ($refundAmount <= 0) {
                 throw ValidationException::withMessages([
                     'order_item' => __('messages.refund_not_allowed'),
                 ]);
@@ -110,7 +113,7 @@ class RefundOrderItem
                 'wallet_id' => $wallet->id,
                 'type' => WalletTransactionType::Refund,
                 'direction' => WalletTransactionDirection::Credit,
-                'amount' => $lockedItem->unit_price,
+                'amount' => $refundAmount,
                 'status' => WalletTransaction::STATUS_PENDING,
                 'reference_type' => Fulfillment::class,
                 'reference_id' => $lockedFulfillment->id,
@@ -197,5 +200,31 @@ class RefundOrderItem
 
             return $transaction;
         });
+    }
+
+    /**
+     * Custom-amount lines store a per-custom-unit price that often rounds to 0.00 at 2dp; the paid total is line_total.
+     * Fixed lines with quantity > 1 use one fulfillment per unit, so refund one unit's share (unit_price, or line_total / qty fallback).
+     */
+    private function refundAmountForFulfillment(OrderItem $item): float
+    {
+        $mode = $item->amount_mode ?? ProductAmountMode::Fixed;
+        $lineTotal = (float) $item->line_total;
+        $unitPrice = (float) $item->unit_price;
+        $quantity = max(1, (int) $item->quantity);
+
+        if ($mode === ProductAmountMode::Custom) {
+            return round($lineTotal, 2);
+        }
+
+        if ($unitPrice > 0) {
+            return round($unitPrice, 2);
+        }
+
+        if ($lineTotal > 0) {
+            return round($lineTotal / $quantity, 2);
+        }
+
+        return 0.0;
     }
 }

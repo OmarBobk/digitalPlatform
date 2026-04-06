@@ -684,3 +684,32 @@ test('admin can fail fulfillment and refund immediately', function () {
         ->assertDontSeeHtml('wire:click="openFailModal(')
         ->assertDontSeeHtml('wire:click="retryFulfillment(');
 });
+
+test('fail with wallet refund rolls back fulfillment when refund is not allowed', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $fulfillment = makeFulfillment();
+    app(CompleteFulfillment::class)->handle($fulfillment, ['code' => 'DONE'], 'admin', $admin->id);
+    $fulfillment->refresh();
+
+    expect($fulfillment->status)->toBe(FulfillmentStatus::Completed);
+
+    Livewire::actingAs($admin)
+        ->test('pages::backend.fulfillments.index')
+        ->set('selectedFulfillmentId', $fulfillment->id)
+        ->set('failureReason', 'Cannot deliver')
+        ->set('refundAfterFail', true)
+        ->call('failFulfillment')
+        ->assertHasErrors(['order_item']);
+
+    $fulfillment->refresh();
+
+    expect($fulfillment->status)->toBe(FulfillmentStatus::Completed);
+
+    expect(WalletTransaction::query()
+        ->where('reference_type', Fulfillment::class)
+        ->where('reference_id', $fulfillment->id)
+        ->where('type', \App\Enums\WalletTransactionType::Refund)
+        ->exists())->toBeFalse();
+});

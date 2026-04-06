@@ -29,7 +29,11 @@ class GetRefundRequests
                 'created_at',
             ])
             ->where('type', WalletTransactionType::Refund->value)
-            ->where('status', WalletTransaction::STATUS_PENDING)
+            ->whereIn('status', [
+                WalletTransaction::STATUS_PENDING,
+                WalletTransaction::STATUS_POSTED,
+                WalletTransaction::STATUS_REJECTED,
+            ])
             ->with([
                 'reference' => function (MorphTo $morphTo): void {
                     $morphTo->morphWith([

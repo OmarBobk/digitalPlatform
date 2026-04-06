@@ -10,6 +10,8 @@
     /** @var array<int, array<string, mixed>> $lines */
     'lines',
     'showPrices' => true,
+    /** @var array{kind: 'badge', label: string, color: string}|array{kind: 'action', label: string, orderId: int}|null $refundSummary */
+    'refundSummary' => null,
 ])
 
 @php
@@ -44,9 +46,29 @@
             </p>
         </div>
         <div class="flex min-w-0 flex-1 flex-col items-start gap-2 sm:items-end sm:text-end">
-            <flux:badge color="{{ $status['color'] }}" class="text-xs font-semibold">
-                {{ $status['label'] }}
-            </flux:badge>
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                <flux:badge color="{{ $status['color'] }}" class="text-xs font-semibold">
+                    {{ $status['label'] }}
+                </flux:badge>
+                @if (is_array($refundSummary) && ($refundSummary['kind'] ?? 'badge') === 'action' && isset($refundSummary['orderId'], $refundSummary['label']))
+                    <flux:button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        wire:click.stop="requestRefundForOrder({{ (int) $refundSummary['orderId'] }})"
+                        wire:loading.attr="disabled"
+                        wire:target="requestRefundForOrder"
+                        class="!bg-accent !text-accent-foreground hover:!bg-accent-hover"
+                        data-test="order-card-request-refund"
+                    >
+                        {{ $refundSummary['label'] }}
+                    </flux:button>
+                @elseif (is_array($refundSummary) && isset($refundSummary['label'], $refundSummary['color']))
+                    <flux:badge color="{{ $refundSummary['color'] }}" class="text-xs font-semibold">
+                        {{ $refundSummary['label'] }}
+                    </flux:badge>
+                @endif
+            </div>
             <div class="text-sm font-medium text-zinc-800 dark:text-zinc-200">
                 {{ $orderNumber }}
             </div>

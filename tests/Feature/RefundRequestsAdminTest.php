@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -25,11 +26,18 @@ use Spatie\Permission\Models\Role;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    $permissionNames = [
+        'view_refunds',
+        'process_refunds',
+        'view_fulfillments',
+        'manage_fulfillments',
+    ];
+    $permissions = collect($permissionNames)
+        ->map(fn (string $name) => Permission::firstOrCreate(['name' => $name]))
+        ->all();
+
     $adminRole = Role::firstOrCreate(['name' => 'admin']);
-    $adminRole->syncPermissions([
-        Permission::firstOrCreate(['name' => 'view_refunds']),
-        Permission::firstOrCreate(['name' => 'process_refunds']),
-    ]);
+    $adminRole->syncPermissions($permissions);
 });
 
 /**
@@ -132,6 +140,25 @@ test('admin can approve refund request and credit wallet once', function () {
     expect($payload['fulfillment']->status)->toBe(FulfillmentStatus::Failed);
 });
 
+test('approved refunds stay listed on the refund requests page', function () {
+    $role = Role::firstOrCreate(['name' => 'admin']);
+    $admin = User::factory()->create();
+    $admin->assignRole($role);
+
+    $user = User::factory()->create();
+    Wallet::forUser($user);
+    $payload = makeRefundableItem($user);
+
+    $refundTx = (new RefundOrderItem)->handle($payload['fulfillment'], $user->id);
+    (new ApproveRefundRequest)->handle($refundTx->id, $admin->id);
+
+    $this->actingAs($admin)
+        ->get('/refunds')
+        ->assertOk()
+        ->assertSee($payload['order']->order_number)
+        ->assertSee(__('messages.posted'), false);
+});
+
 test('approving duplicate refund requests for same order only credits once', function () {
     $role = Role::firstOrCreate(['name' => 'admin']);
     $admin = User::factory()->create();
@@ -198,6 +225,30 @@ test('admin can reject refund request and user can retry', function () {
     (new RetryFulfillment)->handle($payload['fulfillment'], 'customer', $user->id);
     $payload['fulfillment']->refresh();
     expect($payload['fulfillment']->status)->toBe(FulfillmentStatus::Queued);
+});
+
+test('refunds table links to fulfillment details', function () {
+    $role = Role::firstOrCreate(['name' => 'admin']);
+    $admin = User::factory()->create();
+    $admin->assignRole($role);
+
+    $user = User::factory()->create();
+    Wallet::forUser($user);
+    $payload = makeRefundableItem($user);
+
+    (new RefundOrderItem)->handle($payload['fulfillment'], $user->id);
+
+    $this->actingAs($admin)
+        ->get('/refunds')
+        ->assertOk()
+        ->assertSee(__('messages.view_fulfillment'))
+        ->assertSee('fulfillment='.$payload['fulfillment']->id, false);
+
+    Livewire::actingAs($admin)
+        ->withQueryParams(['fulfillment' => (string) $payload['fulfillment']->id])
+        ->test('pages::backend.fulfillments.index')
+        ->assertSet('showDetailsModal', true)
+        ->assertSet('selectedFulfillmentId', $payload['fulfillment']->id);
 });
 
 test('non-admin cannot access refund dashboard', function () {

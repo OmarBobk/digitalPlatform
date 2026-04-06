@@ -126,9 +126,12 @@ new class extends Component
                                         ? $orderItem?->fulfillments?->firstWhere('id', $metaFulfillmentId)
                                         : $orderItem?->fulfillments?->first();
                                     $displayFulfillment = $fulfillment ?? $legacyFulfillment;
+                                    $fulfillmentIdForLink = $displayFulfillment?->id
+                                        ?? ($metaFulfillmentId > 0 ? $metaFulfillmentId : null);
                                     $note = data_get($transaction->meta, 'note');
+                                    $isPendingRefund = $transaction->status === WalletTransaction::STATUS_PENDING;
                                     $isRefunded = $order?->status === OrderStatus::Refunded;
-                                    $canApprove = $transaction->status === WalletTransaction::STATUS_PENDING && ! $isRefunded;
+                                    $canApprove = $isPendingRefund && ! $isRefunded;
                                     $statusColor = match ($transaction->status) {
                                         WalletTransaction::STATUS_POSTED => 'green',
                                         WalletTransaction::STATUS_REJECTED => 'red',
@@ -170,27 +173,41 @@ new class extends Component
                                         </flux:badge>
                                     </td>
                                     <td class="px-5 py-4 text-end">
-                                        @can('process_refunds')
-                                        <div class="flex items-center justify-end gap-2">
-                                            <flux:button
-                                                size="sm"
-                                                variant="primary"
-                                                wire:click="approveRefund({{ $transaction->id }})"
-                                                :disabled="! $canApprove"
-                                            >
-                                                {{ __('messages.approve') }}
-                                            </flux:button>
-                                            <flux:button
-                                                size="sm"
-                                                variant="danger"
-                                                wire:click="rejectRefund({{ $transaction->id }})"
-                                            >
-                                                {{ __('messages.reject') }}
-                                            </flux:button>
+                                        <div class="flex flex-wrap items-center justify-end gap-2">
+                                            @if ($fulfillmentIdForLink !== null)
+                                                <flux:button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    :href="route('fulfillments', ['fulfillment' => $fulfillmentIdForLink])"
+                                                    wire:navigate
+                                                    data-test="refund-view-fulfillment"
+                                                >
+                                                    {{ __('messages.view_fulfillment') }}
+                                                </flux:button>
+                                            @endif
+                                            @can('process_refunds')
+                                                @if ($isPendingRefund)
+                                                    @if ($canApprove)
+                                                        <flux:button
+                                                            size="sm"
+                                                            variant="primary"
+                                                            wire:click="approveRefund({{ $transaction->id }})"
+                                                        >
+                                                            {{ __('messages.approve') }}
+                                                        </flux:button>
+                                                    @endif
+                                                    <flux:button
+                                                        size="sm"
+                                                        variant="danger"
+                                                        wire:click="rejectRefund({{ $transaction->id }})"
+                                                    >
+                                                        {{ __('messages.reject') }}
+                                                    </flux:button>
+                                                @endif
+                                            @elseif ($fulfillmentIdForLink === null)
+                                                <span class="text-zinc-500 dark:text-zinc-400">—</span>
+                                            @endcan
                                         </div>
-                                        @else
-                                        <span class="text-zinc-500 dark:text-zinc-400">—</span>
-                                        @endcan
                                     </td>
                                 </tr>
                             @endforeach

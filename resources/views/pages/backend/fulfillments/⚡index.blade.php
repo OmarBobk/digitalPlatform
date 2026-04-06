@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Models\WalletTransaction;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -42,6 +43,9 @@ new class extends Component
     #[Url]
     public string $scope = 'unclaimed';
 
+    #[Url]
+    public ?int $fulfillment = null;
+
     public ?int $selectedFulfillmentId = null;
     public bool $showDetailsModal = false;
     public bool $showCompleteModal = false;
@@ -62,6 +66,14 @@ new class extends Component
     public function mount(): void
     {
         $this->authorize('viewAny', Fulfillment::class);
+        $this->openDetailsFromFulfillmentQuery();
+    }
+
+    public function updatedFulfillment(?int $value): void
+    {
+        if ($value !== null) {
+            $this->openDetailsFromFulfillmentQuery();
+        }
     }
 
     public function applyFilters(): void
@@ -141,7 +153,34 @@ new class extends Component
 
     public function closeDetails(): void
     {
+        $this->fulfillment = null;
         $this->reset(['showDetailsModal', 'selectedFulfillmentId']);
+    }
+
+    private function openDetailsFromFulfillmentQuery(): void
+    {
+        if ($this->fulfillment === null) {
+            return;
+        }
+
+        $fulfillment = Fulfillment::query()->find($this->fulfillment);
+
+        if ($fulfillment === null) {
+            $this->fulfillment = null;
+
+            return;
+        }
+
+        try {
+            $this->authorize('view', $fulfillment);
+        } catch (\Illuminate\Auth\Access\AuthorizationException) {
+            $this->fulfillment = null;
+
+            return;
+        }
+
+        $this->selectedFulfillmentId = $fulfillment->id;
+        $this->showDetailsModal = true;
     }
 
     public function markProcessing(int $fulfillmentId): void
@@ -243,28 +282,57 @@ new class extends Component
 
         $this->authorize('update', $fulfillment);
 
-        app(FailFulfillment::class)->handle($fulfillment, $this->failureReason ?? '', 'admin', auth()->id());
+        $requestedWalletRefund = $this->refundAfterFail;
 
-        $refunded = false;
-
-        if ($this->refundAfterFail) {
+        if ($requestedWalletRefund) {
             $this->authorize('process_refunds');
+        }
 
-            $fulfillment->loadMissing('orderItem');
+        if ($requestedWalletRefund) {
+            DB::transaction(function () use ($fulfillment): void {
+                $updated = app(FailFulfillment::class)->handle(
+                    $fulfillment,
+                    $this->failureReason ?? '',
+                    'admin',
+                    auth()->id()
+                );
 
-            if ($fulfillment->orderItem) {
-                $transaction = app(RefundOrderItem::class)->handle($fulfillment, auth()->id());
-                app(ApproveRefundRequest::class)->handle($transaction->id, auth()->id());
-                $refunded = true;
-            }
+                $updated->loadMissing('orderItem');
+
+                if ($updated->orderItem === null) {
+                    throw ValidationException::withMessages([
+                        'refundAfterFail' => __('messages.fulfillment_refund_requires_order_item'),
+                    ]);
+                }
+
+                $actorId = auth()->id();
+                if ($actorId === null) {
+                    throw ValidationException::withMessages([
+                        'refundAfterFail' => __('messages.refund_not_allowed'),
+                    ]);
+                }
+
+                $transaction = app(RefundOrderItem::class)->handle($updated, (int) $actorId);
+                app(ApproveRefundRequest::class)->handle($transaction->id, (int) $actorId);
+            });
+        } else {
+            app(FailFulfillment::class)->handle(
+                $fulfillment,
+                $this->failureReason ?? '',
+                'admin',
+                auth()->id()
+            );
         }
 
         $this->reset('showFailModal', 'failureReason', 'refundAfterFail');
-        if ($refunded) {
+
+        if ($requestedWalletRefund) {
             $this->success(__('messages.fulfillment_failed_refunded'));
-        } else {
-            $this->error(__('messages.fulfillment_marked_failed'));
+
+            return;
         }
+
+        $this->success(__('messages.fulfillment_marked_failed'));
     }
 
     public function retryFulfillment(int $fulfillmentId): void
@@ -1702,10 +1770,16 @@ new class extends Component
                     </div>
                     <flux:switch
                         class="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
-                        wire:model.defer="refundAfterFail"
+                        wire:model="refundAfterFail"
                     />
                 </div>
             </div>
+            @error('refundAfterFail')
+                <flux:text color="red">{{ $message }}</flux:text>
+            @enderror
+            @error('order_item')
+                <flux:text color="red">{{ $message }}</flux:text>
+            @enderror
             @endcan
 
             <div class="flex flex-wrap items-center gap-2">

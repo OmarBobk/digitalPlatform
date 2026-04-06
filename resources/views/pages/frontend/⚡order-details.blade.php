@@ -524,28 +524,29 @@ new #[Layout('layouts::frontend')] class extends Component
                                                     {{ __('messages.delivery_failed_contact_support') }}
                                                 </flux:text>
                                                 @if ($isRefundPending)
-                                                    <flux:text class="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                                                    <flux:text class="text-xs text-zinc-600 dark:text-zinc-400">
                                                         {{ __('messages.refund_waiting_approval') }}
                                                     </flux:text>
                                                 @elseif ($isRefundPosted)
-                                                    <flux:text class="text-xs font-semibold text-green-600 dark:text-green-400">
+                                                    <flux:text class="text-xs text-zinc-600 dark:text-zinc-400">
                                                         {{ __('messages.refund_completed') }}
                                                     </flux:text>
                                                 @elseif ($isRefundRejected)
-                                                    <flux:text class="text-xs font-semibold text-red-600 dark:text-red-400">
+                                                    <flux:text class="text-xs text-zinc-600 dark:text-zinc-400">
                                                         {{ __('messages.refund_rejected') }}
                                                     </flux:text>
                                                 @endif
                                                 @if ($showActions)
                                                     <div class="flex flex-wrap items-center gap-2">
                                                         <flux:button
-                                                            variant="outline"
+                                                            variant="primary"
                                                             size="sm"
                                                             wire:click="requestRefund({{ $fulfillment->id }})"
                                                             wire:loading.attr="disabled"
                                                             wire:target="requestRefund({{ $fulfillment->id }})"
+                                                            data-test="fulfillment-request-refund"
                                                         >
-                                                            {{ __('messages.request_refund') }}
+                                                            {{ __('messages.refund') }}
                                                         </flux:button>
                                                     </div>
                                                 @endif

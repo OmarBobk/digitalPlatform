@@ -14,12 +14,18 @@ class FulfillmentPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->can('view_fulfillments');
+        return $user->can('view_fulfillments')
+            || $user->can('view_refunds')
+            || $user->can('process_refunds');
     }
 
     public function view(User $user, Fulfillment $fulfillment): bool
     {
         if ($this->isAdmin($user)) {
+            return true;
+        }
+
+        if ($user->can('view_refunds') || $user->can('process_refunds')) {
             return true;
         }
 

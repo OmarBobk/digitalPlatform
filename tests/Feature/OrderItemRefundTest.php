@@ -4,6 +4,7 @@ use App\Actions\Orders\RefundOrderItem;
 use App\Enums\FulfillmentStatus;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
+use App\Enums\ProductAmountMode;
 use App\Enums\WalletTransactionDirection;
 use App\Enums\WalletTransactionType;
 use App\Models\Fulfillment;
@@ -164,4 +165,91 @@ test('refund request creates credit pending ledger entry', function () {
     expect($transaction->type)->toBe(WalletTransactionType::Refund);
     expect($transaction->direction)->toBe(WalletTransactionDirection::Credit);
     expect($transaction->status)->toBe(WalletTransaction::STATUS_PENDING);
+});
+
+test('refund uses line total for custom amount when unit price rounds to zero', function () {
+    $user = User::factory()->create();
+    Wallet::forUser($user);
+    $package = Package::factory()->create();
+    $product = Product::factory()->create([
+        'package_id' => $package->id,
+        'entry_price' => 0.01,
+    ]);
+
+    $order = Order::create([
+        'user_id' => $user->id,
+        'order_number' => Order::temporaryOrderNumber(),
+        'currency' => 'USD',
+        'subtotal' => 48.88,
+        'fee' => 0,
+        'total' => 48.88,
+        'status' => OrderStatus::Paid,
+    ]);
+
+    $item = OrderItem::create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'package_id' => $package->id,
+        'name' => $product->name,
+        'unit_price' => 0,
+        'quantity' => 1,
+        'amount_mode' => ProductAmountMode::Custom,
+        'requested_amount' => 50_000,
+        'line_total' => 48.88,
+        'status' => OrderItemStatus::Failed,
+    ]);
+
+    $fulfillment = Fulfillment::create([
+        'order_id' => $order->id,
+        'order_item_id' => $item->id,
+        'provider' => 'manual',
+        'status' => FulfillmentStatus::Failed,
+        'attempts' => 0,
+        'last_error' => 'Provider error',
+    ]);
+
+    $transaction = (new RefundOrderItem)->handle($fulfillment, $user->id);
+
+    expect((float) $transaction->amount)->toBe(48.88);
+});
+
+test('refund uses line total per unit when fixed line has zero unit price', function () {
+    $user = User::factory()->create();
+    Wallet::forUser($user);
+    $package = Package::factory()->create();
+    $product = Product::factory()->create(['package_id' => $package->id]);
+
+    $order = Order::create([
+        'user_id' => $user->id,
+        'order_number' => Order::temporaryOrderNumber(),
+        'currency' => 'USD',
+        'subtotal' => 30,
+        'fee' => 0,
+        'total' => 30,
+        'status' => OrderStatus::Paid,
+    ]);
+
+    $item = OrderItem::create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'package_id' => $package->id,
+        'name' => $product->name,
+        'unit_price' => 0,
+        'quantity' => 3,
+        'line_total' => 30,
+        'status' => OrderItemStatus::Failed,
+    ]);
+
+    $fulfillment = Fulfillment::create([
+        'order_id' => $order->id,
+        'order_item_id' => $item->id,
+        'provider' => 'manual',
+        'status' => FulfillmentStatus::Failed,
+        'attempts' => 0,
+        'last_error' => 'Provider error',
+    ]);
+
+    $transaction = (new RefundOrderItem)->handle($fulfillment, $user->id);
+
+    expect((float) $transaction->amount)->toBe(10.0);
 });

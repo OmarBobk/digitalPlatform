@@ -10,9 +10,17 @@ use App\Models\OrderItem;
 use App\Models\Package;
 use App\Models\Product;
 use App\Models\User;
+use App\Models\Wallet;
+use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+});
 
 function makeOrderForUser(User $user, FulfillmentStatus $status): Order
 {
@@ -118,6 +126,58 @@ test('orders list shows purchased amount for custom amount line items', function
         ->assertOk()
         ->assertSee(__('messages.order_item_purchased_amount'), false)
         ->assertSee(number_format(6_690), false);
+});
+
+test('orders list shows refund status badge when fulfillment failed', function () {
+    $user = User::factory()->create();
+    $order = makeOrderForUser($user, FulfillmentStatus::Failed);
+
+    $this->actingAs($user)
+        ->get('/orders')
+        ->assertOk()
+        ->assertSee(__('messages.refund'))
+        ->assertSee('data-test="order-card-request-refund"', false);
+
+    $fulfillment = $order->items()->first()->fulfillments()->first();
+    $fulfillment->update([
+        'meta' => [
+            'refund' => [
+                'status' => WalletTransaction::STATUS_PENDING,
+            ],
+        ],
+    ]);
+
+    $this->actingAs($user)
+        ->get('/orders')
+        ->assertOk()
+        ->assertSee(__('messages.refund_requested'));
+
+    $fulfillment->update([
+        'meta' => [
+            'refund' => [
+                'status' => WalletTransaction::STATUS_POSTED,
+            ],
+        ],
+    ]);
+
+    $this->actingAs($user)
+        ->get('/orders')
+        ->assertOk()
+        ->assertSee(__('messages.refunded'));
+});
+
+test('orders list refund button requests refund for failed fulfillment', function () {
+    $user = User::factory()->create();
+    Wallet::forUser($user);
+    $order = makeOrderForUser($user, FulfillmentStatus::Failed);
+
+    Livewire::actingAs($user)
+        ->test('pages::frontend.orders')
+        ->call('requestRefundForOrder', $order->id);
+
+    $fulfillment = $order->items()->first()->fulfillments()->first();
+
+    expect(data_get($fulfillment->fresh()->meta, 'refund.status'))->toBe(WalletTransaction::STATUS_PENDING);
 });
 
 test('orders list shows humanized requirement keys', function () {

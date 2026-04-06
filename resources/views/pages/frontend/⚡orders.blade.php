@@ -3,16 +3,21 @@
 use App\Enums\FulfillmentStatus;
 use App\Enums\OrderStatus;
 use App\Enums\ProductAmountMode;
+use App\Actions\Orders\RefundOrderItem;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\WalletTransaction;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Masmerise\Toaster\Toastable;
 
 new #[Layout('layouts::frontend')] class extends Component
 {
+    use Toastable;
     use WithPagination;
 
     public int $perPage = 10;
@@ -20,6 +25,66 @@ new #[Layout('layouts::frontend')] class extends Component
     public function mount(): void
     {
         abort_unless(auth()->check(), 403);
+    }
+
+    public function requestRefundForOrder(int $orderId): void
+    {
+        $userId = auth()->id();
+        if ($userId === null) {
+            return;
+        }
+
+        $order = Order::query()
+            ->where('user_id', $userId)
+            ->with(['items.fulfillments'])
+            ->find($orderId);
+
+        if ($order === null) {
+            $this->error(__('messages.refund_not_allowed'));
+
+            return;
+        }
+
+        $eligible = $order->items
+            ->flatMap(fn (OrderItem $item) => $item->fulfillments)
+            ->filter(function ($fulfillment) {
+                if ($fulfillment->status !== FulfillmentStatus::Failed) {
+                    return false;
+                }
+
+                $refundStatus = data_get($fulfillment->meta, 'refund.status');
+
+                return ! in_array($refundStatus, [WalletTransaction::STATUS_PENDING, WalletTransaction::STATUS_POSTED], true);
+            })
+            ->sortBy('id')
+            ->values();
+
+        if ($eligible->isEmpty()) {
+            $this->error(__('messages.refund_not_allowed'));
+
+            return;
+        }
+
+        $firstError = null;
+
+        foreach ($eligible as $fulfillment) {
+            try {
+                app(RefundOrderItem::class)->handle($fulfillment, (int) $userId);
+            } catch (ValidationException $exception) {
+                $firstError ??= collect($exception->errors())->flatten()->first()
+                    ?? __('messages.refund_not_allowed');
+
+                break;
+            }
+        }
+
+        if ($firstError !== null) {
+            $this->error($firstError);
+
+            return;
+        }
+
+        $this->success(__('messages.refund_waiting_approval'));
     }
 
     public function getOrdersProperty(): LengthAwarePaginator
@@ -191,6 +256,46 @@ new #[Layout('layouts::frontend')] class extends Component
         return [
             'lines' => $order->items->count(),
             'units' => (int) $order->items->sum('quantity'),
+        ];
+    }
+
+    /**
+     * Refund status / action for orders with at least one failed fulfillment (list card).
+     *
+     * @return array{kind: 'badge', label: string, color: string}|array{kind: 'action', label: string, orderId: int}|null
+     */
+    protected function orderCardRefundSummary(Order $order): ?array
+    {
+        $failed = $order->items
+            ->flatMap(fn (OrderItem $item) => $item->fulfillments)
+            ->filter(fn ($fulfillment) => $fulfillment->status === FulfillmentStatus::Failed);
+
+        if ($failed->isEmpty()) {
+            return null;
+        }
+
+        $statuses = $failed->map(fn ($fulfillment) => data_get($fulfillment->meta, 'refund.status'));
+
+        if ($statuses->every(fn ($status) => $status === WalletTransaction::STATUS_POSTED)) {
+            return [
+                'kind' => 'badge',
+                'label' => __('messages.refunded'),
+                'color' => 'green',
+            ];
+        }
+
+        if ($statuses->contains(fn ($status) => $status === WalletTransaction::STATUS_PENDING)) {
+            return [
+                'kind' => 'badge',
+                'label' => __('messages.refund_requested'),
+                'color' => 'amber',
+            ];
+        }
+
+        return [
+            'kind' => 'action',
+            'label' => __('messages.refund'),
+            'orderId' => $order->id,
         ];
     }
 
@@ -387,6 +492,7 @@ new #[Layout('layouts::frontend')] class extends Component
                             :summary="$this->orderCardSummary($order)"
                             :lines="$this->buildOrderCardLines($order)"
                             :show-prices="\App\Models\WebsiteSetting::getPricesVisible()"
+                            :refund-summary="$this->orderCardRefundSummary($order)"
                         />
                     </div>
                 @endforeach

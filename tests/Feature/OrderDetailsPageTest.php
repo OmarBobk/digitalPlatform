@@ -9,6 +9,7 @@ use App\Models\OrderItem;
 use App\Models\Package;
 use App\Models\Product;
 use App\Models\User;
+use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -185,5 +186,44 @@ test('order details page shows refund actions only for failed items', function (
     $this->actingAs($user)
         ->get(route('orders.show', $failedOrder->order_number))
         ->assertOk()
-        ->assertSee(__('messages.request_refund'));
+        ->assertSee(__('messages.refund'))
+        ->assertSee('data-test="fulfillment-request-refund"', false);
+});
+
+test('order details page shows refund requested state when refund is pending', function () {
+    $user = User::factory()->create();
+    $order = makeOrderWithItem($user, FulfillmentStatus::Failed);
+    $fulfillment = $order->items->first()->fulfillments->first();
+    $fulfillment->update([
+        'meta' => [
+            'refund' => [
+                'status' => WalletTransaction::STATUS_PENDING,
+            ],
+        ],
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('orders.show', $order->order_number))
+        ->assertOk()
+        ->assertSee(__('messages.refund_requested'))
+        ->assertDontSee('data-test="fulfillment-request-refund"', false);
+});
+
+test('order details page shows refunded state when refund is posted', function () {
+    $user = User::factory()->create();
+    $order = makeOrderWithItem($user, FulfillmentStatus::Failed);
+    $fulfillment = $order->items->first()->fulfillments->first();
+    $fulfillment->update([
+        'meta' => [
+            'refund' => [
+                'status' => WalletTransaction::STATUS_POSTED,
+            ],
+        ],
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('orders.show', $order->order_number))
+        ->assertOk()
+        ->assertSee(__('messages.refunded'))
+        ->assertDontSee('data-test="fulfillment-request-refund"', false);
 });
