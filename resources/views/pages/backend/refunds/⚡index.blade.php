@@ -64,14 +64,17 @@ new class extends Component
 };
 ?>
 
-<div class="flex h-full w-full flex-1 flex-col gap-6">
-    <section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+<div class="admin-fulfillments flex h-full w-full flex-1 flex-col gap-8">
+    <section class="cf-reveal rounded-2xl border border-[var(--cf-border)] bg-[var(--cf-card)] p-5 shadow-sm">
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="space-y-1">
-                <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
+            <div class="space-y-2">
+                <p class="cf-display text-xs font-semibold tracking-[0.2em] text-[var(--cf-primary)] uppercase">
+                    {{ __('messages.nav_financials') }}
+                </p>
+                <flux:heading size="lg" class="cf-display tracking-tight text-[var(--cf-foreground)]">
                     {{ __('messages.refund_requests') }}
                 </flux:heading>
-                <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">
+                <flux:text class="text-sm text-[var(--cf-muted-foreground)]">
                     {{ __('messages.refund_requests_intro') }}
                 </flux:text>
             </div>
@@ -88,20 +91,20 @@ new class extends Component
             </div>
         @endif
 
-        <div class="mt-4 overflow-hidden rounded-2xl border border-zinc-100 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div class="cf-table-shell mt-4">
             <div class="overflow-x-auto">
                 @if ($this->refundRequests->isEmpty())
                     <div class="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
-                        <flux:heading size="sm" class="text-zinc-900 dark:text-zinc-100">
+                        <flux:heading size="sm" class="cf-display text-[var(--cf-foreground)]">
                             {{ __('messages.no_refund_requests') }}
                         </flux:heading>
-                        <flux:text class="text-zinc-600 dark:text-zinc-400">
+                        <flux:text class="text-[var(--cf-muted-foreground)]">
                             {{ __('messages.no_refund_requests_hint') }}
                         </flux:text>
                     </div>
                 @else
-                    <table class="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800" data-test="refunds-table">
-                        <thead class="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400">
+                    <table class="min-w-full divide-y divide-[var(--cf-border)] text-sm" data-test="refunds-table">
+                        <thead class="cf-table-head text-xs uppercase tracking-wide text-[var(--cf-muted-foreground)]">
                             <tr>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.created') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.user') }}</th>
@@ -113,7 +116,7 @@ new class extends Component
                                 <th class="px-5 py-3 text-end font-semibold">{{ __('messages.actions') }}</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                        <tbody class="divide-y divide-[var(--cf-border)]">
                             @foreach ($this->refundRequests as $transaction)
                                 @php
                                     $fulfillment = $transaction->reference instanceof Fulfillment ? $transaction->reference : null;
@@ -138,33 +141,33 @@ new class extends Component
                                         default => 'amber',
                                     };
                                 @endphp
-                                <tr class="transition hover:bg-zinc-50 dark:hover:bg-zinc-800/60" wire:key="refund-{{ $transaction->id }}">
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
+                                <tr class="transition-colors duration-200 hover:bg-[var(--cf-card-elevated)]" wire:key="refund-{{ $transaction->id }}">
+                                    <td class="px-5 py-4 text-[var(--cf-muted-foreground)]">
                                         {{ $transaction->created_at?->format('M d, Y H:i') ?? '—' }}
                                     </td>
                                     <td class="px-5 py-4">
-                                        <div class="truncate font-semibold text-zinc-900 dark:text-zinc-100">
+                                        <div class="truncate font-semibold text-[var(--cf-foreground)]">
                                             {{ $user?->name ?? __('messages.unknown_user') }}
                                         </div>
-                                        <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                                        <div class="truncate text-xs text-[var(--cf-muted-foreground)]">
                                             {{ $user?->email ?? '—' }}
                                         </div>
                                     </td>
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
-                                        <div class="font-semibold text-zinc-900 dark:text-zinc-100">
+                                    <td class="px-5 py-4 text-[var(--cf-muted-foreground)]">
+                                        <div class="font-semibold text-[var(--cf-foreground)]">
                                             {{ $order?->order_number ?? __('messages.no_details') }}
                                         </div>
-                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                                        <div class="text-xs text-[var(--cf-muted-foreground)]">
                                             #{{ $orderItem?->id ?? '—' }} / #{{ $displayFulfillment?->id ?? data_get($transaction->meta, 'fulfillment_id', '—') }}
                                         </div>
                                     </td>
-                                    <td class="px-5 py-4 text-zinc-700 dark:text-zinc-200" dir="ltr">
+                                    <td class="px-5 py-4 text-[var(--cf-foreground)]" dir="ltr">
                                         {{ config('billing.currency_symbol', '$') }}{{ number_format((float) $transaction->amount, 2) }}
                                     </td>
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
+                                    <td class="px-5 py-4 text-[var(--cf-muted-foreground)]">
                                         {{ $displayFulfillment?->last_error ?? '—' }}
                                     </td>
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
+                                    <td class="px-5 py-4 text-[var(--cf-muted-foreground)]">
                                         {{ $note ?: '—' }}
                                     </td>
                                     <td class="px-5 py-4">
@@ -178,6 +181,7 @@ new class extends Component
                                                 <flux:button
                                                     size="sm"
                                                     variant="ghost"
+                                                    class="text-[var(--cf-muted-foreground)] hover:bg-[var(--cf-card-elevated)] hover:text-[var(--cf-foreground)]"
                                                     :href="route('fulfillments', ['fulfillment' => $fulfillmentIdForLink])"
                                                     wire:navigate
                                                     data-test="refund-view-fulfillment"
@@ -191,6 +195,7 @@ new class extends Component
                                                         <flux:button
                                                             size="sm"
                                                             variant="primary"
+                                                            class="!bg-[var(--cf-primary)] !text-[var(--cf-primary-foreground)] transition-colors duration-200 hover:brightness-110"
                                                             wire:click="approveRefund({{ $transaction->id }})"
                                                         >
                                                             {{ __('messages.approve') }}
@@ -205,7 +210,7 @@ new class extends Component
                                                     </flux:button>
                                                 @endif
                                             @elseif ($fulfillmentIdForLink === null)
-                                                <span class="text-zinc-500 dark:text-zinc-400">—</span>
+                                                <span class="text-[var(--cf-muted-foreground)]">—</span>
                                             @endcan
                                         </div>
                                     </td>
@@ -216,7 +221,7 @@ new class extends Component
                 @endif
             </div>
 
-            <div class="border-t border-zinc-100 px-5 py-4 dark:border-zinc-800">
+            <div class="cf-pagination border-t border-[var(--cf-border)] px-5 py-4">
                 {{ $this->refundRequests->links() }}
             </div>
         </div>

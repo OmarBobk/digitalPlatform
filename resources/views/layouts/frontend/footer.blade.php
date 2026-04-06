@@ -69,6 +69,7 @@
                 </a>
                 <flux:text class="text-sm text-zinc-600 dark:text-zinc-300">
                     {{ __('main.footer_tagline') }}
+                    <livewire:language-switcher />
                 </flux:text>
             </div>
             <div class="flex flex-col gap-3">
