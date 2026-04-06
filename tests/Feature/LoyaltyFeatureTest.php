@@ -5,6 +5,7 @@ use App\Enums\FulfillmentStatus;
 use App\Enums\LoyaltyTier;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
+use App\Enums\ProductAmountMode;
 use App\Models\Fulfillment;
 use App\Models\LoyaltyTierConfig;
 use App\Models\Order;
@@ -191,4 +192,43 @@ test('loyalty spend service excludes refunded fulfillments', function (): void {
     ]);
 
     expect($service->computeRollingSpend($user, 90))->toBe(0.0);
+});
+
+test('loyalty spend service counts custom amount line total for completed fulfillment', function (): void {
+    $user = User::factory()->create();
+    $package = Package::factory()->create();
+    $product = Product::factory()->create(['package_id' => $package->id]);
+    $order = Order::create([
+        'user_id' => $user->id,
+        'order_number' => Order::temporaryOrderNumber(),
+        'currency' => 'USD',
+        'subtotal' => 350,
+        'fee' => 0,
+        'total' => 350,
+        'status' => OrderStatus::Paid,
+    ]);
+    $item = OrderItem::create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'package_id' => $package->id,
+        'name' => $product->name,
+        'unit_price' => 0.01,
+        'entry_price' => 0.005,
+        'quantity' => 1,
+        'amount_mode' => ProductAmountMode::Custom,
+        'requested_amount' => 3500,
+        'line_total' => 350,
+        'status' => OrderItemStatus::Pending,
+    ]);
+    Fulfillment::create([
+        'order_id' => $order->id,
+        'order_item_id' => $item->id,
+        'provider' => 'manual',
+        'status' => FulfillmentStatus::Completed,
+        'attempts' => 1,
+        'completed_at' => now(),
+    ]);
+
+    $service = app(LoyaltySpendService::class);
+    expect($service->computeRollingSpend($user, 90))->toBe(350.0);
 });

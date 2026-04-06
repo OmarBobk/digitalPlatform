@@ -8,9 +8,9 @@ use App\Models\WalletTransaction;
 use Illuminate\Support\Facades\DB;
 
 // --- Fill these ---
-$fulfillmentOwnerUserIds = [22, 1];
-$settlementIdsToDelete = [4, 5, 6, 7, 8];
-$topupOwnerUserIds = [22, 1, 21];
+$fulfillmentOwnerUserIds = [24, 25, 26, 1, 22];
+$settlementIdsToDelete = [24, 25, 26, 1, 22];
+$topupOwnerUserIds = [24, 25, 26, 1, 22];
 
 DB::transaction(function () use ($fulfillmentOwnerUserIds, $settlementIdsToDelete, $topupOwnerUserIds): void {
     // --- 1) Fulfillments for users (via their orders) ---

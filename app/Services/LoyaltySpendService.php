@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Enums\FulfillmentStatus;
+use App\Enums\ProductAmountMode;
 use App\Enums\WalletTransactionType;
 use App\Models\Fulfillment;
 use App\Models\Order;
@@ -20,7 +21,8 @@ use App\Models\WalletTransaction;
 class LoyaltySpendService
 {
     /**
-     * Compute rolling spend for a user (sum of order_item.unit_price per eligible fulfillment).
+     * Compute rolling spend for a user.
+     * Fixed mode uses per-fulfillment unit_price; custom mode uses line_total.
      * Does not store any aggregate.
      */
     public function computeRollingSpend(User $user, int $windowDays = 90): float
@@ -36,7 +38,24 @@ class LoyaltySpendService
 
         $eligible = $fulfillments->filter(fn (Fulfillment $f) => ! $this->hasPostedRefund($f));
 
-        return (float) $eligible->sum(fn (Fulfillment $f) => (float) $f->orderItem->unit_price);
+        return (float) $eligible->sum(fn (Fulfillment $f) => $this->spendForFulfillment($f));
+    }
+
+    private function spendForFulfillment(Fulfillment $fulfillment): float
+    {
+        $item = $fulfillment->orderItem;
+
+        if ($item === null) {
+            return 0.0;
+        }
+
+        $mode = $item->amount_mode ?? ProductAmountMode::Fixed;
+
+        if ($mode === ProductAmountMode::Custom) {
+            return (float) ($item->line_total ?? 0);
+        }
+
+        return (float) ($item->unit_price ?? 0);
     }
 
     /**

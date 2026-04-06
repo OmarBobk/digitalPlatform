@@ -1,7 +1,11 @@
 <?php
 
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Settlement;
 use App\Models\Wallet;
+use App\Enums\ProductAmountMode;
+use App\Services\SettlementProfitCalculator;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\View\View;
@@ -64,6 +68,96 @@ new class extends Component
     public function closeDetailModal(): void
     {
         $this->reset('showDetailModal', 'selectedSettlementId');
+    }
+
+    public function settlementProfitForOrderItem(?OrderItem $item): float
+    {
+        if ($item === null) {
+            return 0.0;
+        }
+
+        return app(SettlementProfitCalculator::class)->forOrderItem($item);
+    }
+
+    public function settlementDisplayUnitPriceForOrderItem(?OrderItem $item): float
+    {
+        if ($item === null) {
+            return 0.0;
+        }
+
+        if ($this->isCustomAmountOrderItem($item)) {
+            return (float) ($item->line_total ?? 0);
+        }
+
+        return (float) ($item->unit_price ?? 0);
+    }
+
+    public function settlementDisplayEntryPriceForOrderItem(?OrderItem $item): float
+    {
+        if ($item === null) {
+            return 0.0;
+        }
+
+        if (! $this->isCustomAmountOrderItem($item)) {
+            return (float) ($item->entry_price ?? 0);
+        }
+
+        $meta = $item->pricing_meta;
+        if (is_array($meta) && array_key_exists('computed_entry_total', $meta) && is_numeric($meta['computed_entry_total'])) {
+            return (float) $meta['computed_entry_total'];
+        }
+
+        if ($item->requested_amount !== null && $item->entry_price !== null && $item->entry_price !== '') {
+            return (float) bcmul(
+                (string) $item->requested_amount,
+                number_format((float) $item->entry_price, 6, '.', ''),
+                6
+            );
+        }
+
+        return (float) ($item->entry_price ?? 0);
+    }
+
+    private function isCustomAmountOrderItem(OrderItem $item): bool
+    {
+        return ($item->amount_mode ?? ProductAmountMode::Fixed) === ProductAmountMode::Custom;
+    }
+
+    public function settlementOrderNumberDisplay(?Order $order, ?int $fulfillmentId = null): string
+    {
+        $number = $order?->order_number;
+
+        if ($number === null || $number === '') {
+            return '—';
+        }
+
+        if ($fulfillmentId === null || $fulfillmentId <= 0) {
+            return $number;
+        }
+
+        return $number.'F'.$fulfillmentId;
+    }
+
+    public function settlementProductDisplayNameForOrderItem(?OrderItem $item): string
+    {
+        if ($item === null) {
+            return '—';
+        }
+
+        $name = (string) ($item->name ?? '—');
+
+        if (! $this->isCustomAmountOrderItem($item) || $item->requested_amount === null) {
+            return $name;
+        }
+
+        $amount = number_format((int) $item->requested_amount, 0, '.', ',');
+        $label = trim((string) ($item->amount_unit_label ?? ''));
+
+        if ($label !== '') {
+            return $name.' ('.$amount.' '.$label.')';
+        }
+
+        return $name.' ('.$amount.')';
     }
 
     public function getPlatformWalletProperty(): ?Wallet
@@ -284,9 +378,9 @@ new class extends Component
                         @foreach ($this->selectedSettlement->fulfillments as $fulfillment)
                             @php
                                 $item = $fulfillment->orderItem;
-                                $unitPrice = (float) ($item?->unit_price ?? 0);
-                                $entryPrice = (float) ($item?->entry_price ?? 0);
-                                $profit = max(0, round($unitPrice - $entryPrice, 2));
+                                $unitPrice = $this->settlementDisplayUnitPriceForOrderItem($item);
+                                $entryPrice = $this->settlementDisplayEntryPriceForOrderItem($item);
+                                $profit = $this->settlementProfitForOrderItem($item);
                             @endphp
                             <article
                                 wire:key="detail-fulfillment-mob-{{ $fulfillment->id }}"
@@ -296,10 +390,10 @@ new class extends Component
                                 <div class="flex items-start justify-between gap-2">
                                     <div class="min-w-0 shrink">
                                         <div class="font-medium text-zinc-900 dark:text-zinc-100">
-                                            {{ $item?->order?->order_number ?? '—' }}
+                                            {{ $this->settlementOrderNumberDisplay($item?->order, $fulfillment->id) }}
                                         </div>
                                         <div class="truncate text-sm text-zinc-600 dark:text-zinc-400">
-                                            {{ $item?->name ?? '—' }}
+                                            {{ $this->settlementProductDisplayNameForOrderItem($item) }}
                                         </div>
                                     </div>
                                     <span class="shrink-0 inline-flex rounded-md px-2 py-0.5 font-semibold tabular-nums text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40" dir="ltr">
@@ -307,8 +401,8 @@ new class extends Component
                                     </span>
                                 </div>
                                 <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                    <span dir="ltr">{{ __('messages.unit_price') }}: {{ config('billing.currency_symbol', '$') }}{{ number_format($unitPrice, 2) }}</span>
                                     <span dir="ltr">{{ __('messages.entry_price') }}: {{ config('billing.currency_symbol', '$') }}{{ number_format($entryPrice, 2) }}</span>
+                                    <span dir="ltr">{{ __('messages.unit_price') }}: {{ config('billing.currency_symbol', '$') }}{{ number_format($unitPrice, 2) }}</span>
                                 </div>
                             </article>
                         @endforeach
@@ -322,8 +416,8 @@ new class extends Component
                             <tr>
                                 <th class="px-4 py-3 text-start font-semibold">{{ __('messages.order_number') }}</th>
                                 <th class="px-4 py-3 text-start font-semibold">{{ __('messages.product') }}</th>
-                                <th class="px-4 py-3 text-end font-semibold">{{ __('messages.unit_price') }}</th>
                                 <th class="px-4 py-3 text-end font-semibold">{{ __('messages.entry_price') }}</th>
+                                <th class="px-4 py-3 text-end font-semibold">{{ __('messages.unit_price') }}</th>
                                 <th class="px-4 py-3 text-end font-semibold">{{ __('messages.profit') }}</th>
                             </tr>
                         </thead>
@@ -331,22 +425,22 @@ new class extends Component
                             @foreach ($this->selectedSettlement->fulfillments as $fulfillment)
                                 @php
                                     $item = $fulfillment->orderItem;
-                                    $unitPrice = (float) ($item?->unit_price ?? 0);
-                                    $entryPrice = (float) ($item?->entry_price ?? 0);
-                                    $profit = max(0, round($unitPrice - $entryPrice, 2));
+                                    $unitPrice = $this->settlementDisplayUnitPriceForOrderItem($item);
+                                    $entryPrice = $this->settlementDisplayEntryPriceForOrderItem($item);
+                                    $profit = $this->settlementProfitForOrderItem($item);
                                 @endphp
                                 <tr wire:key="detail-fulfillment-{{ $fulfillment->id }}" class="hover:bg-zinc-50 dark:hover:bg-zinc-800/60">
                                     <td class="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">
-                                        {{ $item?->order?->order_number ?? '—' }}
+                                        {{ $this->settlementOrderNumberDisplay($item?->order, $fulfillment->id) }}
                                     </td>
                                     <td class="px-4 py-3 text-zinc-700 dark:text-zinc-200">
-                                        {{ $item?->name ?? '—' }}
-                                    </td>
-                                    <td class="px-4 py-3 text-end tabular-nums text-zinc-600 dark:text-zinc-300" dir="ltr">
-                                        {{ config('billing.currency_symbol', '$') }}{{ number_format($unitPrice, 2) }}
+                                        {{ $this->settlementProductDisplayNameForOrderItem($item) }}
                                     </td>
                                     <td class="px-4 py-3 text-end tabular-nums text-zinc-600 dark:text-zinc-300" dir="ltr">
                                         {{ config('billing.currency_symbol', '$') }}{{ number_format($entryPrice, 2) }}
+                                    </td>
+                                    <td class="px-4 py-3 text-end tabular-nums text-zinc-600 dark:text-zinc-300" dir="ltr">
+                                        {{ config('billing.currency_symbol', '$') }}{{ number_format($unitPrice, 2) }}
                                     </td>
                                     <td class="px-4 py-3 text-end">
                                         <span class="inline-flex rounded-md px-2 py-0.5 font-semibold tabular-nums text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40" dir="ltr">

@@ -1132,10 +1132,17 @@ new class extends Component
                             </div>
 
                             <div class="mt-3 flex flex-wrap items-center gap-2">
+                                @php
+                                    $cardItem = $fulfillment->orderItem;
+                                    $cardIsCustomAmount = ($cardItem?->amount_mode ?? ProductAmountMode::Fixed) === ProductAmountMode::Custom;
+                                    $cardSubtotal = $cardIsCustomAmount
+                                        ? (float) ($cardItem?->line_total ?? 0)
+                                        : (float) ($cardItem?->unit_price ?? 0);
+                                @endphp
                                 <flux:badge color="amber">
                                     <span x-text="relativeTime({{ (int) optional($fulfillment->created_at)->getTimestamp() * 1000 }})">{{ optional($fulfillment->created_at)->diffForHumans() }}</span>
                                 </flux:badge>
-                                <flux:badge color="cyan">{{ number_format((float) ($fulfillment->orderItem?->unit_price ?? 0), 2) }} {{ $fulfillment->order?->currency ?? 'USD' }}</flux:badge>
+                                <flux:badge color="cyan">{{ number_format($cardSubtotal, 2) }} {{ $fulfillment->order?->currency ?? 'USD' }}</flux:badge>
                                 @if (($fulfillment->orderItem?->amount_mode ?? ProductAmountMode::Fixed) === ProductAmountMode::Custom && $fulfillment->orderItem?->requested_amount !== null)
                                     <flux:badge color="zinc">
                                         {{ number_format((float) $fulfillment->orderItem->requested_amount) }}{{ $fulfillment->orderItem?->amount_unit_label ? ' '.$fulfillment->orderItem->amount_unit_label : '' }}
@@ -1258,10 +1265,17 @@ new class extends Component
                             </div>
 
                             <div class="mt-3 flex flex-wrap items-center gap-2">
+                                @php
+                                    $cardItem = $fulfillment->orderItem;
+                                    $cardIsCustomAmount = ($cardItem?->amount_mode ?? ProductAmountMode::Fixed) === ProductAmountMode::Custom;
+                                    $cardSubtotal = $cardIsCustomAmount
+                                        ? (float) ($cardItem?->line_total ?? 0)
+                                        : (float) ($cardItem?->unit_price ?? 0);
+                                @endphp
                                 <flux:badge color="amber">
                                     <span x-text="relativeTime({{ (int) optional($fulfillment->created_at)->getTimestamp() * 1000 }})">{{ optional($fulfillment->created_at)->diffForHumans() }}</span>
                                 </flux:badge>
-                                <flux:badge color="cyan">{{ number_format((float) ($fulfillment->orderItem?->unit_price ?? 0), 2) }} {{ $fulfillment->order?->currency ?? 'USD' }}</flux:badge>
+                                <flux:badge color="cyan">{{ number_format($cardSubtotal, 2) }} {{ $fulfillment->order?->currency ?? 'USD' }}</flux:badge>
                                 @if (($fulfillment->orderItem?->amount_mode ?? ProductAmountMode::Fixed) === ProductAmountMode::Custom && $fulfillment->orderItem?->requested_amount !== null)
                                     <flux:badge color="zinc">
                                         {{ number_format((float) $fulfillment->orderItem->requested_amount) }}{{ $fulfillment->orderItem?->amount_unit_label ? ' '.$fulfillment->orderItem->amount_unit_label : '' }}
@@ -1422,7 +1436,12 @@ new class extends Component
                             <tr class="text-left text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                                 <th class="px-4 py-2">ID</th>
                                 <th class="px-4 py-2">Order ID</th>
+                                <th class="px-4 py-2">Username</th>
                                 <th class="px-4 py-2">Item</th>
+                                <th class="px-4 py-2 align-bottom">
+                                    <span class="block">{{ __('messages.subtotal') }}</span>
+                                    <span class="block text-[10px] font-semibold leading-tight text-zinc-400 dark:text-zinc-500">{{ __('messages.amount') }}</span>
+                                </th>
                                 <th class="px-4 py-2">Supervisor</th>
                                 <th class="px-4 py-2">Status</th>
                                 <th class="px-4 py-2">Updated</th>
@@ -1434,7 +1453,33 @@ new class extends Component
                                 <tr>
                                     <td class="px-4 py-2 text-zinc-700 dark:text-zinc-200">#{{ $fulfillment->id }}</td>
                                     <td class="px-4 py-2 font-mono text-zinc-700 dark:text-zinc-200">{{ $this->fulfillmentOrderReference($fulfillment) }}</td>
+                                    <td class="px-4 py-2 text-zinc-700 dark:text-zinc-200">{{ $fulfillment->order?->user?->username ?? '—' }}</td>
                                     <td class="px-4 py-2 text-zinc-700 dark:text-zinc-200">{{ $fulfillment->orderItem?->name ?? __('messages.unknown_item') }}</td>
+                                    <td class="px-4 py-2 text-zinc-700 dark:text-zinc-200">
+                                        @php
+                                            $tableItem = $fulfillment->orderItem;
+                                            $tableCurrency = $fulfillment->order?->currency ?? 'USD';
+                                            $tableIsCustomAmount = ($tableItem?->amount_mode ?? ProductAmountMode::Fixed) === ProductAmountMode::Custom;
+                                        @endphp
+                                        <div class="flex flex-col gap-0.5">
+                                            <span class="font-mono text-sm tabular-nums text-zinc-900 dark:text-zinc-100" dir="ltr">
+                                                @if ($tableItem?->line_total !== null)
+                                                    {{ number_format((float) $tableItem->line_total, 2) }} {{ $tableCurrency }}
+                                                @else
+                                                    —
+                                                @endif
+                                            </span>
+                                            <span class="text-xs tabular-nums text-zinc-500 dark:text-zinc-400" dir="ltr">
+                                                @if ($tableItem === null)
+                                                    —
+                                                @elseif ($tableIsCustomAmount && $tableItem->requested_amount !== null)
+                                                    {{ number_format((float) $tableItem->requested_amount) }}{{ $tableItem->amount_unit_label ? ' '.$tableItem->amount_unit_label : '' }}
+                                                @else
+                                                    {{ __('messages.quantity') }}: {{ $tableItem->quantity }}
+                                                @endif
+                                            </span>
+                                        </div>
+                                    </td>
                                     <td class="px-4 py-2 text-zinc-700 dark:text-zinc-200">{{ $fulfillment->claimer?->name ?? $fulfillment->claimer?->username ?? '—' }}</td>
                                     <td class="px-4 py-2">
                                         <flux:badge color="{{ $this->statusBadgeColor($fulfillment->status) }}">{{ __('messages.fulfillment_status_'.$fulfillment->status->value) }}</flux:badge>
@@ -1453,7 +1498,7 @@ new class extends Component
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="px-4 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">No tasks match current filters.</td>
+                                    <td colspan="9" class="px-4 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">No tasks match current filters.</td>
                                 </tr>
                             @endforelse
                         </tbody>

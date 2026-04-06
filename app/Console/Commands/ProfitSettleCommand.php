@@ -14,6 +14,7 @@ use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Notifications\SettlementCreatedNotification;
 use App\Services\NotificationRecipientService;
+use App\Services\SettlementProfitCalculator;
 use App\Services\SystemEventService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -42,37 +43,55 @@ class ProfitSettleCommand extends Command
             $untilDate = $parsed->setTime(23, 59, 59);
         }
 
-        $eligible = $this->eligibleFulfillments($untilDate);
-
-        if ($eligible->isEmpty()) {
-            $this->info('No eligible fulfillments to settle.');
-
-            return self::SUCCESS;
-        }
-
-        $totalAmount = $eligible->sum(fn (Fulfillment $f) => $this->profitForFulfillment($f));
-
-        if ($totalAmount <= 0) {
-            $this->info('Total profit would be zero or negative. Skipping.');
-
-            return self::SUCCESS;
-        }
+        $calculator = app(SettlementProfitCalculator::class);
 
         if ($dryRun) {
+            $eligible = $this->eligibleFulfillments($untilDate, false);
+
+            if ($eligible->isEmpty()) {
+                $this->info('No eligible fulfillments to settle.');
+
+                return self::SUCCESS;
+            }
+
+            $totalAmount = $eligible->sum(fn (Fulfillment $f) => $calculator->forOrderItem($f->orderItem));
+
+            if ($totalAmount <= 0) {
+                $this->info('Total profit would be zero or negative. Skipping.');
+
+                return self::SUCCESS;
+            }
+
             $this->info(sprintf(
                 'Dry run: would settle %d fulfillment(s), total amount %.2f',
                 $eligible->count(),
                 $totalAmount
             ));
             foreach ($eligible as $f) {
-                $profit = $this->profitForFulfillment($f);
+                $profit = $calculator->forOrderItem($f->orderItem);
                 $this->line(sprintf('  Fulfillment #%d (order_item #%d): %.2f', $f->id, $f->order_item_id, $profit));
             }
 
             return self::SUCCESS;
         }
 
-        return DB::transaction(function () use ($eligible, $totalAmount): int {
+        return DB::transaction(function () use ($untilDate, $calculator): int {
+            $eligible = $this->eligibleFulfillments($untilDate, true);
+
+            if ($eligible->isEmpty()) {
+                $this->info('No eligible fulfillments to settle.');
+
+                return self::SUCCESS;
+            }
+
+            $totalAmount = $eligible->sum(fn (Fulfillment $f) => $calculator->forOrderItem($f->orderItem));
+
+            if ($totalAmount <= 0) {
+                $this->info('Total profit would be zero or negative. Skipping.');
+
+                return self::SUCCESS;
+            }
+
             $settlement = Settlement::create(['total_amount' => $totalAmount]);
             $settlement->fulfillments()->attach($eligible->pluck('id')->all());
 
@@ -169,7 +188,7 @@ class ProfitSettleCommand extends Command
     /**
      * @return \Illuminate\Support\Collection<int, Fulfillment>
      */
-    private function eligibleFulfillments(?\DateTimeImmutable $until): \Illuminate\Support\Collection
+    private function eligibleFulfillments(?\DateTimeImmutable $until, bool $lockForUpdate): \Illuminate\Support\Collection
     {
         $query = Fulfillment::query()
             ->where('status', FulfillmentStatus::Completed)
@@ -179,6 +198,10 @@ class ProfitSettleCommand extends Command
 
         if ($until !== null) {
             $query->where('completed_at', '<=', $until->format('Y-m-d H:i:s'));
+        }
+
+        if ($lockForUpdate) {
+            $query->lockForUpdate();
         }
 
         $fulfillments = $query->get();
@@ -225,14 +248,5 @@ class ProfitSettleCommand extends Command
         }
 
         return false;
-    }
-
-    private function profitForFulfillment(Fulfillment $fulfillment): float
-    {
-        $item = $fulfillment->orderItem;
-        $unitPrice = (float) $item->unit_price;
-        $entryPrice = (float) ($item->entry_price ?? 0);
-
-        return max(0, round($unitPrice - $entryPrice, 2));
     }
 }

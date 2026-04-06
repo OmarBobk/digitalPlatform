@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * Settlement batches completed fulfillments for profit credit to platform wallet.
- * total_amount = sum(unit_price - entry_price) of included fulfillments.
+ * total_amount = sum of per-fulfillment profit from {@see \App\Services\SettlementProfitCalculator}.
  */
 class Settlement extends Model
 {

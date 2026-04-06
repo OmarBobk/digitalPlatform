@@ -3,6 +3,7 @@
 use App\Enums\FulfillmentStatus;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
+use App\Enums\ProductAmountMode;
 use App\Models\Fulfillment;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -172,9 +173,87 @@ test('settlement detail modal shows fulfillment breakdown', function () {
         ->call('openDetailModal', $settlement->id)
         ->assertSet('showDetailModal', true)
         ->assertSet('selectedSettlementId', $settlement->id)
-        ->assertSee('ORD-2026-000001')
+        ->assertSee('ORD-2026-000001F1'.$fulfillment->id)
         ->assertSee('Test Product')
         ->assertSee('15.00')
         ->assertSee('10.00')
         ->assertSee('5.00');
+});
+
+test('settlement credits full line profit for custom amount order items', function () {
+    $permission = Permission::firstOrCreate(['name' => 'manage_settlements']);
+    $role = Role::firstOrCreate(['name' => 'admin']);
+    $role->givePermissionTo($permission);
+
+    $admin = User::factory()->create();
+    $admin->assignRole($role);
+
+    $package = Package::factory()->create();
+    $product = Product::factory()->create([
+        'package_id' => $package->id,
+        'entry_price' => 10,
+        'amount_mode' => ProductAmountMode::Custom,
+        'custom_amount_min' => 1,
+        'custom_amount_max' => 100_000,
+        'custom_amount_step' => 1,
+    ]);
+
+    $user = User::factory()->create();
+    $order = Order::create([
+        'user_id' => $user->id,
+        'order_number' => Order::temporaryOrderNumber(),
+        'currency' => 'USD',
+        'subtotal' => 150,
+        'fee' => 0,
+        'total' => 150,
+        'status' => OrderStatus::Paid,
+    ]);
+
+    $item = OrderItem::create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'package_id' => $package->id,
+        'name' => 'Custom Amount Product',
+        'unit_price' => 15,
+        'entry_price' => 10,
+        'quantity' => 1,
+        'amount_mode' => ProductAmountMode::Custom,
+        'requested_amount' => 10,
+        'pricing_meta' => [
+            'computed_entry_total' => 100.0,
+        ],
+        'line_total' => 150,
+        'status' => OrderItemStatus::Pending,
+    ]);
+
+    Fulfillment::create([
+        'order_id' => $order->id,
+        'order_item_id' => $item->id,
+        'provider' => 'manual',
+        'status' => FulfillmentStatus::Completed,
+        'attempts' => 1,
+        'completed_at' => now(),
+    ]);
+
+    $platformWallet = Wallet::forPlatform();
+    $balanceBefore = (float) $platformWallet->balance;
+
+    Livewire::actingAs($admin)
+        ->test('pages::backend.settlements.index')
+        ->call('runSettlement')
+        ->assertSet('noticeVariant', 'success');
+
+    $platformWallet->refresh();
+    expect((float) $platformWallet->balance)->toBe($balanceBefore + 50.0);
+    expect(Settlement::query()->count())->toBe(1);
+
+    $settlement = Settlement::query()->firstOrFail();
+
+    Livewire::actingAs($admin)
+        ->test('pages::backend.settlements.index')
+        ->call('openDetailModal', $settlement->id)
+        ->assertSee('Custom Amount Product (10)')
+        ->assertSee('150.00')
+        ->assertSee('100.00')
+        ->assertSee('50.00');
 });

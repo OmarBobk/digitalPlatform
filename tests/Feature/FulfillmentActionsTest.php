@@ -549,6 +549,56 @@ test('fulfillment supervisor queue shows distinct order reference per unit on sa
         ->assertSee($refSecond, false);
 });
 
+test('fulfillment cards show line total for custom amount items', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $user = User::factory()->create();
+    $package = Package::factory()->create();
+    $product = Product::factory()->create([
+        'package_id' => $package->id,
+        'entry_price' => 0.0001,
+        'amount_mode' => ProductAmountMode::Custom,
+        'amount_unit_label' => 'crystals',
+    ]);
+
+    $order = Order::create([
+        'user_id' => $user->id,
+        'order_number' => Order::temporaryOrderNumber(),
+        'currency' => 'USD',
+        'subtotal' => 95.39,
+        'fee' => 0,
+        'total' => 95.39,
+        'status' => OrderStatus::Paid,
+    ]);
+
+    $item = OrderItem::create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'package_id' => $package->id,
+        'name' => $product->name,
+        'unit_price' => 0.0001,
+        'quantity' => 1,
+        'amount_mode' => ProductAmountMode::Custom,
+        'requested_amount' => 953_900,
+        'amount_unit_label' => 'crystals',
+        'line_total' => 95.39,
+        'status' => OrderItemStatus::Pending,
+    ]);
+
+    Fulfillment::create([
+        'order_id' => $order->id,
+        'order_item_id' => $item->id,
+        'provider' => 'manual',
+        'status' => FulfillmentStatus::Queued,
+        'attempts' => 0,
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test('pages::backend.fulfillments.index')
+        ->assertSee('95.39 USD');
+});
+
 test('second claim attempt on same fulfillment fails', function () {
     $first = User::factory()->create();
     $second = User::factory()->create();
