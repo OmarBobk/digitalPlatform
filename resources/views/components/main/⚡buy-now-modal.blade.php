@@ -656,7 +656,12 @@ new class extends Component
         }
 
         if ($this->buyNowAmountMode === ProductAmountMode::Custom->value) {
-            if ($this->buyNowFinalPerUnitRate === null || $this->buyNowPriceError !== null) {
+            if ($this->buyNowPriceError !== null) {
+                return false;
+            }
+            $ctx = $this->buyNowClientPricingContext();
+            $clientPricable = (bool) ($ctx['client_pricable'] ?? false);
+            if (! $clientPricable && $this->buyNowFinalPerUnitRate === null) {
                 return false;
             }
         } elseif ((int) $this->buyNowQuantity < 1) {
@@ -1542,7 +1547,7 @@ new class extends Component
                                     class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 shadow-sm outline-none transition focus:border-(--color-accent) dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
                                     type="{{ ($requirement['type'] ?? '') === 'number' ? 'number' : 'text' }}"
                                     placeholder="{{ $requirementKey }}"
-                                    wire:model.livenow="buyNowRequirements.{{ $requirementKey }}"
+                                    wire:model.live.debounce.250ms="buyNowRequirements.{{ $requirementKey }}"
                                 />
                             @endif
                             @error("buyNowRequirements.$requirementKey")

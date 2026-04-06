@@ -92,6 +92,52 @@ it('shows no products yet when package has no active products', function () {
         ->assertSee(__('messages.no_products_yet'));
 });
 
+it('allows buy now submit for client tier pricing when server per unit rate is unset', function (): void {
+    PricingRule::create([
+        'min_price' => 0,
+        'max_price' => 999999.99,
+        'wholesale_percentage' => 0,
+        'retail_percentage' => 0,
+        'priority' => 0,
+        'is_active' => true,
+    ]);
+
+    $user = User::factory()->create();
+    $package = Package::factory()->create(['is_active' => true, 'name' => 'Pkg']);
+    PackageRequirement::factory()->create([
+        'package_id' => $package->id,
+        'key' => 'player_id',
+        'label' => 'Player ID',
+        'type' => 'string',
+        'is_required' => true,
+        'validation_rules' => 'required|string',
+        'order' => 1,
+    ]);
+    $product = Product::factory()->for($package)->create([
+        'name' => 'Custom With Req',
+        'is_active' => true,
+        'order' => 1,
+        'amount_mode' => ProductAmountMode::Custom,
+        'custom_amount_min' => 10_000,
+        'custom_amount_max' => 1_000_000_000,
+        'custom_amount_step' => 1,
+        'entry_price' => 0.00012,
+    ]);
+
+    $component = Livewire::actingAs($user)
+        ->test('main.buy-now-modal')
+        ->call('openPackageOverlay', $package->id)
+        ->call('openBuyNow', $product->id, true, 1);
+
+    expect($component->instance()->buyNowClientPricingContext()['client_pricable'] ?? false)->toBeTrue();
+
+    $component->set('buyNowFinalPerUnitRate', null);
+    $component->set('buyNowLineFinalPrice', null);
+    $component->set('buyNowRequirements.player_id', '1231231231');
+
+    expect($component->get('buyNowCanSubmit'))->toBeTrue();
+});
+
 it('shows requirement fields when opening buy now from package overlay', function () {
     $user = User::factory()->create();
     $package = Package::factory()->create([
