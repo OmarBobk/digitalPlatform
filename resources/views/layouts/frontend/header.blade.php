@@ -127,7 +127,7 @@
                                             {{ __('main.loyalty') }}
                                         </flux:navmenu.item>
                                     @endif
-                                    @role('admin|supervisor')
+                                    @can('view_dashboard')
                                         <flux:navmenu.item
                                             icon="home"
                                             href="{{ route('dashboard') }}"
@@ -135,7 +135,7 @@
                                         >
                                             {{ __('main.dashboard') }}
                                         </flux:navmenu.item>
-                                    @endrole
+                                    @endcan
                                     <form method="POST" action="{{ route('logout') }}" class="w-full">
                                         @csrf
                                         <flux:menu.item

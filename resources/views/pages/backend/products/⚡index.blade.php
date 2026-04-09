@@ -22,6 +22,7 @@ new class extends Component
 
     public string $search = '';
     public string $statusFilter = 'all';
+    public string $packageFilter = '';
     public string $sortBy = 'order';
     public string $sortDirection = 'asc';
     public int $perPage = 10;
@@ -60,7 +61,7 @@ new class extends Component
 
     public function resetFilters(): void
     {
-        $this->reset(['search', 'statusFilter', 'sortBy', 'sortDirection', 'perPage']);
+        $this->reset(['search', 'statusFilter', 'packageFilter', 'sortBy', 'sortDirection', 'perPage']);
         $this->resetPage();
     }
 
@@ -249,7 +250,8 @@ new class extends Component
             $this->statusFilter,
             $this->sortBy,
             $this->sortDirection,
-            $this->perPage
+            $this->perPage,
+            $this->packageFilter !== '' ? (int) $this->packageFilter : null,
         );
     }
 
@@ -511,6 +513,19 @@ new class extends Component
                         <flux:select.option value="all">{{ __('messages.all') }}</flux:select.option>
                         <flux:select.option value="active">{{ __('messages.active') }}</flux:select.option>
                         <flux:select.option value="inactive">{{ __('messages.inactive_status') }}</flux:select.option>
+                    </flux:select>
+                </div>
+                <div class="w-full min-w-0 sm:w-auto sm:min-w-[200px]">
+                    <flux:select
+                        class="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                        name="packageFilter"
+                        label="{{ __('messages.package') }}"
+                        wire:model.defer="packageFilter"
+                    >
+                        <flux:select.option value="">{{ __('messages.all') }}</flux:select.option>
+                        @foreach ($this->packages as $package)
+                            <flux:select.option value="{{ $package->id }}">{{ $package->name }}</flux:select.option>
+                        @endforeach
                     </flux:select>
                 </div>
                 <flux:button type="submit" variant="primary" icon="magnifying-glass" class="w-full sm:w-auto !bg-[var(--cf-primary)] !text-[var(--cf-primary-foreground)] transition-colors duration-200 hover:brightness-110">

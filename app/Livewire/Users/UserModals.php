@@ -398,7 +398,7 @@ class UserModals extends Component
             'users' => [
                 'label' => __('messages.permission_group_users'),
                 'icon' => 'users',
-                'permissions' => ['manage_users'],
+                'permissions' => ['view_dashboard', 'manage_users'],
             ],
             'catalog' => [
                 'label' => __('messages.permission_group_catalog'),

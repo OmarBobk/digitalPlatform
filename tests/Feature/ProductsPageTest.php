@@ -152,3 +152,29 @@ test('products table shows custom amount product details', function () {
         ->assertSee(__('messages.custom_amount_max').': 500', false)
         ->assertSee(__('messages.custom_amount_step').': 5', false);
 });
+
+test('products can be filtered by package', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+
+    $targetPackage = Package::factory()->create(['name' => 'Target Package']);
+    $otherPackage = Package::factory()->create(['name' => 'Other Package']);
+
+    $targetProduct = Product::factory()->create([
+        'package_id' => $targetPackage->id,
+        'name' => 'Target Product',
+    ]);
+
+    $otherProduct = Product::factory()->create([
+        'package_id' => $otherPackage->id,
+        'name' => 'Other Product',
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::backend.products.index')
+        ->set('packageFilter', (string) $targetPackage->id)
+        ->call('applyFilters')
+        ->assertSee($targetProduct->name)
+        ->assertDontSee($otherProduct->name);
+});

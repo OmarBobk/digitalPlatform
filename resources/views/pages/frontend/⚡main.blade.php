@@ -91,20 +91,4 @@ new #[Layout('layouts::frontend')] class extends Component {
 
     <livewire:main.buy-now-modal />
 
-    <section class="mx-auto w-full max-w-7xl pb-6" data-section="homepage-preferences" aria-labelledby="homepage-preferences-heading">
-        <h2 id="homepage-preferences-heading" class="sr-only">{{ __('main.homepage_preferences') }}</h2>
-        <div class="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white/80 p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/70 sm:flex-row sm:items-center sm:justify-between rtl:sm:flex-row-reverse">
-            <flux:radio.group
-                x-data
-                variant="segmented"
-                x-model="$flux.appearance"
-                aria-label="{{ __('messages.appearance') }}"
-                class="w-full sm:w-auto"
-            >
-                <flux:radio value="light" icon="sun">{{ __('messages.light') }}</flux:radio>
-                <flux:radio value="dark" icon="moon">{{ __('messages.dark') }}</flux:radio>
-                <flux:radio value="system" icon="computer-desktop">{{ __('messages.system') }}</flux:radio>
-            </flux:radio.group>
-        </div>
-    </section>
 </div>

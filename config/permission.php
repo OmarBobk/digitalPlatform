@@ -205,6 +205,7 @@ return [
      * User needs at least one of these to pass EnsureBackendAccess middleware.
      */
     'backend_permissions' => [
+        'view_dashboard',
         'manage_users',
         'manage_sections',
         'manage_products',

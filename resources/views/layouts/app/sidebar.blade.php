@@ -1,5 +1,6 @@
 @php
     $pendingRefundsCount = 0;
+    $dashboardHref = auth()->user()?->can('view_dashboard') ? route('dashboard') : route('home');
     if (auth()->check() && auth()->user()?->can('view_refunds')) {
         $pendingRefundsCount = \App\Models\WalletTransaction::query()
             ->where('type', \App\Enums\WalletTransactionType::Refund)
@@ -16,16 +17,18 @@
     <body class="min-h-screen bg-white dark:bg-zinc-800 {{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
         <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
             <flux:sidebar.header>
-                <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
+                <x-app-logo :sidebar="true" href="{{ $dashboardHref }}" wire:navigate />
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('messages.nav_overview')" class="grid">
-                    <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
-                        {{ __('messages.dashboard') }}
-                    </flux:sidebar.item>
-                </flux:sidebar.group>
+                @can('view_dashboard')
+                    <flux:sidebar.group :heading="__('messages.nav_overview')" class="grid">
+                        <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
+                            {{ __('messages.dashboard') }}
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
+                @endcan
 
                 @if (auth()->user()?->can('manage_products') || auth()->user()?->can('manage_sections') || auth()->user()?->can('manage_loyalty_tiers'))
                 <flux:sidebar.group expandable :expanded="(request()->routeIs('categories')) or (request()->routeIs('packages')) or (request()->routeIs('products')) or (request()->routeIs('pricing-rules')) or (request()->routeIs('loyalty-tiers'))" :heading="__('messages.nav_content_management')" class="grid">

@@ -13,7 +13,8 @@ class GetProducts
         string $statusFilter,
         string $sortBy,
         string $sortDirection,
-        int $perPage
+        int $perPage,
+        ?int $packageId = null,
     ): LengthAwarePaginator {
         $search = trim($search);
 
@@ -53,6 +54,10 @@ class GetProducts
 
         if ($statusFilter === 'inactive') {
             $query->where('is_active', false);
+        }
+
+        if ($packageId !== null) {
+            $query->where('package_id', $packageId);
         }
 
         $sortColumn = match ($sortBy) {

@@ -19,11 +19,28 @@ test('non-admin users receive a not found response', function () {
 
 test('admin users can visit the dashboard', function () {
     $role = Role::firstOrCreate(['name' => 'admin']);
-    $role->givePermissionTo(Permission::firstOrCreate(['name' => 'view_sales']));
+    $role->givePermissionTo([
+        Permission::firstOrCreate(['name' => 'view_sales']),
+        Permission::firstOrCreate(['name' => 'view_dashboard']),
+    ]);
     $admin = User::factory()->create();
     $admin->assignRole($role);
 
     $this->actingAs($admin);
 
     $this->get('/dashboard')->assertOk();
+});
+
+test('backend users without view_dashboard are forbidden from dashboard', function () {
+    $role = Role::firstOrCreate(['name' => 'salesperson']);
+    $role->syncPermissions([
+        Permission::firstOrCreate(['name' => 'view_sales']),
+    ]);
+
+    $user = User::factory()->create();
+    $user->assignRole($role);
+
+    $this->actingAs($user);
+
+    $this->get('/dashboard')->assertForbidden();
 });

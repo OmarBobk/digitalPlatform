@@ -17,6 +17,7 @@ class RolesAndPermissionsSeeder extends Seeder
 
         // Define permissions (assign to roles; app checks these, not role names)
         $permissions = [
+            'view_dashboard',
             'manage_users',
             'manage_sections',
             'manage_products',
@@ -61,6 +62,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // Supervisor: can view sales and orders, create orders (no edit)
         $supervisor = Role::firstOrCreate(['name' => 'supervisor']);
         $supervisor->syncPermissions([
+            'view_dashboard',
             'view_sales',
             'view_orders',
             'create_orders',

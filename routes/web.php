@@ -54,7 +54,9 @@ Route::post('api/admin/push/register-token', [PushTokenController::class, 'regis
     ->name('api.admin.push.register-token');
 
 Route::middleware(['auth', 'verified', 'backend'])->group(function () {
-    Route::livewire('/dashboard', 'pages::backend.dashboard')->name('dashboard');
+    Route::livewire('/dashboard', 'pages::backend.dashboard')
+        ->middleware('can:view_dashboard')
+        ->name('dashboard');
     Route::livewire('/categories', 'pages::backend.categories.index')->name('categories');
     Route::livewire('/packages', 'pages::backend.packages.index')->name('packages');
     Route::livewire('/products', 'pages::backend.products.index')->name('products');
