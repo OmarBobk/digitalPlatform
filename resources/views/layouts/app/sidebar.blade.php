@@ -21,6 +21,8 @@
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
+            <x-admin.usd-try-rate-panel variant="sidebar" />
+
             <flux:sidebar.nav>
                 @can('view_dashboard')
                     <flux:sidebar.group :heading="__('messages.nav_overview')" class="grid">

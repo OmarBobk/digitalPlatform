@@ -3,6 +3,7 @@
 use App\Models\LoyaltySetting;
 use App\Models\LoyaltyTierConfig;
 use App\Models\Wallet;
+use App\Support\FrontendMoney;
 use App\Services\LoyaltySpendService;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Computed;
@@ -94,6 +95,10 @@ new #[Layout('layouts::frontend')] class extends Component
 };
 ?>
 
+@php
+    $money = FrontendMoney::for(auth()->user());
+@endphp
+
 <div class="mx-auto w-full max-w-4xl px-3 py-6 sm:px-0 sm:py-10">
     <div class="mb-4 flex items-center">
         <x-back-button />
@@ -157,7 +162,7 @@ new #[Layout('layouts::frontend')] class extends Component
                 <flux:heading size="sm" class="text-zinc-900 dark:text-zinc-100">{{ __('main.wallet') }}</flux:heading>
                 @if(\App\Models\WebsiteSetting::getPricesVisible())
                 <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">
-                    {{ config('billing.currency_symbol', '$') }}{{ number_format($this->walletBalance, 2) }}
+                    {{ $money->format((float) $this->walletBalance, 'USD', 2) }}
                 </flux:text>
                 @endif
             </div>

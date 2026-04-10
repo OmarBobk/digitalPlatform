@@ -762,6 +762,13 @@ new #[Layout('layouts::frontend')] class extends Component
                     <span class="text-zinc-500 dark:text-zinc-400">—</span>
                     @endif
                 </div>
+                <p
+                    class="mt-1 text-xs text-zinc-500 dark:text-zinc-400"
+                    x-show="$store.cart.displayCurrencyCode() === 'TRY'"
+                    x-cloak
+                >
+                    {{ __('messages.amount') }}: {{ __('messages.estimated_total') }} (TRY, approx)
+                </p>
 
                 <div class="mt-4 space-y-3">
                     <flux:button

@@ -28,6 +28,8 @@ new #[Layout('layouts::frontend')] class extends Component
 
     public ?string $timezone = null;
 
+    public string $preferred_currency = 'USD';
+
     /** Not edited on this page; required by ProfileValidationRules. */
     public ?string $profile_photo = null;
 
@@ -45,6 +47,7 @@ new #[Layout('layouts::frontend')] class extends Component
             ? $user->country_code
             : null;
         $this->timezone = $user->timezone?->value;
+        $this->preferred_currency = in_array($user->preferred_currency, ['USD', 'TRY'], true) ? $user->preferred_currency : 'USD';
     }
 
     private function normalizeCountryCode(?string $value): ?string
@@ -167,6 +170,15 @@ new #[Layout('layouts::frontend')] class extends Component
                     @endforeach
                 </flux:select>
                 <flux:error name="timezone" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('messages.currency') }}</flux:label>
+                <flux:select wire:model.defer="preferred_currency" class="w-full focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0">
+                    <flux:select.option value="USD">USD</flux:select.option>
+                    <flux:select.option value="TRY">TRY</flux:select.option>
+                </flux:select>
+                <flux:error name="preferred_currency" />
             </flux:field>
 
             <div class="flex flex-wrap items-center gap-3">

@@ -6,6 +6,7 @@
 ])
 
 @php
+    $money = \App\Support\FrontendMoney::for(auth()->user());
     $currentTierName = strtolower($currentTierName ?? 'bronze');
     $tiersCollection = collect($tiers);
     $nextTier = $tiersCollection->first(fn ($t) => (float) ($t['min_spend'] ?? 0) > $rollingSpend);
@@ -31,7 +32,7 @@
             >
                 <flux:badge color="{{ $isCurrent ? 'violet' : 'zinc' }}" class="capitalize shrink-0">{{ $tierLabel }}</flux:badge>
                 @if(\App\Models\WebsiteSetting::getPricesVisible())
-                <span class="tabular-nums text-sm text-zinc-600 dark:text-zinc-400" dir="ltr">${{ number_format($minSpend, 0) }}+</span>
+                <span class="tabular-nums text-sm text-zinc-600 dark:text-zinc-400" dir="ltr">{{ $money->format($minSpend, 'USD', 0) }}+</span>
                 @else
                 <span class="text-sm text-zinc-500 dark:text-zinc-400">—</span>
                 @endif
@@ -39,7 +40,7 @@
                 @if ($isCurrent)
                     <flux:text class="ml-auto text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.loyalty_you_reached', ['tier' => $tierLabel]) }}</flux:text>
                 @elseif ($remaining !== null && \App\Models\WebsiteSetting::getPricesVisible())
-                    <flux:text class="ml-auto text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.loyalty_remaining_spend') }}: ${{ number_format($remaining, 2) }}</flux:text>
+                    <flux:text class="ml-auto text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.loyalty_remaining_spend') }}: {{ $money->format($remaining, 'USD', 2) }}</flux:text>
                 @endif
             </div>
         @endforeach

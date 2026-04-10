@@ -13,6 +13,8 @@ class WebsiteSetting extends Model
         'primary_phone',
         'secondary_phone',
         'prices_visible',
+        'usd_try_rate',
+        'usd_try_rate_updated_at',
     ];
 
     /**
@@ -22,6 +24,8 @@ class WebsiteSetting extends Model
     {
         return [
             'prices_visible' => 'boolean',
+            'usd_try_rate' => 'decimal:6',
+            'usd_try_rate_updated_at' => 'datetime',
         ];
     }
 
@@ -40,6 +44,8 @@ class WebsiteSetting extends Model
             'primary_phone' => null,
             'secondary_phone' => null,
             'prices_visible' => true,
+            'usd_try_rate' => null,
+            'usd_try_rate_updated_at' => null,
         ]);
     }
 
@@ -67,5 +73,40 @@ class WebsiteSetting extends Model
     public static function getPricesVisible(): bool
     {
         return (bool) self::instance()->prices_visible;
+    }
+
+    public static function getUsdTryRate(): ?float
+    {
+        $rate = self::instance()->usd_try_rate;
+        if ($rate === null) {
+            return null;
+        }
+
+        $floatRate = (float) $rate;
+
+        return $floatRate > 0 ? $floatRate : null;
+    }
+
+    /**
+     * Fixed six-decimal rate string for admin UI, or null when unset or not positive.
+     */
+    public static function getUsdTryRateAdminDisplay(): ?string
+    {
+        $raw = self::instance()->usd_try_rate;
+        if ($raw === null) {
+            return null;
+        }
+
+        $float = (float) $raw;
+        if ($float <= 0) {
+            return null;
+        }
+
+        return number_format($float, 6, '.', '');
+    }
+
+    public static function getUsdTryRateUpdatedAt(): ?\DateTimeInterface
+    {
+        return self::instance()->usd_try_rate_updated_at;
     }
 }

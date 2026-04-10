@@ -18,6 +18,7 @@ trait ProfileValidationRules
             'name' => $this->nameRules(),
             'username' => $this->usernameRules($userId),
             'email' => $this->emailRules($userId),
+            'preferred_currency' => $this->preferredCurrencyRules(),
             'phone' => $this->phoneRules($userId),
             'country_code' => $this->countryCodeRules(),
             'profile_photo' => $this->profilePhotoRules(),
@@ -68,6 +69,20 @@ trait ProfileValidationRules
             $userId === null
                 ? Rule::unique(User::class)
                 : Rule::unique(User::class)->ignore($userId),
+        ];
+    }
+
+    /**
+     * Get the validation rules used to validate preferred currency.
+     *
+     * @return array<int, \Illuminate\Contracts\Validation\Rule|array<mixed>|string>
+     */
+    protected function preferredCurrencyRules(): array
+    {
+        return [
+            'required',
+            'string',
+            Rule::in(['USD', 'TRY']),
         ];
     }
 
