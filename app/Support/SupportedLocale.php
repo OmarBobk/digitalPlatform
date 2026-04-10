@@ -8,8 +8,10 @@ final class SupportedLocale
 {
     /**
      * Locales with translation files and UI support.
+     *
+     * @var list<string>
      */
-    public const array ALLOWED = ['en', 'ar'];
+    public const ALLOWED = ['en', 'ar'];
 
     /**
      * Resolve the best supported locale from the request Accept-Language header.
