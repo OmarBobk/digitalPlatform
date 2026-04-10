@@ -2,6 +2,7 @@
 
 use App\Models\WebsiteSetting;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Http;
 use Livewire\Component;
 
 new class extends Component
@@ -20,6 +21,8 @@ new class extends Component
 
     public bool $pricesVisible = true;
 
+    public string $usdTryRate = '';
+
     public function mount(): void
     {
         abort_unless(auth()->user()?->hasRole('admin'), 403);
@@ -28,6 +31,9 @@ new class extends Component
         [$this->primaryCountryCode, $this->primaryPhone] = $this->parsePhone($settings->primary_phone ?? '');
         [$this->secondaryCountryCode, $this->secondaryPhone] = $this->parsePhone($settings->secondary_phone ?? '');
         $this->pricesVisible = (bool) $settings->prices_visible;
+        $this->usdTryRate = $settings->usd_try_rate !== null
+            ? number_format((float) $settings->usd_try_rate, 6, '.', '')
+            : '';
     }
 
     /**
@@ -62,6 +68,48 @@ new class extends Component
         return null;
     }
 
+    public function fetchUsdTryRate(): void
+    {
+        abort_unless(auth()->user()?->hasRole('admin'), 403);
+
+        $response = Http::timeout(15)
+            ->acceptJson()
+            ->get('https://open.er-api.com/v6/latest/USD');
+
+        if (! $response->successful()) {
+            $this->addError('usdTryRate', __('messages.website_usd_try_rate_fetch_failed'));
+
+            return;
+        }
+
+        $try = data_get($response->json(), 'rates.TRY');
+        if (! is_numeric($try)) {
+            $this->addError('usdTryRate', __('messages.website_usd_try_rate_fetch_failed'));
+
+            return;
+        }
+
+        $asFloat = (float) $try;
+        if ($asFloat <= 0) {
+            $this->addError('usdTryRate', __('messages.website_usd_try_rate_fetch_failed'));
+
+            return;
+        }
+
+        $this->resetErrorBag('usdTryRate');
+        $this->usdTryRate = number_format($asFloat, 6, '.', '');
+    }
+
+    private function normalizedUsdTryRate(): ?float
+    {
+        $trim = trim($this->usdTryRate);
+        if ($trim === '') {
+            return null;
+        }
+
+        return (float) $trim;
+    }
+
     public function save(): void
     {
         $this->validate([
@@ -70,14 +118,44 @@ new class extends Component
             'primaryPhone' => ['nullable', 'string', 'max:30'],
             'secondaryCountryCode' => ['nullable', 'string', 'in:+90,+963'],
             'secondaryPhone' => ['nullable', 'string', 'max:30'],
+            'usdTryRate' => ['nullable', 'string', 'max:32'],
         ]);
 
-        WebsiteSetting::instance()->update([
+        $trim = trim($this->usdTryRate);
+        if ($trim !== '' && ! is_numeric($trim)) {
+            $this->addError('usdTryRate', __('messages.website_usd_try_rate_invalid'));
+
+            return;
+        }
+
+        $rate = $trim === '' ? null : (float) $trim;
+        if ($rate !== null && ($rate <= 0 || $rate > 999_999.999999)) {
+            $this->addError('usdTryRate', __('messages.website_usd_try_rate_invalid'));
+
+            return;
+        }
+
+        $settings = WebsiteSetting::instance();
+        $oldSerialized = $settings->usd_try_rate !== null
+            ? number_format((float) $settings->usd_try_rate, 6, '.', '')
+            : null;
+        $newSerialized = $rate !== null
+            ? number_format($rate, 6, '.', '')
+            : null;
+
+        $payload = [
             'contact_email' => $this->contactEmail !== '' ? $this->contactEmail : null,
             'primary_phone' => $this->formatPhoneForStorage($this->primaryCountryCode, $this->primaryPhone),
             'secondary_phone' => $this->formatPhoneForStorage($this->secondaryCountryCode, $this->secondaryPhone),
             'prices_visible' => $this->pricesVisible,
-        ]);
+            'usd_try_rate' => $rate,
+        ];
+
+        if ($oldSerialized !== $newSerialized) {
+            $payload['usd_try_rate_updated_at'] = $newSerialized !== null ? now() : null;
+        }
+
+        $settings->update($payload);
 
         $this->dispatch('website-settings-saved');
     }
@@ -156,6 +234,25 @@ new class extends Component
                     <flux:switch wire:model.defer="pricesVisible" class="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0" />
                 </div>
                 <flux:text class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ __('messages.website_prices_visible_hint') }}</flux:text>
+            </flux:field>
+            <flux:field>
+                <flux:label>{{ __('messages.website_usd_try_rate') }}</flux:label>
+                <div class="flex max-w-md flex-wrap items-stretch gap-2">
+                    <flux:input
+                        wire:model.defer="usdTryRate"
+                        type="text"
+                        inputmode="decimal"
+                        class="min-w-[12rem] flex-1"
+                        class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                        data-test="website-settings-usd-try-rate"
+                    />
+                    <flux:button type="button" variant="ghost" wire:click="fetchUsdTryRate" wire:loading.attr="disabled">
+                        <span wire:loading.remove wire:target="fetchUsdTryRate">{{ __('messages.website_usd_try_rate_refresh') }}</span>
+                        <span wire:loading wire:target="fetchUsdTryRate">{{ __('messages.please_wait') }}</span>
+                    </flux:button>
+                </div>
+                <flux:text class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ __('messages.website_usd_try_rate_hint') }}</flux:text>
+                <flux:error name="usdTryRate" />
             </flux:field>
             <div class="flex flex-wrap items-center gap-2">
                 <flux:button type="submit" variant="primary" wire:loading.attr="disabled">

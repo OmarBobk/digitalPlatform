@@ -13,6 +13,8 @@ class WebsiteSetting extends Model
         'primary_phone',
         'secondary_phone',
         'prices_visible',
+        'usd_try_rate',
+        'usd_try_rate_updated_at',
     ];
 
     /**
@@ -22,6 +24,8 @@ class WebsiteSetting extends Model
     {
         return [
             'prices_visible' => 'boolean',
+            'usd_try_rate' => 'decimal:6',
+            'usd_try_rate_updated_at' => 'datetime',
         ];
     }
 
@@ -40,6 +44,8 @@ class WebsiteSetting extends Model
             'primary_phone' => null,
             'secondary_phone' => null,
             'prices_visible' => true,
+            'usd_try_rate' => null,
+            'usd_try_rate_updated_at' => null,
         ]);
     }
 
@@ -67,5 +73,17 @@ class WebsiteSetting extends Model
     public static function getPricesVisible(): bool
     {
         return (bool) self::instance()->prices_visible;
+    }
+
+    public static function getUsdTryRate(): ?float
+    {
+        $rate = self::instance()->usd_try_rate;
+        if ($rate === null || $rate === '') {
+            return null;
+        }
+
+        $asFloat = (float) $rate;
+
+        return $asFloat > 0 ? $asFloat : null;
     }
 }

@@ -59,6 +59,35 @@
 
                     <!-- Action Icons -->
                     <div class="flex items-center sm:gap-2 shrink-0 sm:order-3 order-2">
+                        @auth
+                            @if (auth()->user()?->hasRole('admin'))
+                                @php
+                                    $storefrontAdminUsdTry = \App\Models\WebsiteSetting::getUsdTryRate();
+                                    $storefrontAdminUsdTryAt = \App\Models\WebsiteSetting::instance()->usd_try_rate_updated_at;
+                                @endphp
+                                <div
+                                    class="me-1 hidden min-w-0 flex-col items-end text-end md:flex"
+                                    data-test="frontend-header-admin-usd-try-rate"
+                                    title="{{ __('messages.admin_header_usd_try_title') }}"
+                                >
+                                    <span class="text-[10px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                        {{ __('messages.admin_sidebar_usd_try_title') }}
+                                    </span>
+                                    @if ($storefrontAdminUsdTry !== null)
+                                        <span class="tabular-nums text-sm font-semibold leading-tight text-zinc-900 dark:text-zinc-100" dir="ltr">
+                                            {{ number_format($storefrontAdminUsdTry, 4) }}
+                                        </span>
+                                        @if ($storefrontAdminUsdTryAt !== null)
+                                            <span class="max-w-[9rem] truncate text-[10px] text-zinc-500 dark:text-zinc-400" dir="ltr">
+                                                {{ $storefrontAdminUsdTryAt->timezone(config('app.timezone'))->format('Y-m-d H:i') }}
+                                            </span>
+                                        @endif
+                                    @else
+                                        <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('messages.admin_sidebar_usd_try_missing') }}</span>
+                                    @endif
+                                </div>
+                            @endif
+                        @endauth
                         <!-- Wishlist Icon -->
 {{--                        <flux:button--}}
 {{--                            variant="ghost"--}}

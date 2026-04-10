@@ -157,6 +157,33 @@
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 
+            @role('admin')
+                @php
+                    $adminUsdTryRate = \App\Models\WebsiteSetting::getUsdTryRate();
+                    $adminUsdTryUpdatedAt = \App\Models\WebsiteSetting::instance()->usd_try_rate_updated_at;
+                @endphp
+                <div
+                    class="mx-3 rounded-xl border border-zinc-200 bg-white/70 px-3 py-2 text-xs text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-200"
+                    data-test="admin-sidebar-usd-try-rate"
+                >
+                    <div class="font-semibold text-zinc-800 dark:text-zinc-100">{{ __('messages.admin_sidebar_usd_try_title') }}</div>
+                    @if ($adminUsdTryRate !== null)
+                        <div class="mt-1 tabular-nums text-zinc-900 dark:text-zinc-50" dir="ltr">
+                            {{ __('messages.admin_sidebar_usd_try_line', ['rate' => number_format($adminUsdTryRate, 6)]) }}
+                        </div>
+                        @if ($adminUsdTryUpdatedAt !== null)
+                            <flux:text class="!mt-1 !text-[11px] !text-zinc-500 dark:!text-zinc-400">
+                                {{ __('messages.admin_sidebar_usd_try_updated', ['datetime' => $adminUsdTryUpdatedAt->timezone(config('app.timezone'))->format('Y-m-d H:i')]) }}
+                            </flux:text>
+                        @endif
+                    @else
+                        <flux:text class="!mt-1 !text-[11px] !text-zinc-500 dark:!text-zinc-400">
+                            {{ __('messages.admin_sidebar_usd_try_missing') }}
+                        </flux:text>
+                    @endif
+                </div>
+            @endrole
+
             <flux:spacer />
 
             <flux:sidebar.nav>
