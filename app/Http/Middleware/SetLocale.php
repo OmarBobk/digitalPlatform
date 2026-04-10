@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\SupportedLocale;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,15 +19,17 @@ class SetLocale
     {
         $sessionLocale = session()->get('locale');
 
-        if (in_array($sessionLocale, ['en', 'ar'], true)) {
+        if (in_array($sessionLocale, SupportedLocale::ALLOWED, true)) {
             app()->setLocale($sessionLocale);
         } elseif (Auth::check()) {
             $userLocale = Auth::user()?->preferredLocale();
 
-            if (in_array($userLocale, ['en', 'ar'], true)) {
+            if (in_array($userLocale, SupportedLocale::ALLOWED, true)) {
                 app()->setLocale($userLocale);
                 session()->put('locale', $userLocale);
             }
+        } else {
+            app()->setLocale(SupportedLocale::fromRequest($request));
         }
 
         return $next($request);
