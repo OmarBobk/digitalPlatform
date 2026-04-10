@@ -60,6 +60,7 @@
 
                     <!-- Action Icons -->
                     <div class="flex items-center sm:gap-2 shrink-0 sm:order-3 order-2">
+                        <x-admin.usd-try-rate-panel variant="storefront" />
                         <!-- Wishlist Icon -->
 {{--                        <flux:button--}}
 {{--                            variant="ghost"--}}
