@@ -85,6 +85,19 @@
                     />
                     <flux:error name="password_confirmation" />
                 </flux:field>
+                <flux:field>
+                    <flux:label>{{ __('messages.currency') }}</flux:label>
+                    <flux:select
+                        name="preferred_currency"
+                        :value="old('preferred_currency', 'USD')"
+                        required
+                        class="w-full focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                    >
+                        <flux:select.option value="USD">USD</flux:select.option>
+                        <flux:select.option value="TRY">TRY</flux:select.option>
+                    </flux:select>
+                    <flux:error name="preferred_currency" />
+                </flux:field>
                 <flux:field class="md:col-span-2">
                     <flux:label>{{ __('messages.phone_number') }}</flux:label>
                     <flux:input.group>

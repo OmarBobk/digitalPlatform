@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\User;
+
 test('registration screen can be rendered', function () {
     $response = $this->get(route('register'));
 
@@ -20,4 +22,20 @@ test('new users can register', function () {
         ->assertRedirect(route('home', absolute: false));
 
     $this->assertAuthenticated();
+
+    $user = User::query()->where('email', 'test@example.com')->first();
+    expect($user)->not->toBeNull();
+    expect($user->preferred_currency)->toBe('USD');
+});
+
+test('registration requires preferred currency', function () {
+    $this->post(route('register.store'), [
+        'name' => 'Jane Doe',
+        'username' => 'janedoe',
+        'email' => 'jane@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ])->assertSessionHasErrors('preferred_currency');
+
+    $this->assertGuest();
 });

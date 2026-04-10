@@ -38,6 +38,7 @@ class CreateNewUser implements CreatesNewUsers
             'email' => $input['email'],
             'locale' => SupportedLocale::fromRequest(request()),
             'locale_manually_set' => false,
+            'preferred_currency' => $input['preferred_currency'],
             'password' => $input['password'],
             'phone' => $input['phone'] ?? null,
             'country_code' => $input['country_code'] ?? null,
@@ -57,6 +58,7 @@ class CreateNewUser implements CreatesNewUsers
                 'username' => $user->username,
                 'country_code' => $user->country_code,
                 'timezone' => $user->timezone,
+                'preferred_currency' => $user->preferred_currency,
             ])
             ->log('User registered');
 
