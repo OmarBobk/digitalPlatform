@@ -43,6 +43,7 @@ test('user registration is logged', function () {
         'email' => 'test-user@example.com',
         'password' => 'Password123!',
         'password_confirmation' => 'Password123!',
+        'preferred_currency' => 'USD',
     ]);
 
     expect(Activity::query()

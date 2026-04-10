@@ -18,6 +18,7 @@ test('language switch persists locale for authenticated user', function () {
 
     expect(session('locale'))->toBe('ar');
     expect($user->fresh()->locale)->toBe('ar');
+    expect($user->fresh()->locale_manually_set)->toBeTrue();
 });
 
 test('notification payload is translated using notifiable locale', function () {

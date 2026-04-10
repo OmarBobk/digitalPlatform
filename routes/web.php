@@ -20,7 +20,10 @@ Route::get('language/{locale}', function (string $locale) {
     session()->save();
 
     if (auth()->check()) {
-        auth()->user()?->forceFill(['locale' => $locale])->save();
+        auth()->user()?->forceFill([
+            'locale' => $locale,
+            'locale_manually_set' => true,
+        ])->save();
     }
 
     app()->setLocale($locale);

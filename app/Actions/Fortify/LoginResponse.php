@@ -2,6 +2,7 @@
 
 namespace App\Actions\Fortify;
 
+use App\Actions\Auth\SyncAuthenticatedUserLocale;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
 
@@ -47,6 +48,10 @@ class LoginResponse implements LoginResponseContract
                     ->withProperties($properties)
                     ->log('User login');
             }
+        }
+
+        if (Auth::check()) {
+            app(SyncAuthenticatedUserLocale::class)->execute($request, Auth::user());
         }
 
         return $request->wantsJson()

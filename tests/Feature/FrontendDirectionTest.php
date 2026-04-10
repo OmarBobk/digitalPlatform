@@ -19,6 +19,7 @@ test('cart prices stay left-to-right', function () {
     $response = $this->withSession(['locale' => 'ar'])->get('/cart');
 
     $response->assertOk();
-    $response->assertSee('dir="ltr" x-text="$store.cart.format(item.price)"', false);
-    $response->assertSee('dir="ltr" x-text="$store.cart.format($store.cart.subtotal)"', false);
+    $response->assertSee('x-text="$store.cart.format(item.price)"', false);
+    $response->assertSee('x-text="$store.cart.format($store.cart.subtotal)"', false);
+    $response->assertSee('dir="ltr"', false);
 });

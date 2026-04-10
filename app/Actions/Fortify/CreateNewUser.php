@@ -6,6 +6,7 @@ use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Enums\Timezone;
 use App\Models\User;
+use App\Support\SupportedLocale;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
@@ -35,6 +36,8 @@ class CreateNewUser implements CreatesNewUsers
             'name' => $input['name'],
             'username' => $input['username'],
             'email' => $input['email'],
+            'locale' => SupportedLocale::fromRequest(request()),
+            'locale_manually_set' => false,
             'password' => $input['password'],
             'phone' => $input['phone'] ?? null,
             'country_code' => $input['country_code'] ?? null,

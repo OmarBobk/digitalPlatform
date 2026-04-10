@@ -50,7 +50,8 @@
     - #TODO: who is online by role
   - ###TODO: Products page: add filter by package.
   - ###TODO: Pretend a query or function or create a new page where the input is two fields Product serial -> new price ex: SOULCHILL-10K ->  3.00 and by that we can update the prices faster
-    - or maybe we just select the package name and then (supoose there are 10 products belong to this package) on the left hand you see the Product serial and on the right hand input fiels for the new price. 
+    - or maybe we just select the package name and then (supoose there are 10 products belong to this package) on the left hand you see the Product serial and on the right hand input fiels for the new price.
+  - ###TODO: customer click on buy now button -> if he delete the default quantity value to enter his value he is getting 500 | Server Erorr
   - 
 - Frontend:
   - ###DONE wallet transaction in /wallets should be more described
