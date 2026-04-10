@@ -65,6 +65,7 @@ test('authenticated user can view and submit profile edit page', function () {
         ->set('name', 'New Name')
         ->set('username', 'testuser99')
         ->set('email', $user->email)
+        ->set('preferred_currency', 'TRY')
         ->set('phone', '5551234567')
         ->set('country_code', '+90')
         ->set('timezone', \App\Enums\Timezone::Turkey->value)
@@ -74,4 +75,5 @@ test('authenticated user can view and submit profile edit page', function () {
 
     $user->refresh();
     expect($user->name)->toBe('New Name');
+    expect($user->preferred_currency)->toBe('TRY');
 });

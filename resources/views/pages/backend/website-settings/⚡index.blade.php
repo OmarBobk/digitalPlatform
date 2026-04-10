@@ -2,6 +2,7 @@
 
 use App\Models\WebsiteSetting;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Http;
 use Livewire\Component;
 
 new class extends Component
@@ -20,6 +21,8 @@ new class extends Component
 
     public bool $pricesVisible = true;
 
+    public ?string $usdTryRate = null;
+
     public function mount(): void
     {
         abort_unless(auth()->user()?->hasRole('admin'), 403);
@@ -28,6 +31,7 @@ new class extends Component
         [$this->primaryCountryCode, $this->primaryPhone] = $this->parsePhone($settings->primary_phone ?? '');
         [$this->secondaryCountryCode, $this->secondaryPhone] = $this->parsePhone($settings->secondary_phone ?? '');
         $this->pricesVisible = (bool) $settings->prices_visible;
+        $this->usdTryRate = $settings->usd_try_rate !== null ? number_format((float) $settings->usd_try_rate, 6, '.', '') : null;
     }
 
     /**
@@ -70,6 +74,7 @@ new class extends Component
             'primaryPhone' => ['nullable', 'string', 'max:30'],
             'secondaryCountryCode' => ['nullable', 'string', 'in:+90,+963'],
             'secondaryPhone' => ['nullable', 'string', 'max:30'],
+            'usdTryRate' => ['nullable', 'numeric', 'gt:0'],
         ]);
 
         WebsiteSetting::instance()->update([
@@ -77,9 +82,38 @@ new class extends Component
             'primary_phone' => $this->formatPhoneForStorage($this->primaryCountryCode, $this->primaryPhone),
             'secondary_phone' => $this->formatPhoneForStorage($this->secondaryCountryCode, $this->secondaryPhone),
             'prices_visible' => $this->pricesVisible,
+            'usd_try_rate' => $this->usdTryRate !== null && $this->usdTryRate !== '' ? (float) $this->usdTryRate : null,
+            'usd_try_rate_updated_at' => now(),
         ]);
 
         $this->dispatch('website-settings-saved');
+    }
+
+    public function fetchUsdTryRate(): void
+    {
+        try {
+            $response = Http::timeout(3)
+                ->acceptJson()
+                ->get('https://open.er-api.com/v6/latest/USD');
+
+            if (! $response->successful()) {
+                $this->addError('usdTryRate', __('messages.something_went_wrong_checkout'));
+
+                return;
+            }
+
+            $rate = data_get($response->json(), 'rates.TRY');
+            if (! is_numeric($rate) || (float) $rate <= 0) {
+                $this->addError('usdTryRate', __('messages.invalid_value', ['field' => __('messages.currency')]));
+
+                return;
+            }
+
+            $this->resetErrorBag('usdTryRate');
+            $this->usdTryRate = number_format((float) $rate, 6, '.', '');
+        } catch (\Throwable) {
+            $this->addError('usdTryRate', __('messages.something_went_wrong_checkout'));
+        }
     }
 
     public function render(): View
@@ -156,6 +190,17 @@ new class extends Component
                     <flux:switch wire:model.defer="pricesVisible" class="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0" />
                 </div>
                 <flux:text class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ __('messages.website_prices_visible_hint') }}</flux:text>
+            </flux:field>
+            <flux:field>
+                <flux:label>{{ __('messages.website_usd_try_rate') }}</flux:label>
+                <div class="flex max-w-md flex-wrap items-center gap-2">
+                    <flux:input wire:model.defer="usdTryRate" type="number" step="0.000001" min="0.000001" class="w-full sm:w-auto sm:flex-1" class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0" />
+                    <flux:button type="button" variant="outline" wire:click="fetchUsdTryRate" wire:loading.attr="disabled">
+                        {{ __('messages.website_usd_try_rate_refresh') }}
+                    </flux:button>
+                </div>
+                <flux:text class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ __('messages.website_usd_try_rate_hint') }}</flux:text>
+                <flux:error name="usdTryRate" />
             </flux:field>
             <div class="flex flex-wrap items-center gap-2">
                 <flux:button type="submit" variant="primary" wire:loading.attr="disabled">

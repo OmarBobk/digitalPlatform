@@ -25,6 +25,12 @@
         'precision' => 0,
         'intlLocale' => $localeTag,
     ];
+    $preferredCurrency = auth()->check() && in_array((string) auth()->user()->preferred_currency, ['USD', 'TRY'], true)
+        ? (string) auth()->user()->preferred_currency
+        : 'USD';
+    $usdTryRate = $preferredCurrency === 'TRY'
+        ? \App\Models\WebsiteSetting::getUsdTryRate()
+        : null;
 @endphp
 <script>
     window.Laravel = window.Laravel || {};
@@ -36,6 +42,8 @@
     @endauth
     window.Laravel.loyaltyTierLabels = @json($loyaltyTierLabels);
     window.Laravel.amountIntegerMask = @json($amountIntegerMask);
+    window.Laravel.preferredCurrency = @json($preferredCurrency);
+    window.Laravel.usdTryRate = @json($usdTryRate);
 </script>
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 @fluxAppearance

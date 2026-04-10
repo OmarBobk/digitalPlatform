@@ -3,6 +3,7 @@
 use App\Models\Category;
 use App\Models\Package;
 use App\Models\Product;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -68,4 +69,17 @@ test('homepage circular slider shows packages and placeholder', function () {
     $response->assertSee('Package 1');
     $response->assertSee('Package 19');
     $response->assertSee(asset('images/icons/category-placeholder.svg'));
+});
+
+test('frontend head exposes currency preference globals', function () {
+    $user = User::factory()->create([
+        'preferred_currency' => 'TRY',
+    ]);
+
+    $response = $this->actingAs($user)->get('/');
+
+    $response->assertOk();
+    $response->assertSee('window.Laravel.preferredCurrency', false);
+    $response->assertSee('"TRY"', false);
+    $response->assertSee('window.Laravel.usdTryRate', false);
 });

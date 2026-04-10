@@ -1277,7 +1277,7 @@ new class extends Component
                                     </div>
                                     @if(\App\Models\WebsiteSetting::getPricesVisible())
                                         <div class="tabular-nums text-lg font-semibold text-(--color-accent)" dir="{{ $bnNumericDir }}">
-                                            ${{ number_format((float) $product['price'], 2) }}
+                                            <span x-text="$store.cart.format({{ (float) $product['price'] }})">${{ number_format((float) $product['price'], 2) }}</span>
                                         </div>
                                     @endif
                                 </div>
@@ -1499,7 +1499,7 @@ new class extends Component
                                 @if ($buyNowPriceError)
                                     <span class="text-sm font-semibold text-red-600 dark:text-red-400">{{ $buyNowPriceError }}</span>
                                 @elseif ($buyNowLineFinalPrice !== null)
-                                    ${{ number_format($buyNowLineFinalPrice, 2) }}
+                                    <span x-text="$store.cart.format({{ (float) $buyNowLineFinalPrice }})">${{ number_format($buyNowLineFinalPrice, 2) }}</span>
                                 @else
                                     <span class="text-sm font-normal text-zinc-500 dark:text-zinc-400">—</span>
                                 @endif
