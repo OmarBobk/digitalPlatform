@@ -11,6 +11,7 @@
 ])
 
 @php
+    $money = \App\Support\FrontendMoney::for(auth()->user());
     $currentTierKey = strtolower($currentTierName ?? 'bronze');
     $currentTierLabel = \Illuminate\Support\Facades\Lang::has("messages.loyalty_tier_{$currentTierKey}") ? __("messages.loyalty_tier_{$currentTierKey}") : ucfirst($currentTierKey);
     $nextTierKey = $nextTierName ? strtolower($nextTierName) : null;
@@ -36,7 +37,7 @@
         <flux:badge class="capitalize font-semibold" color="zinc">{{ $currentTierLabel }}</flux:badge>
         @if ($layout === 'full')
             @if(\App\Models\WebsiteSetting::getPricesVisible())
-            <span class="text-lg font-bold tabular-nums text-zinc-900 dark:text-zinc-100" dir="ltr">${{ number_format($rollingSpend, 2) }}</span>
+            <span class="text-lg font-bold tabular-nums text-zinc-900 dark:text-zinc-100" dir="ltr">{{ $money->format($rollingSpend, 'USD', 2) }}</span>
             @else
             <span class="text-lg font-bold tabular-nums text-zinc-500 dark:text-zinc-400">—</span>
             @endif
@@ -45,7 +46,7 @@
             @endif
         @else
             @if(\App\Models\WebsiteSetting::getPricesVisible())
-            <span class="tabular-nums text-zinc-900 dark:text-zinc-100" dir="ltr">${{ number_format($rollingSpend, 2) }}</span>
+            <span class="tabular-nums text-zinc-900 dark:text-zinc-100" dir="ltr">{{ $money->format($rollingSpend, 'USD', 2) }}</span>
             @else
             <span class="tabular-nums text-zinc-500 dark:text-zinc-400">—</span>
             @endif
@@ -62,7 +63,7 @@
             </div>
             <flux:text class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                 @if(\App\Models\WebsiteSetting::getPricesVisible())
-                {{ __('messages.loyalty_next_tier', ['tier' => $nextTierLabel, 'amount' => number_format($amountToNext, 2)]) }}
+                {{ __('messages.loyalty_next_tier', ['tier' => $nextTierLabel, 'amount' => $money->format($amountToNext, 'USD', 2)]) }}
                 @else
                 {{ __('messages.loyalty_progress_to', ['tier' => $nextTierLabel]) }}
                 @endif

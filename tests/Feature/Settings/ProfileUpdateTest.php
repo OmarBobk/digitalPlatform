@@ -19,6 +19,7 @@ test('profile information can be updated', function () {
         ->set('name', 'Test User')
         ->set('username', 'testuser')
         ->set('email', 'test@example.com')
+        ->set('preferred_currency', 'TRY')
         ->call('updateProfileInformation');
 
     $response->assertHasNoErrors();
@@ -28,6 +29,7 @@ test('profile information can be updated', function () {
     expect($user->name)->toEqual('Test User');
     expect($user->username)->toEqual('testuser');
     expect($user->email)->toEqual('test@example.com');
+    expect($user->preferred_currency)->toEqual('TRY');
     expect($user->email_verified_at)->toBeNull();
 });
 

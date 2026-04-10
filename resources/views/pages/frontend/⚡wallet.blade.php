@@ -20,6 +20,7 @@ use App\Models\WalletTransaction;
 use App\Notifications\TopupRequestedNotification;
 use App\Services\LoyaltySpendService;
 use App\Services\NotificationRecipientService;
+use App\Support\FrontendMoney;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
@@ -457,6 +458,10 @@ new #[Layout('layouts::frontend')] class extends Component
 };
 ?>
 
+@php
+    $money = FrontendMoney::for(auth()->user());
+@endphp
+
 <div class="mx-auto w-full max-w-7xl px-3 py-6 sm:px-0 sm:py-10">
     <div class="mb-4 flex items-center">
         <x-back-button />
@@ -487,7 +492,7 @@ new #[Layout('layouts::frontend')] class extends Component
                 </div>
                 <div class="mt-4 text-3xl font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">
                     @if(\App\Models\WebsiteSetting::getPricesVisible())
-                        ${{ number_format((float) $this->wallet->balance, 2) }}
+                        {{ $money->format((float) $this->wallet->balance, 'USD', 2) }}
                     @else
                         —
                     @endif
@@ -625,7 +630,7 @@ new #[Layout('layouts::frontend')] class extends Component
                                     <div class="flex items-center justify-between gap-3">
                                         <span class="text-xl font-bold tabular-nums {{ $amountColor }}" dir="ltr">
                                             @if(\App\Models\WebsiteSetting::getPricesVisible())
-                                                {{ $transaction->direction === WalletTransactionDirection::Credit ? '+' : '−' }}${{ number_format((float) $transaction->amount, 2) }}
+                                                {{ $transaction->direction === WalletTransactionDirection::Credit ? '+' : '−' }}{{ $money->format((float) $transaction->amount, 'USD', 2) }}
                                             @else
                                                 —
                                             @endif
@@ -716,7 +721,7 @@ new #[Layout('layouts::frontend')] class extends Component
                                             </td>
                                             <td class="px-5 py-4 text-zinc-700 dark:text-zinc-200" dir="ltr">
                                                 @if(\App\Models\WebsiteSetting::getPricesVisible())
-                                                    ${{ number_format((float) $transaction->amount, 2) }}
+                                                    {{ $money->format((float) $transaction->amount, 'USD', 2) }}
                                                 @else
                                                     —
                                                 @endif
@@ -863,7 +868,7 @@ new #[Layout('layouts::frontend')] class extends Component
                                 <div>
                                     <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                                         @if(\App\Models\WebsiteSetting::getPricesVisible())
-                                            ${{ number_format((float) $topupRequest->amount, 2) }}
+                                            {{ $money->format((float) $topupRequest->amount, 'USD', 2) }}
                                         @else
                                             —
                                         @endif

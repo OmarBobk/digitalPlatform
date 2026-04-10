@@ -130,13 +130,18 @@ new class extends Component
                                             @endphp
                                             <flux:badge size="sm" color="zinc">{{ $tierLabel }} {{ __('messages.loyalty_price') }}</flux:badge>
                                             @if ((float) ($product['base_price'] ?? 0) > (float) ($product['price'] ?? 0))
-                                                <span class="shrink-0 tabular-nums text-sm text-zinc-500 line-through dark:text-zinc-400" dir="ltr">${{ number_format((float) $product['base_price'], 2) }}</span>
+                                                <span
+                                                    class="shrink-0 tabular-nums text-sm text-zinc-500 line-through dark:text-zinc-400"
+                                                    dir="ltr"
+                                                    x-text="$store.cart.format(product.base_price)"
+                                                >${{ number_format((float) $product['base_price'], 2) }}</span>
                                             @endif
                                         @endif
                                         <span
                                             class="shrink-0 tabular-nums text-base font-bold text-(--color-accent)"
                                             dir="ltr"
-                                            aria-label="{{ __('messages.amount') }}: ${{ number_format((float) $product['price'], 2) }}"
+                                            x-bind:aria-label="'{{ __('messages.amount') }}: ' + $store.cart.format(product.price)"
+                                            x-text="$store.cart.format(product.price)"
                                         >
                                             ${{ number_format((float) $product['price'], 2) }}
                                         </span>

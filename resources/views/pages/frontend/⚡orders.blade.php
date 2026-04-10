@@ -4,6 +4,7 @@ use App\Enums\FulfillmentStatus;
 use App\Enums\OrderStatus;
 use App\Enums\ProductAmountMode;
 use App\Actions\Orders\RefundOrderItem;
+use App\Support\FrontendMoney;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\WalletTransaction;
@@ -365,9 +366,7 @@ new #[Layout('layouts::frontend')] class extends Component
 
     protected function formatAmount(float|string $amount, string $currency): string
     {
-        $value = number_format((float) $amount, 2);
-
-        return strtoupper($currency) === 'USD' ? '$'.$value : $value.' '.$currency;
+        return FrontendMoney::for(auth()->user())->format($amount, $currency, 2);
     }
 
     /**

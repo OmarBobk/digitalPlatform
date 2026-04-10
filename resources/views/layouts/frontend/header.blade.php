@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 @php
+    $money = \App\Support\FrontendMoney::for(auth()->user());
     $isRtl = app()->isLocale('ar');
     $direction = $isRtl ? 'rtl' : 'ltr';
     $walletBalance = 0;
@@ -183,7 +184,7 @@
                                 <flux:icon icon="wallet" class="size-4 text-zinc-500 dark:text-zinc-300" />
                                 @if(\App\Models\WebsiteSetting::getPricesVisible())
                                 <span class="text-zinc-900 dark:text-zinc-100 hidden sm:block" dir="ltr">
-                                    {{ config('billing.currency_symbol', '$') }}{{ number_format((float) $walletBalance, 2) }}
+                                    {{ $money->format((float) $walletBalance, 'USD', 2) }}
                                 </span>
                                 @endif
                             </a>
@@ -241,7 +242,7 @@
                                     <flux:navbar.item class="border !border-accent after:!h-0 {{request()->routeIs('wallet') ? '!bg-accent hover:!bg-accent-hover !text-accent-foreground' : ''}}"
                                                       data-nav-active="{{ request()->routeIs('wallet') ? 'true' : 'false' }}"
                                                       href="{{route('wallet')}}"
-                                                      badge="{{ config('billing.currency_symbol', '$') }}{{ number_format((float) $walletBalance, 2) }}"
+                                                      badge="{{ $money->format((float) $walletBalance, 'USD', 2) }}"
                                                       badge:color="{{request()->routeIs('wallet') ? 'green' : 'sky'}}"
                                                       badge:class="ms-3 whitespace-nowrap px-2 {{request()->routeIs('wallet') ? 'dark:!text-green-800' : ''}}"
                                                       icon="plus">{{__('main.add_sufficient')}}</flux:navbar.item>

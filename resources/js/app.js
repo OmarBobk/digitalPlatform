@@ -204,12 +204,7 @@ document.addEventListener('alpine:init', () => {
                 return '—';
             }
 
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-            }).format(value);
+            return displayCurrency.format(value);
         },
 
         formatPerUnitRate(value) {
@@ -217,12 +212,67 @@ document.addEventListener('alpine:init', () => {
                 return '—';
             }
 
-            return new Intl.NumberFormat('en-US', {
+            return displayCurrency.formatPerUnit(Number(value));
+        },
+    };
+
+    const displayCurrency = {
+        preferred() {
+            const code = String(window.Laravel?.preferredCurrency ?? 'USD').toUpperCase();
+
+            return code === 'TRY' ? 'TRY' : 'USD';
+        },
+
+        rate() {
+            const rate = Number(window.Laravel?.usdTryRate ?? null);
+
+            return Number.isFinite(rate) && rate > 0 ? rate : null;
+        },
+
+        activeCode() {
+            if (displayCurrency.preferred() === 'TRY' && displayCurrency.rate() !== null) {
+                return 'TRY';
+            }
+
+            return 'USD';
+        },
+
+        convert(usdValue) {
+            const n = Number(usdValue);
+            if (! Number.isFinite(n)) {
+                return 0;
+            }
+            if (displayCurrency.activeCode() === 'TRY') {
+                return n * Number(displayCurrency.rate());
+            }
+
+            return n;
+        },
+
+        format(usdValue) {
+            const code = displayCurrency.activeCode();
+            const locale = code === 'TRY' ? 'tr-TR' : 'en-US';
+            const value = displayCurrency.convert(usdValue);
+
+            return new Intl.NumberFormat(locale, {
                 style: 'currency',
-                currency: 'USD',
+                currency: code,
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            }).format(value);
+        },
+
+        formatPerUnit(usdValue) {
+            const code = displayCurrency.activeCode();
+            const locale = code === 'TRY' ? 'tr-TR' : 'en-US';
+            const value = displayCurrency.convert(usdValue);
+
+            return new Intl.NumberFormat(locale, {
+                style: 'currency',
+                currency: code,
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 6,
-            }).format(Number(value));
+            }).format(value);
         },
     };
 
@@ -362,11 +412,6 @@ document.addEventListener('alpine:init', () => {
         customAmountErrors: {},
         /** When false, empty required package fields do not show inline errors until checkout is attempted. */
         showCartRequirementErrors: false,
-        formatter: new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            maximumFractionDigits: 2,
-        }),
         addToCartMessageTemplate: 'Added :name to cart',
 
         init() {
@@ -992,12 +1037,7 @@ document.addEventListener('alpine:init', () => {
                 return '—';
             }
 
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 6,
-            }).format(Number(value));
+            return displayCurrency.formatPerUnit(Number(value));
         },
 
         applyCustomAmountPrice(payload) {
@@ -1106,7 +1146,10 @@ document.addEventListener('alpine:init', () => {
             $wire.checkout(this.checkoutItems);
         },
         format(value) {
-            return this.formatter.format(Number(value ?? 0));
+            return displayCurrency.format(Number(value ?? 0));
+        },
+        displayCurrencyCode() {
+            return displayCurrency.activeCode();
         },
         get count() {
             return this.items.reduce((total, item) => total + (item.amount_mode === 'custom' ? 1 : item.quantity), 0);

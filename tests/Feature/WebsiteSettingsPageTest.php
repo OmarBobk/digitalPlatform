@@ -3,6 +3,7 @@
 use App\Models\User;
 use App\Models\WebsiteSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -51,6 +52,7 @@ test('admin can save website settings', function () {
         ->set('secondaryCountryCode', '+963')
         ->set('secondaryPhone', '(11) 234-5678')
         ->set('pricesVisible', true)
+        ->set('usdTryRate', '39.125000')
         ->call('save')
         ->assertDispatched('website-settings-saved');
 
@@ -59,4 +61,25 @@ test('admin can save website settings', function () {
     expect($settings->primary_phone)->toBe('+90 (555) 123-4567');
     expect($settings->secondary_phone)->toBe('+963 (11) 234-5678');
     expect($settings->prices_visible)->toBeTrue();
+    expect((float) $settings->usd_try_rate)->toBe(39.125);
+    expect($settings->usd_try_rate_updated_at)->not()->toBeNull();
+});
+
+test('admin can fetch usd try rate into form', function () {
+    Http::fake([
+        'https://open.er-api.com/*' => Http::response([
+            'rates' => [
+                'TRY' => 40.55,
+            ],
+        ], 200),
+    ]);
+
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    Livewire::actingAs($admin)
+        ->test('pages::backend.website-settings.index')
+        ->call('fetchUsdTryRate')
+        ->assertSet('usdTryRate', '40.550000')
+        ->assertHasNoErrors();
 });

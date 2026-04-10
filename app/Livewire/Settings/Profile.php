@@ -24,6 +24,8 @@ class Profile extends Component
 
     public string $email = '';
 
+    public string $preferred_currency = 'USD';
+
     /**
      * Mount the component.
      */
@@ -32,6 +34,9 @@ class Profile extends Component
         $this->name = Auth::user()->name;
         $this->username = Auth::user()->username ?? '';
         $this->email = Auth::user()->email;
+        $this->preferred_currency = in_array(Auth::user()->preferred_currency, ['USD', 'TRY'], true)
+            ? Auth::user()->preferred_currency
+            : 'USD';
     }
 
     /**
@@ -45,6 +50,7 @@ class Profile extends Component
             'name' => $this->nameRules(),
             'username' => $this->usernameRules($user->id),
             'email' => $this->emailRules($user->id),
+            'preferred_currency' => $this->preferredCurrencyRules(),
         ]);
 
         $user->fill($validated);
