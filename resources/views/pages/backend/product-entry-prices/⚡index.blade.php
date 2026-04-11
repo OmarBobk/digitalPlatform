@@ -101,24 +101,24 @@ new class extends Component
         $this->success(__('messages.product_entry_prices_updated'));
     }
 
+    /**
+     * Exact stored entry_price for display/inputs (matches DECIMAL / decimal:8; avoids float + 6dp rounding).
+     */
     public function formatEntryPriceDisplay(Product $product): string
     {
-        if ($product->entry_price === null) {
-            return '—';
+        $stored = $this->formatStoredEntryPrice($product);
+
+        return $stored ?? '—';
+    }
+
+    public function formatStoredEntryPrice(Product $product): ?string
+    {
+        $raw = $product->getRawOriginal('entry_price');
+        if ($raw === null || $raw === '') {
+            return null;
         }
 
-        $value = (float) $product->entry_price;
-        $isCustom = $product->amount_mode === ProductAmountMode::Custom;
-
-        if (! $isCustom || abs($value) >= 0.01) {
-            return number_format($value, 2, '.', '');
-        }
-
-        if (abs($value) < 1e-12) {
-            return number_format(0.0, 2, '.', '');
-        }
-
-        return number_format($value, 6, '.', '');
+        return $this->normalizeStoredDecimalString((string) $raw);
     }
 
     public function render(): View
@@ -138,11 +138,34 @@ new class extends Component
 
         foreach ($this->productsForPackage as $product) {
             $id = (string) $product->id;
-            $formatted = $this->formatEntryPriceDisplay($product);
-            $forInput = $formatted === '—' ? '' : $formatted;
+            $forInput = $this->formatStoredEntryPrice($product) ?? '';
             $this->initialPrices[$id] = $forInput;
             $this->newPrices[$id] = $forInput;
         }
+    }
+
+    private function normalizeStoredDecimalString(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+
+        $negative = str_starts_with($value, '-');
+        $value = ltrim($value, '+');
+        if ($negative) {
+            $value = ltrim($value, '-');
+        }
+
+        if (! str_contains($value, '.')) {
+            return ($negative ? '-' : '').$value;
+        }
+
+        [$int, $frac] = explode('.', $value, 2);
+        $frac = rtrim($frac, '0');
+        $normalized = $frac === '' ? $int : "{$int}.{$frac}";
+
+        return ($negative ? '-' : '').$normalized;
     }
 };
 ?>
