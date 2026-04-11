@@ -50,3 +50,10 @@ test('admin notifications page shows mark all as read when unread exist', functi
         ->test('pages::backend.notifications.index')
         ->assertSee(__('messages.mark_all_read'), false);
 });
+
+test('admin can open the notifications admin route', function (): void {
+    $this->actingAs($this->admin)
+        ->get(route('admin.notifications.index'))
+        ->assertSuccessful()
+        ->assertSeeLivewire('pages::backend.notifications.index');
+});
