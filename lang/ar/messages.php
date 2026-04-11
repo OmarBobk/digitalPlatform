@@ -784,6 +784,7 @@ return [
     'all' => 'الكل',
     'unread' => 'غير مقروءة',
     'mark_all_read' => 'تعليم الكل كمقروء',
+    'mark_all_read' => 'تعليم الكل كمقروء',
     'mark_selected_read' => 'تعليم المحدد كمقروء',
     'no_notifications' => 'لا توجد إشعارات',
     'title' => 'العنوان',

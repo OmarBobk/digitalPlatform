@@ -69,6 +69,17 @@ new class extends Component
         $this->selectedIds = [];
     }
 
+    public function markAllAsRead(): void
+    {
+        Auth::user()->notifications()->whereNull('read_at')->update(['read_at' => now()]);
+        $this->selectedIds = [];
+    }
+
+    public function getHasUnreadNotificationsProperty(): bool
+    {
+        return Auth::user()->notifications()->whereNull('read_at')->exists();
+    }
+
     public function render(): View
     {
         return $this->view()->title(__('messages.notifications'));
@@ -100,6 +111,17 @@ new class extends Component
                 <option value="all">{{ __('messages.all') }}</option>
                 <option value="unread">{{ __('messages.unread') }}</option>
             </flux:select>
+            @if ($this->hasUnreadNotifications)
+                <flux:button
+                    variant="outline"
+                    size="sm"
+                    wire:click="markAllAsRead"
+                    wire:loading.attr="disabled"
+                    wire:target="markAllAsRead"
+                >
+                    {{ __('messages.mark_all_read') }}
+                </flux:button>
+            @endif
             @if ($selectedIds !== [])
                 <flux:button variant="primary" size="sm" wire:click="markSelectedAsRead">
                     {{ __('messages.mark_selected_read') }}

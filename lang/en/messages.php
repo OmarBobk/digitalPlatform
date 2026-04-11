@@ -784,6 +784,7 @@ return [
     'all' => 'All',
     'unread' => 'Unread',
     'mark_all_read' => 'Mark all as read',
+    'mark_all_read' => 'Mark all as read',
     'mark_selected_read' => 'Mark selected as read',
     'no_notifications' => 'No notifications',
     'title' => 'Title',
