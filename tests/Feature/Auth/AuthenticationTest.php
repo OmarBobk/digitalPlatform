@@ -9,6 +9,14 @@ test('login screen can be rendered', function () {
     $response->assertOk();
 });
 
+test('login form includes alpine guard against double submit', function () {
+    $this->get(route('login'))
+        ->assertOk()
+        ->assertSee('x-data="{ submitting: false }"', false)
+        ->assertSee('x-on:submit="submitting = true"', false)
+        ->assertSee('x-bind:disabled="submitting"', false);
+});
+
 test('users can authenticate using the login screen', function () {
     $user = User::factory()->create();
 
