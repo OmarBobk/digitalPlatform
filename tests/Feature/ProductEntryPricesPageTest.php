@@ -79,6 +79,30 @@ test('user can update entry price for a product in selected package', function (
     expect((float) $product->fresh()->entry_price)->toBe(12.5);
 });
 
+test('product entry prices page shows stored entry price without rounding away decimal precision', function () {
+    $role = Role::firstOrCreate(['name' => 'price_editor']);
+    $role->syncPermissions(['view_dashboard', 'update_product_prices']);
+
+    $user = User::factory()->create();
+    $user->assignRole('price_editor');
+
+    $package = Package::factory()->create();
+    $product = Product::factory()->for($package)->create([
+        'entry_price' => '0.00011172',
+        'amount_mode' => ProductAmountMode::Custom,
+        'amount_unit_label' => 'GB',
+        'custom_amount_min' => 1,
+        'custom_amount_max' => 100,
+        'custom_amount_step' => 1,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::backend.product-entry-prices.index')
+        ->set('packageId', (string) $package->id)
+        ->assertSet('newPrices.'.(string) $product->id, '0.00011172');
+});
+
 test('custom amount product rejects non positive entry price on update', function () {
     $role = Role::firstOrCreate(['name' => 'price_editor']);
     $role->syncPermissions(['view_dashboard', 'update_product_prices']);
