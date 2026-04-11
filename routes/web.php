@@ -63,6 +63,9 @@ Route::middleware(['auth', 'verified', 'backend'])->group(function () {
     Route::livewire('/categories', 'pages::backend.categories.index')->name('categories');
     Route::livewire('/packages', 'pages::backend.packages.index')->name('packages');
     Route::livewire('/products', 'pages::backend.products.index')->name('products');
+    Route::livewire('/product-entry-prices', 'pages::backend.product-entry-prices.index')
+        ->middleware('can:update_product_prices')
+        ->name('product-entry-prices');
     Route::livewire('/pricing-rules', 'pages::backend.pricing-rules.index')->name('pricing-rules');
     Route::livewire('/loyalty-tiers', 'pages::backend.loyalty-tiers.index')->name('loyalty-tiers');
     Route::livewire('/admin/orders', 'pages::backend.orders.index')->name('admin.orders.index');
