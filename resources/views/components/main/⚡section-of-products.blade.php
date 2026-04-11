@@ -97,7 +97,7 @@ new class extends Component
                         class="group flex h-full flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white text-zinc-900 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-accent hover:shadow-md dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-accent"
                     >
                         <button
-                            x-on:click="$dispatch('open-buy-now', { productId: {{ $product['id'] }} })"
+                            x-on:click="$dispatch('open-buy-now', { productId: {{ $product['id'] }}, quantity: 1 })"
                             class="block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
                             aria-label="{{ $product['name'] }}"
                         >
@@ -115,7 +115,7 @@ new class extends Component
                         </button>
                         <div class="flex min-w-0 flex-1 flex-col gap-2 px-3 pb-3 pt-2">
                             <button
-                                x-on:click="$dispatch('open-buy-now', { productId: {{ $product['id'] }} })"
+                                x-on:click="$dispatch('open-buy-now', { productId: {{ $product['id'] }}, quantity: 1 })"
                                 class="text-start text-sm font-semibold text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) dark:text-zinc-100"
                             >
                                 {{ $product['name'] }}
@@ -158,7 +158,7 @@ new class extends Component
                                         variant="outline"
                                         size="xs"
                                         class="touch-manipulation sm:min-h-0 sm:min-w-0"
-                                        x-on:click="$dispatch('open-buy-now', { productId: {{ $product['id'] }} })"
+                                        x-on:click="$dispatch('open-buy-now', { productId: {{ $product['id'] }}, quantity: 1 })"
                                     >
                                         {{ __('main.buy_now') }}
                                     </flux:button>

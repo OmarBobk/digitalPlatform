@@ -367,3 +367,66 @@ it('computes fixed buy now line total using total-based pricing', function (): v
 
     expect((float) $component->get('buyNowLineFinalPrice'))->toBe(198.0);
 });
+
+it('treats cleared fixed quantity as empty without error and clears line price until re-entered', function (): void {
+    PricingRule::create([
+        'min_price' => 0,
+        'max_price' => 999999.99,
+        'wholesale_percentage' => 0,
+        'retail_percentage' => 0,
+        'priority' => 0,
+        'is_active' => true,
+    ]);
+
+    $user = User::factory()->create();
+    $package = Package::factory()->create(['is_active' => true]);
+    $product = Product::factory()->for($package)->create([
+        'is_active' => true,
+        'amount_mode' => ProductAmountMode::Fixed,
+        'entry_price' => 10,
+        'retail_price' => 12,
+    ]);
+
+    $component = Livewire::actingAs($user)
+        ->test('main.buy-now-modal')
+        ->call('openBuyNow', $product->id, false, 1);
+
+    expect($component->get('buyNowLineFinalPrice'))->not->toBeNull();
+
+    $component->set('buyNowQuantity', '');
+
+    expect($component->get('buyNowQuantity'))->toBe('')
+        ->and($component->get('buyNowLineFinalPrice'))->toBeNull();
+
+    $component->assertStatus(200);
+
+    $component->set('buyNowQuantity', 3);
+
+    expect((float) $component->get('buyNowLineFinalPrice'))->toBeGreaterThan(0);
+});
+
+it('defaults quantity when openBuyNow omits optional quantity argument', function (): void {
+    PricingRule::create([
+        'min_price' => 0,
+        'max_price' => 999999.99,
+        'wholesale_percentage' => 0,
+        'retail_percentage' => 0,
+        'priority' => 0,
+        'is_active' => true,
+    ]);
+
+    $user = User::factory()->create();
+    $package = Package::factory()->create(['is_active' => true]);
+    $product = Product::factory()->for($package)->create([
+        'is_active' => true,
+        'amount_mode' => ProductAmountMode::Fixed,
+        'entry_price' => 5,
+        'retail_price' => 6,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test('main.buy-now-modal')
+        ->call('openBuyNow', $product->id, false, null)
+        ->assertSet('buyNowQuantity', 1)
+        ->assertStatus(200);
+});

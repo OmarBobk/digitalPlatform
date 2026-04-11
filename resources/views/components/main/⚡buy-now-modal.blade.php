@@ -37,8 +37,8 @@ new class extends Component
     public ?int $buyNowCustomAmountMin = null;
     public ?int $buyNowCustomAmountMax = null;
     public int $buyNowCustomAmountStep = 1;
-    /** @var int|string Livewire can send empty string from number input; we normalize to int. */
-    public int|string $buyNowQuantity = 1;
+    /** @var int|string|null Livewire can send empty string while the user clears the quantity field. */
+    public int|string|null $buyNowQuantity = 1;
     public array $buyNowRequirements = [];
     public array $buyNowRequirementsSchema = [];
     public array $buyNowRequirementsRules = [];
@@ -97,7 +97,7 @@ new class extends Component
         return BuyNowClientPricingContext::build(auth()->user(), $product);
     }
 
-    public function openBuyNow(int $productId, bool $fromPackageOverlay = false, ?int $quantity = null, ?int $overlayCustomAmount = null): void
+    public function openBuyNow(int $productId, bool $fromPackageOverlay = false, mixed $quantity = null, mixed $overlayCustomAmount = null): void
     {
         if (! auth()->check()) {
             $this->redirectRoute('login');
@@ -113,6 +113,9 @@ new class extends Component
             return;
         }
 
+        $normalizedQuantity = $this->normalizeBuyNowOptionalPositiveInt($quantity);
+        $normalizedOverlayAmount = $this->normalizeBuyNowOptionalPositiveInt($overlayCustomAmount);
+
         $this->buyNowProductId = $product['id'];
         $this->buyNowProductName = $product['name'] ?? null;
         $this->buyNowPackageName = $product['package_name'] ?? $this->selectedPackageName;
@@ -125,7 +128,7 @@ new class extends Component
 
         if ($this->buyNowAmountMode === ProductAmountMode::Custom->value) {
             $initialAmount = (int) ($this->buyNowCustomAmountMin ?? 1);
-            if ($overlayCustomAmount !== null && $overlayCustomAmount > 0) {
+            if ($normalizedOverlayAmount !== null) {
                 $productForAmountCheck = Product::query()
                     ->select([
                         'id',
@@ -140,8 +143,8 @@ new class extends Component
                 if ($productForAmountCheck !== null) {
                     try {
                         app(\App\Domain\Pricing\CustomAmountValidator::class)
-                            ->validate($productForAmountCheck, $overlayCustomAmount, 'buyNowRequestedAmount');
-                        $initialAmount = $overlayCustomAmount;
+                            ->validate($productForAmountCheck, $normalizedOverlayAmount, 'buyNowRequestedAmount');
+                        $initialAmount = $normalizedOverlayAmount;
                     } catch (ValidationException) {
                         // Fallback to minimum/default when overlay amount is not valid.
                     }
@@ -155,7 +158,7 @@ new class extends Component
         }
         $this->buyNowQuantity = $this->buyNowAmountMode === ProductAmountMode::Custom->value
             ? 1
-            : max(1, (int) ($quantity ?? 1));
+            : max(1, (int) ($normalizedQuantity ?? 1));
         $this->buyNowRequirementsSchema = $product['requirements_schema'] ?? [];
         $this->buyNowRequirementsRules = $product['requirements_rules'] ?? [];
         $this->buyNowRequirementsAttributes = $product['requirements_attributes'] ?? [];
@@ -313,6 +316,12 @@ new class extends Component
             return;
         }
 
+        if ($this->buyNowQuantity === '' || $this->buyNowQuantity === null) {
+            $this->buyNowLineFinalPrice = null;
+
+            return;
+        }
+
         $pricingEngine = app(PricingEngine::class);
         $user = auth()->user();
         $quote = $pricingEngine->quote($product, max(1, (int) $this->buyNowQuantity), null, $user);
@@ -444,9 +453,20 @@ new class extends Component
     {
         if ($this->buyNowAmountMode === ProductAmountMode::Custom->value) {
             $this->buyNowQuantity = 1;
+
             return;
         }
-        $this->buyNowQuantity = max(1, (int) $this->buyNowQuantity);
+
+        if ($value === '' || $value === null) {
+            $this->buyNowQuantity = '';
+            $this->buyNowLineFinalPrice = null;
+            $this->buyNowPriceError = null;
+            $this->resetErrorBag('buyNowQuantity');
+
+            return;
+        }
+
+        $this->buyNowQuantity = max(1, (int) $value);
         $this->validateOnly('buyNowQuantity', $this->buyNowRules(), [], $this->buyNowAttributes());
         $this->refreshBuyNowLinePrice();
     }
@@ -726,6 +746,28 @@ new class extends Component
         }
 
         return __('messages.invalid_value', ['field' => __('messages.entry_price')]);
+    }
+
+    /**
+     * Coerce Livewire/Alpine payloads (undefined, "", non-numeric) for optional positive integers.
+     */
+    private function normalizeBuyNowOptionalPositiveInt(mixed $value): ?int
+    {
+        if ($value === null || $value === '' || $value === false) {
+            return null;
+        }
+
+        if (is_string($value) && ! is_numeric($value)) {
+            return null;
+        }
+
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        $int = (int) $value;
+
+        return $int >= 1 ? $int : null;
     }
 
     private function resetBuyNowState(): void
@@ -1012,7 +1054,7 @@ new class extends Component
         @else
             x-data
         @endif
-        x-on:open-buy-now.window="$wire.openBuyNow($event.detail.productId, false, $event.detail.quantity)"
+        x-on:open-buy-now.window="$wire.openBuyNow($event.detail.productId, false, $event.detail.quantity === undefined ? null : $event.detail.quantity)"
         x-on:open-package-overlay.window="$wire.openPackageOverlay($event.detail.packageId)"
     >
         <div class="flex items-center">
@@ -1316,7 +1358,7 @@ new class extends Component
                                             type="button"
                                             variant="primary"
                                             size="xs"
-                                            x-on:click="$wire.openBuyNow({{ $product['id'] }}, true, qty, null)"
+                                            x-on:click="$wire.openBuyNow({{ $product['id'] }}, true, Math.max(1, parseInt(qty, 10) || 1), null)"
                                         >
                                             {{ __('main.buy_now') }}
                                         </flux:button>
