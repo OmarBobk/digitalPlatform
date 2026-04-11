@@ -222,5 +222,6 @@ return [
         'view_activities',
         'manage_settlements',
         'manage_bugs',
+        'update_product_prices',
     ],
 ];

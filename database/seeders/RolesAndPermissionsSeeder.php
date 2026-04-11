@@ -38,6 +38,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage_bugs',
             'install_pwa_app',
             'manage_user_prices',
+            'update_product_prices',
         ];
 
         // Create permissions
