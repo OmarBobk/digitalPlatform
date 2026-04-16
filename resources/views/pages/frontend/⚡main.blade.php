@@ -27,7 +27,7 @@ new #[Layout('layouts::frontend')] class extends Component {
 };
 ?>
 
-<div class="flex flex-col sm:gap-8">
+<div class="flex flex-col">
 
     <!-- Start Circular Slider -->
     <section class="mx-auto w-full max-w-7xl" data-section="homepage-marquee" aria-labelledby="homepage-marquee-heading">
