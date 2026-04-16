@@ -37,7 +37,7 @@
             x-init="window.addEventListener('scroll', () => { isScrolled = window.scrollY > 10;})"
         >
             <div
-                class="border-b border-accent/25 bg-accent px-3"
+                class="bg-accent px-3"
                 data-test="frontend-announcement-bar"
                 role="region"
                 aria-label="{{ __('main.announcement_welcome') }}"
