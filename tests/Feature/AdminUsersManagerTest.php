@@ -306,3 +306,30 @@ test('assign roles on edit syncs and logs when changed', function () {
         ->first();
     expect($activity)->not->toBeNull();
 });
+
+test('assign roles on edit still works when preferred currency is missing from modal payload', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+    Role::firstOrCreate(['name' => 'customer']);
+    Role::firstOrCreate(['name' => 'salesperson']);
+
+    $target = User::factory()->create([
+        'name' => 'Currency Target',
+        'username' => 'currencytarget',
+        'email' => 'currencytarget@example.com',
+        'preferred_currency' => 'USD',
+        'country_code' => null,
+    ]);
+    $target->assignRole('customer');
+
+    Livewire::actingAs($admin)
+        ->test(UserModals::class)
+        ->call('startEdit', $target->id)
+        ->set('editRoles', ['salesperson'])
+        ->set('editCountryCode', null)
+        ->call('saveEdit')
+        ->assertHasNoErrors();
+
+    $target->refresh();
+    expect($target->getRoleNames()->all())->toContain('salesperson');
+});

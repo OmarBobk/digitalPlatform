@@ -31,14 +31,31 @@
     >
         <script>window.__addToCartMessageTemplate = @json(__('main.add_to_cart_for'));</script>
         <flux:header
-            sticky class="!block !px-3 !py-3 border-b border-zinc-200  dark:border-zinc-700 dark:!bg-zinc-900 "
+            sticky
+            class="!block !p-0 fixed top-0 start-0 end-0 z-50 w-full transition-all duration-300"
             x-data="{ isScrolled: false }"
             x-init="window.addEventListener('scroll', () => { isScrolled = window.scrollY > 10;})"
-            x-bind:class="isScrolled
-            ? 'fixed top-0 start-0 end-0 z-50 transition-all bg-white duration-300 shadow-lg border-b border-gray-200'
-            : 'fixed top-0 start-0 end-0 z-50 transition-all bg-white duration-300'"
         >
-            <div class="mx-auto w-full h-full [:where(&)]:max-w-7xl  items-center">
+            <div
+                class="bg-accent px-3"
+                data-test="frontend-announcement-bar"
+                role="region"
+                aria-label="{{ __('main.announcement_welcome') }}"
+            >
+                <div
+                    class="mx-auto flex max-w-7xl items-center justify-between gap-3 py-2 text-base font-semibold text-accent-foreground"
+                >
+                    <p class="text-start font-sans">
+                        {{ __('main.announcement_welcome') }}
+                    </p>
+                </div>
+            </div>
+
+            <div
+                class="border-b border-zinc-200 bg-white px-3 py-3 transition-all duration-300 dark:border-zinc-700 dark:!bg-zinc-900"
+                x-bind:class="isScrolled ? 'shadow-lg' : ''"
+            >
+                <div class="mx-auto w-full h-full [:where(&)]:max-w-7xl  items-center">
 
 
                 <div class="flex flex-wrap sm:flex-nowrap justify-between gap-2 sm:gap-4 items-center w-full mb-3 sm:mb-0">
@@ -398,6 +415,7 @@
                     </script>
                 </nav>
 
+                </div>
             </div>
         </flux:header>
 
