@@ -21,6 +21,7 @@ new class extends Component
                 'id' => $package->id,
                 'name' => $package->name,
                 'image' => filled($package->image) ? asset($package->image) : $placeholderImage,
+                'fallback_image' => $placeholderImage,
                 'href' => '#',
             ])
             ->all();
@@ -344,7 +345,7 @@ new class extends Component
                 @foreach ($categoryItems as $item)
                     <a
                         href="{{ $item['href'] }}"
-                        class="group flex shrink-0 flex-col items-center gap-2 text-center select-none w-[5.5rem] sm:w-20
+                        class="group flex shrink-0 flex-col items-center gap-1.5 text-center select-none w-[4.75rem] sm:w-[5.25rem]
                         focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent)"
                         x-on:click="
                             if (hasMoved) {
@@ -355,9 +356,10 @@ new class extends Component
                         "
                         draggable="false"
                         title="{{ $item['name'] }}"
+                        data-test="circular-slider-item"
                     >
                         <div
-                            class="w-16 h-16 shrink-0 rounded-full flex items-center justify-center border border-zinc-200
+                            class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-zinc-200
                              bg-white text-zinc-700 shadow-sm transition duration-200 group-hover:-translate-y-0.5
                               group-hover:border-accent group-hover:bg-zinc-50 group-hover:shadow-md
                                dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200
@@ -366,13 +368,14 @@ new class extends Component
                             <img
                                 src="{{ $item['image'] }}"
                                 alt="{{ $item['name'] }}"
-                                class="h-14 w-14 rounded-full object-contain pointer-events-none transition duration-200 group-hover:scale-[1.2]"
+                                class="h-10 w-10 rounded-full object-contain pointer-events-none transition duration-200 group-hover:scale-110"
                                 loading="lazy"
                                 decoding="async"
                                 draggable="false"
+                                onerror="this.onerror=null; this.src='{{ $item['fallback_image'] }}';"
                             />
                         </div>
-                        <span class="text-xs font-medium text-zinc-700 line-clamp-2 break-words leading-tight dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100" title="{{ $item['name'] }}">
+                        <span class="text-[11px] font-medium text-zinc-700 line-clamp-2 break-words leading-tight dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100" title="{{ $item['name'] }}">
                             {{ $item['name'] }}
                         </span>
                     </a>
