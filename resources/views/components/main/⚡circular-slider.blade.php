@@ -368,14 +368,14 @@ new class extends Component
                             <img
                                 src="{{ $item['image'] }}"
                                 alt="{{ $item['name'] }}"
-                                class="h-10 w-10 rounded-full object-contain pointer-events-none transition duration-200 group-hover:scale-110"
+                                class="rounded-full object-contain pointer-events-none transition duration-200 group-hover:scale-110"
                                 loading="lazy"
                                 decoding="async"
                                 draggable="false"
                                 onerror="this.onerror=null; this.src='{{ $item['fallback_image'] }}';"
                             />
                         </div>
-                        <span class="text-[11px] font-medium text-zinc-700 line-clamp-2 break-words leading-tight dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100" title="{{ $item['name'] }}">
+                        <span class="text-[11px] w-14 font-medium text-zinc-700 line-clamp-2 break-words leading-tight dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100" title="{{ $item['name'] }}">
                             {{ $item['name'] }}
                         </span>
                     </a>
