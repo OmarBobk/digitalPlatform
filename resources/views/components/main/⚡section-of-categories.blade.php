@@ -17,19 +17,35 @@ new class extends Component
             ->select(['id', 'name', 'slug', 'image', 'order'])
             ->whereNull('parent_id')
             ->where('is_active', true)
+            ->with([
+                'packages' => fn ($query) => $query
+                    ->select(['id', 'category_id', 'name', 'order'])
+                    ->where('is_active', true)
+                    ->orderBy('order')
+                    ->orderBy('name')
+                    ->limit(4),
+            ])
             ->withCount(['packages' => fn ($query) => $query->where('is_active', true)])
             ->orderBy('order')
             ->orderBy('name')
-
             ->get()
-            ->map(fn (Category $category): array => [
-                'id' => $category->id,
-                'name' => $category->name,
-                'slug' => $category->slug,
-                'image' => filled($category->image) ? asset($category->image) : $placeholderImage,
-                'fallback_image' => $placeholderImage,
-                'packages_count' => $category->packages_count,
-            ])
+            ->values()
+            ->map(function (Category $category, int $index) use ($placeholderImage): array {
+                $maxPills = $index === 0 ? 4 : 2;
+                $packageNames = $category->packages->take($maxPills)->pluck('name')->values()->all();
+                $overflowCount = max(0, (int) $category->packages_count - count($packageNames));
+
+                return [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'slug' => $category->slug,
+                    'image' => filled($category->image) ? asset($category->image) : $placeholderImage,
+                    'fallback_image' => $placeholderImage,
+                    'packages_count' => $category->packages_count,
+                    'package_names' => $packageNames,
+                    'package_names_overflow_count' => $overflowCount,
+                ];
+            })
             ->all();
     }
 };
@@ -86,8 +102,9 @@ new class extends Component
                             aria-label="{{ $category['name'] }}"
                             data-test="homepage-category-card"
                         >
-                            <div class="absolute inset-0 bg-gradient-to-t from-zinc-950/70 via-zinc-950/20 to-transparent"></div>
-                            <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-accent/18 to-transparent opacity-80 transition duration-200 group-hover:opacity-100"></div>
+                            <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/75 to-transparent"></div>
+                            <div class="pointer-events-none absolute inset-x-0 bottom-0 h-[48%] bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
+                            <div class="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/40 to-transparent transition duration-200 group-hover:from-black/50"></div>
 
                             <div class="{{ ($loop->first) ? 'aspect-[16/10] sm:aspect-[21/11]' : 'aspect-[4/3]' }} overflow-hidden bg-zinc-100 dark:bg-zinc-900">
                                 <img
@@ -102,19 +119,37 @@ new class extends Component
 
                             <div class="absolute inset-x-0 bottom-0 p-4 sm:p-5">
                                 <div class="flex items-end justify-between gap-3">
-                                    <div class="space-y-1">
-                                        <div class="inline-flex items-center rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[11px] font-semibold tracking-[0.18em] text-white/75 uppercase backdrop-blur">
-                                            {{ __('messages.category') }}
-                                        </div>
-                                        <div class="text-base font-semibold text-white sm:text-lg {{ $loop->first ? 'lg:text-2xl' : '' }}">
+                                    <div class="max-w-[min(100%,28rem)] space-y-1.5 rounded-xl border border-white/10 bg-zinc-950/70 px-3 py-2.5 shadow-lg ring-1 ring-black/40 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/55 sm:px-3.5 sm:py-3">
+                                        @if ($category['package_names'] !== [] || $category['package_names_overflow_count'] > 0)
+                                            <div
+                                                class="flex min-w-0 flex-nowrap gap-1.5 overflow-hidden"
+                                                data-test="category-package-pills"
+                                                aria-label="{{ __('messages.packages') }}"
+                                            >
+                                                @foreach ($category['package_names'] as $packageName)
+                                                    <span class="inline-flex max-w-[9rem] shrink truncate whitespace-nowrap rounded-full border border-white/25 bg-black/55 px-2 py-1 text-[11px] font-bold text-white shadow-sm backdrop-blur-sm sm:max-w-[10rem] sm:px-2.5 sm:text-xs">
+                                                        {{ $packageName }}
+                                                    </span>
+                                                @endforeach
+                                                @if ($category['package_names_overflow_count'] > 0)
+                                                    <span
+                                                        class="inline-flex shrink-0 rounded-full border border-white/30 bg-black/60 px-2 py-1 text-[11px] font-bold text-white/95 shadow-sm backdrop-blur-sm sm:px-2.5 sm:text-xs"
+                                                        title="{{ __('messages.packages') }}"
+                                                    >
+                                                        +{{ $category['package_names_overflow_count'] }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        @endif
+                                        <div class="text-base font-semibold text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.85),0_2px_12px_rgb(0_0_0/0.55)] sm:text-lg {{ $loop->first ? 'lg:text-2xl' : '' }}">
                                             {{ $category['name'] }}
                                         </div>
-                                        <div class="text-xs text-white/75 sm:text-sm">
+                                        <div class="text-xs text-white/90 [text-shadow:0_1px_2px_rgb(0_0_0/0.75)] sm:text-sm">
                                             {{ $category['packages_count'] }} {{ __('messages.packages') }}
                                         </div>
                                     </div>
 
-                                    <div class="flex size-10 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur transition duration-200 group-hover:bg-accent group-hover:text-accent-foreground">
+                                    <div class="flex size-10 shrink-0 items-center justify-center rounded-full border border-white/25 bg-zinc-950/60 text-white shadow-md backdrop-blur-sm transition duration-200 group-hover:border-accent/60 group-hover:bg-accent group-hover:text-accent-foreground">
                                         <flux:icon icon="chevron-right" class="size-4 rtl:rotate-180" />
                                     </div>
                                 </div>
