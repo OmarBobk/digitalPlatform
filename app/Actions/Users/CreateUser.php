@@ -22,7 +22,10 @@ class CreateUser
      */
     public function handle(array $input, int $causedById): User
     {
-        Validator::make($input, [
+        Validator::make([
+            ...$input,
+            'preferred_currency' => $this->normalizePreferredCurrency($input['preferred_currency'] ?? null),
+        ], [
             ...$this->profileRules(null),
             'password' => $this->passwordRules(),
         ])->validate();
@@ -68,5 +71,10 @@ class CreateUser
             ->log('User created by admin');
 
         return $user;
+    }
+
+    private function normalizePreferredCurrency(mixed $value): string
+    {
+        return in_array($value, ['USD', 'TRY'], true) ? $value : 'USD';
     }
 }

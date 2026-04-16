@@ -22,7 +22,10 @@ class UpdateUser
      */
     public function handle(User $user, array $input, int $causedById): void
     {
-        Validator::make($input, $this->profileRules($user->id))->validate();
+        Validator::make([
+            ...$input,
+            'preferred_currency' => $this->normalizePreferredCurrency($input['preferred_currency'] ?? $user->preferred_currency ?? null),
+        ], $this->profileRules($user->id))->validate();
 
         $data = UpdateUserProfileData::from($input);
 
@@ -222,5 +225,10 @@ class UpdateUser
                 'previous_permissions' => $oldPermissions,
             ])
             ->log($description);
+    }
+
+    private function normalizePreferredCurrency(mixed $value): string
+    {
+        return in_array($value, ['USD', 'TRY'], true) ? $value : 'USD';
     }
 }
