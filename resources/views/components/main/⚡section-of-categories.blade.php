@@ -2,101 +2,127 @@
 
 declare(strict_types=1);
 
+use App\Models\Category;
 use Livewire\Component;
 
 new class extends Component
 {
-    public array $giftCardItems;
+    public array $categories = [];
 
     public function mount(): void
     {
-        $this->giftCardItems = [
-            [
-                'name' => 'App Store',
-                'label' => 'APP STORE',
-                'href' => '#',
-                'icon' => 'https://cdn.simpleicons.org/apple/ffffff',
-            ],
-            [
-                'name' => 'PlayStation',
-                'label' => 'PLAYSTATION',
-                'href' => '#',
-                'icon' => 'https://cdn.simpleicons.org/playstation/ffffff',
-            ],
-            [
-                'name' => 'Steam',
-                'label' => 'STEAM',
-                'href' => '#',
-                'icon' => 'https://cdn.simpleicons.org/steam/ffffff',
-            ],
-            [
-                'name' => 'Google Play',
-                'label' => 'GOOGLE PLAY',
-                'href' => '#',
-                'icon' => 'https://cdn.simpleicons.org/googleplay/ffffff',
-            ],
-            [
-                'name' => 'Xbox',
-                'label' => 'XBOX',
-                'href' => '#',
-                'icon' => 'https://cdn.simpleicons.org/xbox/ffffff',
-            ],
-            [
-                'name' => 'Razer Gold',
-                'label' => 'RAZER GOLD',
-                'href' => '#',
-                'icon' => 'https://cdn.simpleicons.org/razer/ffffff',
-            ],
-            [
-                'name' => 'Amazon',
-                'label' => 'AMAZON',
-                'href' => '#',
-                'icon' => 'https://cdn.simpleicons.org/amazon/ffffff',
-            ],
-            [
-                'name' => 'Battle.net',
-                'label' => 'BATTLENET',
-                'href' => '#',
-                'icon' => 'https://cdn.simpleicons.org/battledotnet/ffffff',
-            ],
-        ];
+        $placeholderImage = asset('images/icons/category-placeholder.svg');
+
+        $this->categories = Category::query()
+            ->select(['id', 'name', 'slug', 'image', 'order'])
+            ->whereNull('parent_id')
+            ->where('is_active', true)
+            ->withCount(['packages' => fn ($query) => $query->where('is_active', true)])
+            ->orderBy('order')
+            ->orderBy('name')
+
+            ->get()
+            ->map(fn (Category $category): array => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'slug' => $category->slug,
+                'image' => filled($category->image) ? asset($category->image) : $placeholderImage,
+                'fallback_image' => $placeholderImage,
+                'packages_count' => $category->packages_count,
+            ])
+            ->all();
     }
 };
 ?>
 
-<div class="px-2 py-3 sm:px-0 sm:py-4">
-    <div class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 sm:p-6">
-        <div class="flex flex-col gap-4 sm:gap-5">
-            <flux:heading size="lg" class="text-start text-zinc-900 dark:text-zinc-100">
-                {{ __('main.gift_cards') }}
-            </flux:heading>
+<div
+    class="px-2 py-3 sm:px-0 sm:py-4"
+    x-data='@json([
+        'activeCategoryId' => $categories[0]['id'] ?? null,
+        'activeCategoryName' => $categories[0]['name'] ?? __('messages.categories'),
+    ])'
+>
+    <div class="overflow-hidden rounded-[1.75rem] border border-zinc-200/80 bg-white/95 shadow-sm ring-1 ring-zinc-950/5 backdrop-blur dark:border-zinc-700 dark:bg-zinc-800/95 dark:ring-white/5">
+        <div class="border-b border-zinc-200/80 bg-gradient-to-br from-accent/12 via-transparent to-transparent px-4 py-4 dark:border-zinc-700 sm:px-6">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div class="space-y-1.5">
+                    <p class="text-[0.7rem] font-semibold tracking-[0.24em] text-accent-foreground/80 uppercase dark:text-accent">
+                        {{ __('main.homepage_marquee') }}
+                    </p>
+                    <flux:heading size="lg" class="text-start text-zinc-900 dark:text-zinc-100">
+                        {{ __('messages.categories') }}
+                    </flux:heading>
+                    <flux:text class="max-w-2xl text-sm text-zinc-600 dark:text-zinc-300">
+                        {{ __('messages.categories') }} · {{ count($categories) }} {{ __('messages.category') }}
+                    </flux:text>
+                </div>
 
-            <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4 lg:grid-cols-8">
-                @foreach ($giftCardItems as $item)
-                    <a
-                        href="{{ $item['href'] }}"
-                        @class([
-                            'group flex aspect-[4/3] flex-col items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-4 text-zinc-900 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-accent hover:bg-zinc-50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-accent dark:hover:bg-zinc-800/80',
-                        ])
-                        aria-label="{{ __('main.gift_card_label', ['name' => $item['name']]) }}"
-                    >
-                        <span class="flex size-11 items-center justify-center rounded-full border border-zinc-200 bg-zinc-800 shadow-sm transition group-hover:border-accent dark:border-zinc-700 dark:bg-zinc-800">
-                        <img
-                            src="{{ $item['icon'] }}"
-                            alt="{{ $item['name'] }} logo"
-                            class="h-6 w-6 sm:h-7 sm:w-7"
-                            width="28"
-                            height="28"
-                            loading="lazy"
-                            decoding="async"
-                        />
-                        </span>
-                        <span class="text-[0.65rem] font-semibold tracking-[0.22em] text-zinc-600 group-hover:text-zinc-900 dark:text-zinc-300 dark:group-hover:text-white" dir="ltr">
-                            {{ $item['label'] }}
-                        </span>
-                    </a>
-                @endforeach
+                <div class="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-200">
+                    <span class="inline-block size-2 rounded-full bg-accent"></span>
+                    <span x-text="activeCategoryName">
+                        {{ __('messages.categories') }}
+                    </span>
+                </div>
             </div>
+        </div>
+
+        <div class="p-4 sm:p-6">
+            @if ($categories === [])
+                <div class="rounded-2xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+                    {{ __('messages.create_first_category') }}
+                </div>
+            @else
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    @foreach ($categories as $category)
+                        <a
+                            href="#homepage-section-of-packages"
+                            wire:key="homepage-category-{{ $category['id'] }}"
+                            x-on:click="activeCategoryId = {{ $category['id'] }}; activeCategoryName = @js($category['name'])"
+                            @class([
+                                'group relative overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-accent hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) dark:border-zinc-700 dark:bg-zinc-800 dark:hover:border-accent',
+                                'sm:col-span-2 lg:row-span-2' => $loop->first,
+
+                            ])
+                            aria-label="{{ $category['name'] }}"
+                            data-test="homepage-category-card"
+                        >
+                            <div class="absolute inset-0 bg-gradient-to-t from-zinc-950/70 via-zinc-950/20 to-transparent"></div>
+                            <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-accent/18 to-transparent opacity-80 transition duration-200 group-hover:opacity-100"></div>
+
+                            <div class="{{ ($loop->first) ? 'aspect-[16/10] sm:aspect-[21/11]' : 'aspect-[4/3]' }} overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+                                <img
+                                    src="{{ $category['image'] }}"
+                                    alt="{{ $category['name'] }}"
+                                    class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                                    loading="lazy"
+                                    decoding="async"
+                                    onerror="this.onerror=null; this.src='{{ $category['fallback_image'] }}';"
+                                />
+                            </div>
+
+                            <div class="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+                                <div class="flex items-end justify-between gap-3">
+                                    <div class="space-y-1">
+                                        <div class="inline-flex items-center rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[11px] font-semibold tracking-[0.18em] text-white/75 uppercase backdrop-blur">
+                                            {{ __('messages.category') }}
+                                        </div>
+                                        <div class="text-base font-semibold text-white sm:text-lg {{ $loop->first ? 'lg:text-2xl' : '' }}">
+                                            {{ $category['name'] }}
+                                        </div>
+                                        <div class="text-xs text-white/75 sm:text-sm">
+                                            {{ $category['packages_count'] }} {{ __('messages.packages') }}
+                                        </div>
+                                    </div>
+
+                                    <div class="flex size-10 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur transition duration-200 group-hover:bg-accent group-hover:text-accent-foreground">
+                                        <flux:icon icon="chevron-right" class="size-4 rtl:rotate-180" />
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
+            @endif
         </div>
     </div>
 </div>
