@@ -22,6 +22,7 @@ return [
     'slide_number' => 'الشريحة :number',
 
     // Header
+    'announcement_welcome' => 'مرحباً بكم في متجرنا',
     'search_for_games_and_products_...' => 'ابحث عن الألعاب والمنتجات...',
     'login' => 'تسحيل الدخول',
     'register' => 'تسجيل',
