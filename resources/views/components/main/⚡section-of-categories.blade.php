@@ -102,7 +102,7 @@ new class extends Component
                             aria-label="{{ $category['name'] }}"
                             data-test="homepage-category-card"
                         >
-                            <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/75 to-transparent"></div>
+                            <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-750 via-zinc-750/75 to-transparent"></div>
                             <div class="pointer-events-none absolute inset-x-0 bottom-0 h-[48%] bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
                             <div class="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/40 to-transparent transition duration-200 group-hover:from-black/50"></div>
 
