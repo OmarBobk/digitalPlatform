@@ -42,16 +42,18 @@
     - ###DONE: Stop rotating screen on phone.
     - ###DONE: PWA application button should only appear if the user has permission for install_pwa_app
   - ###DONE: ###MAJOR### Record bug system.
+  - ###DONE: Pricing Rules on the custom amount products is always hight
+  - ###DONE: Products page: add filter by package.
+  - ###DONE: customer click on buy now button -> if he delete the default quantity value to enter his value he is getting 500 | Server Erorr
   - ###TODO: Contactus: the messages that come from this form where we should handle them.
   - ###TODO: ###MAJOR### Record website views and how many users are logged in and who are they
-  - ###TODO: ###MAJOR### Users hierarchy. 
-  - ###TODO: Pricing Rules on the custom amount products is always hight
+  - ###TODO: ###MAJOR### Users hierarchy.
   - ###TODO: Dashboard Page:
     - #TODO: who is online by role
-  - ###TODO: Products page: add filter by package.
   - ###TODO: Pretend a query or function or create a new page where the input is two fields Product serial -> new price ex: SOULCHILL-10K ->  3.00 and by that we can update the prices faster
     - or maybe we just select the package name and then (supoose there are 10 products belong to this package) on the left hand you see the Product serial and on the right hand input fiels for the new price.
-  - ###TODO: customer click on buy now button -> if he delete the default quantity value to enter his value he is getting 500 | Server Erorr
+  - ###DONE: when user trying to login and by accident click the login button twice he is redirected into "Page Expired | 419"
+  - ###DOING: Backend Notification manager add "Mark all as read" button.
   - 
 - Frontend:
   - ###DONE wallet transaction in /wallets should be more described
@@ -60,11 +62,17 @@
   - ###DONE Register form: mask the phone number field
   - ###DONE: Topups: when customer want to request a new topup he should see a toggle button if checked it then he need to upload the proof file if not then he can request the topup without uploading the proof
 
+    
 
-
-
-
-
+You are an expert UI designer and full-stack Laravel developer with 20+ years exp. You build visually stunning, production-grade interfaces using Laravel 12, Livewire 4, TailwindCSS, and Alpine.js.
+Lets build a new page in the backend Content Management section
+first of all only admins and supervisor (with update_product_prices permission) can go for it and use it.
+now the main task of this page is to make the updating products price process easiest
+now the idea is like this:
+- first user need to select a package
+- then he will see the fields on two side to side sections.
+- the left section will contain fields that filled with the product name, id, entry_price. (these fields disabled)
+- on the right section user can enter the new entry price..
 
 
 
@@ -105,6 +113,9 @@ Sonnet 4
 GPT-5 Mini
 Gemini 2.5 Flash
 Kimi K2.5
+
+
+
 General Engineering Rules:
 
 * Prefer SIMPLE over FLEXIBLE

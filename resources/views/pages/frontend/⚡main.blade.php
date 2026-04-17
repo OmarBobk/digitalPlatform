@@ -27,7 +27,7 @@ new #[Layout('layouts::frontend')] class extends Component {
 };
 ?>
 
-<div class="flex flex-col gap-6 sm:gap-8">
+<div class="flex flex-col">
 
     <!-- Start Circular Slider -->
     <section class="mx-auto w-full max-w-7xl" data-section="homepage-marquee" aria-labelledby="homepage-marquee-heading">
@@ -76,7 +76,7 @@ new #[Layout('layouts::frontend')] class extends Component {
     <!-- End Section of Categories -->
 
     <!-- Start Section of Packages -->
-    <section class="mx-auto w-full max-w-7xl" data-section="homepage-section-of-packages" aria-labelledby="homepage-packages-heading">
+    <section id="homepage-section-of-packages" class="mx-auto w-full max-w-7xl" data-section="homepage-section-of-packages" aria-labelledby="homepage-packages-heading">
         <h2 id="homepage-packages-heading" class="sr-only">{{ __('messages.packages') }}</h2>
         <livewire:main.section-of-packages />
     </section>
