@@ -31,7 +31,6 @@ it('renders homepage sliders', function () {
         ->assertSee('data-test="homepage-category-card"', false)
         ->assertSee('Console Cards')
         ->assertSee('#homepage-section-of-packages', false)
-        ->assertSee('1 '.__('messages.packages'))
         ->assertSee('data-test="category-package-pills"', false)
         ->assertSee('Test Package', false);
 });

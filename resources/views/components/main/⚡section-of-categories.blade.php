@@ -106,7 +106,7 @@ new class extends Component
                             <div class="pointer-events-none absolute inset-x-0 bottom-0 h-[48%] bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
                             <div class="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/40 to-transparent transition duration-200 group-hover:from-black/50"></div>
 
-                            <div class="{{ ($loop->first) ? 'aspect-[16/10] sm:aspect-[21/11]' : 'aspect-[4/3]' }} overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+                            <div class="{{ $loop->first ? 'aspect-[16/10] sm:aspect-[17/11]' : 'aspect-[4/3]' }} overflow-hidden bg-zinc-100 dark:bg-zinc-900">
                                 <img
                                     src="{{ $category['image'] }}"
                                     alt="{{ $category['name'] }}"
@@ -119,8 +119,8 @@ new class extends Component
 
                             <div class="absolute inset-x-0 bottom-0">
                                 <div class="">
-                                    <div class="pb-2  gap-2 items-center justify-between max-w-[min(100%,28rem)] space-y-1.5 rounded-b-2xl border border-white/10 bg-zinc-950/70 px-3 pt-2 shadow-lg ring-1 ring-black/40 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/55 sm:px-3.5">
-                                    
+                                    <div class="pb-2  gap-2 items-center justify-between space-y-1.5 rounded-b-2xl border border-white/10 bg-zinc-950/70 px-3 pt-2 shadow-lg ring-1 ring-black/40 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/55 sm:px-3.5">
+
                                         @if ($category['package_names'] !== [] || $category['package_names_overflow_count'] > 0)
                                             <div
                                                 class="flex min-w-0 flex-nowrap gap-1.5 overflow-hidden"
@@ -146,7 +146,7 @@ new class extends Component
                                             {{ $category['name'] }}
                                         </div>
                                     </div>
-                               
+
                                 </div>
                             </div>
                         </a>
