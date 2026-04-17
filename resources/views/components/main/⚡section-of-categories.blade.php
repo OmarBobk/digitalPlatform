@@ -91,9 +91,10 @@ new class extends Component
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     @foreach ($categories as $category)
                         <a
-                            href="#homepage-section-of-packages"
+                            href="{{ route('categories.show', ['category' => $category['slug']]) }}"
                             wire:key="homepage-category-{{ $category['id'] }}"
                             x-on:click="activeCategoryId = {{ $category['id'] }}; activeCategoryName = @js($category['name'])"
+                            wire:navigate
                             @class([
                                 'group relative overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-accent hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) dark:border-zinc-700 dark:bg-zinc-800 dark:hover:border-accent',
                                 'sm:col-span-2 lg:row-span-2' => $loop->first,
