@@ -107,7 +107,7 @@ new class extends Component
                             <div class="pointer-events-none absolute inset-x-0 bottom-0 h-[48%] bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
                             <div class="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/40 to-transparent transition duration-200 group-hover:from-black/50"></div>
 
-                            <div class="{{ $loop->first ? 'aspect-[16/10] sm:aspect-[4/3]' : 'aspect-[4/3]' }} overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+                            <div class=" aspect-[4/3] overflow-hidden bg-zinc-100 dark:bg-zinc-900">
                                 <img
                                     src="{{ $category['image'] }}"
                                     alt="{{ $category['name'] }}"

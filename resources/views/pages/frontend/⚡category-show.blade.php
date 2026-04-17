@@ -52,7 +52,7 @@ new #[Layout('layouts::frontend')] class extends Component
 <div class="mx-auto flex w-full max-w-7xl flex-col gap-5 px-2 py-3 sm:px-0 sm:py-4" x-data="{ viewMode: 'grid' }">
     <section class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
         <div class="relative">
-            <div class="aspect-[16/4] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+            <div class="sm:aspect-[16/4] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-900">
                 <img
                     src="{{ filled($category->image) ? asset($category->image) : $placeholderImage }}"
                     alt="{{ $category->name }}"
