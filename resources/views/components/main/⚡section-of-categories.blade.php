@@ -117,9 +117,10 @@ new class extends Component
                                 />
                             </div>
 
-                            <div class="absolute inset-x-0 bottom-0 p-4 sm:p-5">
-                                <div class="flex items-end justify-between gap-3">
-                                    <div class="max-w-[min(100%,28rem)] space-y-1.5 rounded-xl border border-white/10 bg-zinc-950/70 px-3 py-2.5 shadow-lg ring-1 ring-black/40 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/55 sm:px-3.5 sm:py-3">
+                            <div class="absolute inset-x-0 bottom-0">
+                                <div class="">
+                                    <div class="pb-2  gap-2 items-center justify-between max-w-[min(100%,28rem)] space-y-1.5 rounded-b-2xl border border-white/10 bg-zinc-950/70 px-3 pt-2 shadow-lg ring-1 ring-black/40 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/55 sm:px-3.5">
+                                    
                                         @if ($category['package_names'] !== [] || $category['package_names_overflow_count'] > 0)
                                             <div
                                                 class="flex min-w-0 flex-nowrap gap-1.5 overflow-hidden"
@@ -144,14 +145,8 @@ new class extends Component
                                         <div class="text-base font-semibold text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.85),0_2px_12px_rgb(0_0_0/0.55)] sm:text-lg {{ $loop->first ? 'lg:text-2xl' : '' }}">
                                             {{ $category['name'] }}
                                         </div>
-                                        <div class="text-xs text-white/90 [text-shadow:0_1px_2px_rgb(0_0_0/0.75)] sm:text-sm">
-                                            {{ $category['packages_count'] }} {{ __('messages.packages') }}
-                                        </div>
                                     </div>
-
-                                    <div class="flex size-10 shrink-0 items-center justify-center rounded-full border border-white/25 bg-zinc-950/60 text-white shadow-md backdrop-blur-sm transition duration-200 group-hover:border-accent/60 group-hover:bg-accent group-hover:text-accent-foreground">
-                                        <flux:icon icon="chevron-right" class="size-4 rtl:rotate-180" />
-                                    </div>
+                               
                                 </div>
                             </div>
                         </a>
