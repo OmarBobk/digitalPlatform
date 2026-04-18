@@ -311,7 +311,7 @@ return [
     'orders_card_show_less' => 'عرض أقل',
     'orders_card_show_unit_details' => 'عرض تفاصيل الوحدات',
     'orders_card_hide_unit_details' => 'إخفاء تفاصيل الوحدات',
-    'requirement_label_id' => 'المرجع',
+    'requirement_label_id' => 'المعرّف',
     'requirement_label_email' => 'البريد الإلكتروني',
     'requirement_label_username' => 'اسم المستخدم',
     'requirement_label_password' => 'كلمة المرور',

@@ -8,6 +8,7 @@ use App\Models\Fulfillment;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Package;
+use App\Models\PackageRequirement;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Wallet;
@@ -180,9 +181,17 @@ test('orders list refund button requests refund for failed fulfillment', functio
     expect(data_get($fulfillment->fresh()->meta, 'refund.status'))->toBe(WalletTransaction::STATUS_PENDING);
 });
 
-test('orders list shows humanized requirement keys', function () {
+test('orders list shows package requirement labels for requirement keys', function () {
     $user = User::factory()->create();
     $package = Package::factory()->create();
+    PackageRequirement::factory()->create([
+        'package_id' => $package->id,
+        'key' => 'id',
+        'label' => 'Player display name',
+        'type' => 'string',
+        'is_required' => true,
+        'order' => 1,
+    ]);
     $product = Product::factory()->create([
         'package_id' => $package->id,
         'entry_price' => 40,
@@ -221,6 +230,59 @@ test('orders list shows humanized requirement keys', function () {
     $this->actingAs($user)
         ->get('/orders')
         ->assertOk()
-        ->assertSee(__('messages.requirement_label_id').':', false)
+        ->assertSee('Player display name:', false)
         ->assertSee('abc-123', false);
+});
+
+test('order details shows package requirement labels for requirement keys', function () {
+    $user = User::factory()->create();
+    $package = Package::factory()->create();
+    PackageRequirement::factory()->create([
+        'package_id' => $package->id,
+        'key' => 'id',
+        'label' => 'Account UID',
+        'type' => 'string',
+        'is_required' => true,
+        'order' => 1,
+    ]);
+    $product = Product::factory()->create([
+        'package_id' => $package->id,
+        'entry_price' => 40,
+    ]);
+
+    $order = Order::create([
+        'user_id' => $user->id,
+        'order_number' => Order::temporaryOrderNumber(),
+        'currency' => 'USD',
+        'subtotal' => 40,
+        'fee' => 0,
+        'total' => 40,
+        'status' => OrderStatus::Paid,
+    ]);
+
+    $item = OrderItem::create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'package_id' => $package->id,
+        'name' => $product->name,
+        'unit_price' => 40,
+        'quantity' => 1,
+        'line_total' => 40,
+        'status' => OrderItemStatus::Pending,
+        'requirements_payload' => ['id' => 'uid-999'],
+    ]);
+
+    Fulfillment::create([
+        'order_id' => $order->id,
+        'order_item_id' => $item->id,
+        'provider' => 'manual',
+        'status' => FulfillmentStatus::Queued,
+        'attempts' => 0,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('orders.show', $order->order_number))
+        ->assertOk()
+        ->assertSee('Account UID', false)
+        ->assertSee('uid-999', false);
 });

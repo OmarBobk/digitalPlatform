@@ -5,6 +5,7 @@ use App\Enums\OrderStatus;
 use App\Enums\ProductAmountMode;
 use App\Actions\Orders\RefundOrderItem;
 use App\Support\FrontendMoney;
+use App\Support\OrderRequirementLabels;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\WalletTransaction;
@@ -92,7 +93,7 @@ new #[Layout('layouts::frontend')] class extends Component
     {
         return Order::query()
             ->where('user_id', auth()->id())
-            ->with(['items.fulfillments', 'items.product', 'items.package'])
+            ->with(['items.fulfillments', 'items.product', 'items.package.requirements'])
             ->latest('created_at')
             ->paginate($this->perPage);
     }
@@ -313,10 +314,12 @@ new #[Layout('layouts::frontend')] class extends Component
             $packageName = $item->package?->name;
             $showPackage = $packageName !== null && $packageName !== $productName;
 
+            $idMetaLabel = OrderRequirementLabels::fallbackLabel('id');
             $playerId = null;
-            foreach ($this->requirementsEntries($item->requirements_payload) as $entry) {
+            foreach ($this->requirementsEntries($item->requirements_payload, $item) as $entry) {
                 if (strtolower($entry['key']) === 'id') {
                     $playerId = $entry['value'];
+                    $idMetaLabel = $entry['label'];
                     break;
                 }
             }
@@ -327,7 +330,7 @@ new #[Layout('layouts::frontend')] class extends Component
                 $metaParts[] = $this->formatAmount($item->unit_price, $order->currency).' / '.__('messages.unit');
             }
             if ($playerId !== null) {
-                $metaParts[] = __('messages.requirement_label_id').': '.$playerId;
+                $metaParts[] = $idMetaLabel.': '.$playerId;
             }
 
             $showLinePrice = $this->shouldShowLineItemPrice($order, $item);
@@ -373,7 +376,7 @@ new #[Layout('layouts::frontend')] class extends Component
      * @param  array<string, mixed>|null  $payload
      * @return array<int, array{key: string, label: string, value: string}>
      */
-    protected function requirementsEntries(?array $payload): array
+    protected function requirementsEntries(?array $payload, ?OrderItem $item = null): array
     {
         if ($payload === null || $payload === []) {
             return [];
@@ -385,25 +388,12 @@ new #[Layout('layouts::frontend')] class extends Component
             $keyString = is_string($key) ? $key : (string) $key;
             $entries[] = [
                 'key' => $keyString,
-                'label' => $this->humanizeRequirementKey($keyString),
+                'label' => OrderRequirementLabels::labelForKey($item, $keyString),
                 'value' => $this->stringifyPayloadValue($value),
             ];
         }
 
         return $entries;
-    }
-
-    protected function humanizeRequirementKey(string $key): string
-    {
-        return match (strtolower($key)) {
-            'id' => __('messages.requirement_label_id'),
-            'email' => __('messages.requirement_label_email'),
-            'username' => __('messages.requirement_label_username'),
-            'password' => __('messages.requirement_label_password'),
-            'phone' => __('messages.requirement_label_phone'),
-            'notes' => __('messages.requirement_label_notes'),
-            default => $key,
-        };
     }
 
     /**

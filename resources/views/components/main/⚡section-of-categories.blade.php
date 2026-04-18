@@ -52,7 +52,7 @@ new class extends Component
 ?>
 
 <div
-    class="px-2 py-3 sm:px-0 sm:py-4"
+    class="py-3 sm:py-4"
     x-data='@json([
         'activeCategoryId' => $categories[0]['id'] ?? null,
         'activeCategoryName' => $categories[0]['name'] ?? __('messages.categories'),

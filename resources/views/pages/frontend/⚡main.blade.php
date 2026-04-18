@@ -83,10 +83,10 @@ new #[Layout('layouts::frontend')] class extends Component {
     <!-- End Section of Packages -->
 
     <!-- Start Section of Products -->
-    <section class="mx-auto w-full max-w-7xl" data-section="homepage-section-of-products" aria-labelledby="homepage-products-heading">
-        <h2 id="homepage-products-heading" class="sr-only">{{ __('main.homepage_products') }}</h2>
-        <livewire:main.section-of-products />
-    </section>
+{{--    <section class="mx-auto w-full max-w-7xl" data-section="homepage-section-of-products" aria-labelledby="homepage-products-heading">--}}
+{{--        <h2 id="homepage-products-heading" class="sr-only">{{ __('main.homepage_products') }}</h2>--}}
+{{--        <livewire:main.section-of-products />--}}
+{{--    </section>--}}
     <!-- End Section of Products -->
 
     <livewire:main.buy-now-modal />

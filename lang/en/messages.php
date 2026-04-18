@@ -309,7 +309,7 @@ return [
     'orders_card_show_less' => 'Show less',
     'orders_card_show_unit_details' => 'Show unit details',
     'orders_card_hide_unit_details' => 'Hide unit details',
-    'requirement_label_id' => 'Reference',
+    'requirement_label_id' => 'ID',
     'requirement_label_email' => 'Email',
     'requirement_label_username' => 'Username',
     'requirement_label_password' => 'Password',
