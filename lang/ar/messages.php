@@ -16,6 +16,14 @@ return [
     'sign_up' => 'إنشاء حساب',
     'log_out' => 'تسجيل الخروج',
 
+    'auth_forgot_password_title' => 'نسيت كلمة المرور؟',
+    'auth_forgot_password_description' => 'أدخل البريد الإلكتروني المرتبط بحسابك. سنرسل لك رابطًا آمناً لاختيار كلمة مرور جديدة.',
+    'auth_send_reset_link' => 'إرسال رابط الاستعادة',
+    'auth_back_to_log_in' => 'العودة لتسجيل الدخول',
+    'auth_reset_password_title' => 'إنشاء كلمة مرور جديدة',
+    'auth_reset_password_description' => 'اختر كلمة مرور قوية لم تستخدمها في مواقع أخرى. ستتمكن من تسجيل الدخول بعد الحفظ.',
+    'auth_save_new_password' => 'حفظ كلمة المرور',
+
     // Registration
     'create_an_account' => 'إنشاء حساب',
     'enter_your_details_below_to_create_your_account' => 'أدخل بياناتك أدناه لإنشاء حسابك',
