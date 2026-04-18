@@ -13,7 +13,7 @@
                 </div>
                 <a href="{{ route('home') }}" class="relative z-20 flex items-center text-lg font-medium" wire:navigate>
                     <span class="flex h-10 w-10 items-center justify-center rounded-md">
-                        <x-app-logo-icon class="me-2 h-7 fill-current text-white" />
+                        <x-app-logo-icon tone="on-dark" class="me-2 h-7 w-auto" />
                     </span>
                     {{ config('app.name', 'Laravel') }}
                 </a>
@@ -35,7 +35,7 @@
                     <div class="flex items-start justify-between gap-4 lg:hidden">
                         <a href="{{ route('home') }}" class="flex flex-col items-center gap-2 font-medium" wire:navigate>
                             <span class="flex h-9 w-9 items-center justify-center rounded-md">
-                                <x-app-logo-icon class="size-9 fill-current text-black dark:text-white" />
+                                <x-app-logo-icon class="size-9" />
                             </span>
                             <span class="sr-only">{{ config('app.name', 'Laravel') }}</span>
                         </a>
