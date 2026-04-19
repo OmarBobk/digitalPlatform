@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Fortify\CreateNewUser;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -59,21 +60,20 @@ test('login promotes guest session locale to account and locks preference', func
     expect($user->fresh()->locale_manually_set)->toBeTrue();
 });
 
-test('registration stores locale from accept language', function () {
-    $this->withHeader('Accept-Language', 'ar')
-        ->post(route('register.store'), [
-            'name' => 'John Doe',
-            'username' => 'loginlocale_john',
-            'email' => 'loginlocale_john@example.com',
-            'password' => 'password',
-            'password_confirmation' => 'password',
-            'preferred_currency' => 'USD',
-        ])
-        ->assertSessionHasNoErrors();
+test('new user creation applies locale from accept language', function () {
+    $this->withHeaders(['Accept-Language' => 'ar'])
+        ->get(route('home'))
+        ->assertOk();
 
-    $user = User::query()->where('email', 'loginlocale_john@example.com')->first();
+    $user = app(CreateNewUser::class)->create([
+        'name' => 'John Doe',
+        'username' => 'loginlocale_john',
+        'email' => 'loginlocale_john@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'preferred_currency' => 'USD',
+    ]);
 
-    expect($user)->not->toBeNull();
     expect($user->locale)->toBe('ar');
     expect($user->locale_manually_set)->toBeFalse();
 });

@@ -1,41 +1,21 @@
 <?php
 
-use App\Models\User;
+use Illuminate\Support\Facades\Route;
 
-test('registration screen can be rendered', function () {
-    $response = $this->get(route('register'));
-
-    $response->assertOk();
+test('registration routes are not registered when registration is disabled', function () {
+    expect(Route::has('register'))->toBeFalse()
+        ->and(Route::has('register.store'))->toBeFalse();
 });
 
-test('new users can register', function () {
-    $response = $this->post(route('register.store'), [
+test('registration endpoints respond with not found', function () {
+    $this->get('/register')->assertNotFound();
+
+    $this->post('/register', [
         'name' => 'John Doe',
         'username' => 'johndoe',
         'email' => 'test@example.com',
         'password' => 'password',
         'password_confirmation' => 'password',
         'preferred_currency' => 'USD',
-    ]);
-
-    $response->assertSessionHasNoErrors()
-        ->assertRedirect(route('home', absolute: false));
-
-    $this->assertAuthenticated();
-
-    $user = User::query()->where('email', 'test@example.com')->first();
-    expect($user)->not->toBeNull();
-    expect($user->preferred_currency)->toBe('USD');
-});
-
-test('registration requires preferred currency', function () {
-    $this->post(route('register.store'), [
-        'name' => 'Jane Doe',
-        'username' => 'janedoe',
-        'email' => 'jane@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-    ])->assertSessionHasErrors('preferred_currency');
-
-    $this->assertGuest();
+    ])->assertNotFound();
 });
