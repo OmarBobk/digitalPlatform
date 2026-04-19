@@ -52,7 +52,7 @@ new class extends Component
 ?>
 
 <div
-    class="px-2 py-3 sm:px-0 sm:py-4"
+    class="py-3 sm:py-4"
     x-data='@json([
         'activeCategoryId' => $categories[0]['id'] ?? null,
         'activeCategoryName' => $categories[0]['name'] ?? __('messages.categories'),
@@ -91,9 +91,10 @@ new class extends Component
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     @foreach ($categories as $category)
                         <a
-                            href="#homepage-section-of-packages"
+                            href="{{ route('categories.show', ['category' => $category['slug']]) }}"
                             wire:key="homepage-category-{{ $category['id'] }}"
                             x-on:click="activeCategoryId = {{ $category['id'] }}; activeCategoryName = @js($category['name'])"
+                            wire:navigate
                             @class([
                                 'group relative overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-accent hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) dark:border-zinc-700 dark:bg-zinc-800 dark:hover:border-accent',
                                 'sm:col-span-2 lg:row-span-2' => $loop->first,
@@ -106,7 +107,7 @@ new class extends Component
                             <div class="pointer-events-none absolute inset-x-0 bottom-0 h-[48%] bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
                             <div class="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/40 to-transparent transition duration-200 group-hover:from-black/50"></div>
 
-                            <div class="{{ $loop->first ? 'aspect-[16/10] sm:aspect-[4/3]' : 'aspect-[4/3]' }} overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+                            <div class=" aspect-[4/3] overflow-hidden bg-zinc-100 dark:bg-zinc-900">
                                 <img
                                     src="{{ $category['image'] }}"
                                     alt="{{ $category['name'] }}"

@@ -30,7 +30,7 @@ it('renders homepage sliders', function () {
         ->assertSee('onerror="this.onerror=null; this.src=', false)
         ->assertSee('data-test="homepage-category-card"', false)
         ->assertSee('Console Cards')
-        ->assertSee('#homepage-section-of-packages', false)
+        ->assertSee(route('categories.show', ['category' => $category->slug]), false)
         ->assertSee('data-test="category-package-pills"', false)
         ->assertSee('Test Package', false);
 });

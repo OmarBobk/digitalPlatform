@@ -5,7 +5,9 @@ use App\Actions\Orders\RefundOrderItem;
 use App\Enums\FulfillmentStatus;
 use App\Enums\OrderStatus;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Support\FrontendMoney;
+use App\Support\OrderRequirementLabels;
 use App\Models\WalletTransaction;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -27,7 +29,7 @@ new #[Layout('layouts::frontend')] class extends Component
         $this->order = $order->load([
             'items.fulfillments',
             'items.product',
-            'items.package',
+            'items.package.requirements',
         ]);
     }
 
@@ -57,7 +59,11 @@ new #[Layout('layouts::frontend')] class extends Component
         app(RetryFulfillment::class)->handle($fulfillment, 'customer', auth()->id());
 
         $fulfillment->refresh();
-        $this->order->load('items.fulfillments');
+        $this->order->load([
+            'items.fulfillments',
+            'items.product',
+            'items.package.requirements',
+        ]);
         $this->actionMessage = $fulfillment->status === FulfillmentStatus::Queued
             ? __('messages.fulfillment_marked_queued')
             : __('messages.retry_not_allowed');
@@ -84,7 +90,11 @@ new #[Layout('layouts::frontend')] class extends Component
             return;
         }
 
-        $this->order->load('items.fulfillments');
+        $this->order->load([
+            'items.fulfillments',
+            'items.product',
+            'items.package.requirements',
+        ]);
         $this->actionMessage = __('messages.refund_waiting_approval');
     }
 
@@ -213,7 +223,7 @@ new #[Layout('layouts::frontend')] class extends Component
      * @param  array<string, mixed>|null  $payload
      * @return array<int, array{key: string, label: string, value: string}>
      */
-    protected function requirementsEntries(?array $payload): array
+    protected function requirementsEntries(?array $payload, ?OrderItem $item = null): array
     {
         if ($payload === null || $payload === []) {
             return [];
@@ -225,25 +235,12 @@ new #[Layout('layouts::frontend')] class extends Component
             $keyString = is_string($key) ? $key : (string) $key;
             $entries[] = [
                 'key' => $keyString,
-                'label' => $this->humanizeRequirementKey($keyString),
+                'label' => OrderRequirementLabels::labelForKey($item, $keyString),
                 'value' => $this->stringifyPayloadValue($value),
             ];
         }
 
         return $entries;
-    }
-
-    protected function humanizeRequirementKey(string $key): string
-    {
-        return match (strtolower($key)) {
-            'id' => __('messages.requirement_label_id'),
-            'email' => __('messages.requirement_label_email'),
-            'username' => __('messages.requirement_label_username'),
-            'password' => __('messages.requirement_label_password'),
-            'phone' => __('messages.requirement_label_phone'),
-            'notes' => __('messages.requirement_label_notes'),
-            default => $key,
-        };
     }
 };
 ?>
@@ -312,7 +309,7 @@ new #[Layout('layouts::frontend')] class extends Component
                 @php
                     $fulfillments = $item->fulfillments->sortBy('id')->values();
                     $itemStatus = $item->aggregateFulfillmentStatus($fulfillments);
-                    $requirementsEntries = $this->requirementsEntries($item->requirements_payload);
+                    $requirementsEntries = $this->requirementsEntries($item->requirements_payload, $item);
                 @endphp
 
                 <div id="item-{{ $item->id }}" class="min-w-0 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900" wire:key="order-item-{{ $item->id }}">

@@ -21,6 +21,12 @@ return [
     'category_slider' => 'منزلق الفئات',
     'slide_number' => 'الشريحة :number',
 
+    'breadcrumb_home' => 'الرئيسية',
+    'breadcrumb_categories' => 'الفئات',
+    'view_mode_grid' => 'شبكة',
+    'view_mode_list' => 'قائمة',
+    'category_packages_count' => ':count باقات',
+
     // Header
     'announcement_welcome' => 'مرحباً بكم في متجرنا',
     'search_for_games_and_products_...' => 'ابحث عن الألعاب والمنتجات...',
