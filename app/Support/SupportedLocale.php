@@ -11,7 +11,7 @@ final class SupportedLocale
      *
      * @var list<string>
      */
-    public const ALLOWED = ['ar'];
+    public const ALLOWED = ['en', 'ar'];
 
     /**
      * Resolve the best supported locale from the request Accept-Language header.
