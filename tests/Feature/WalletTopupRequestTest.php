@@ -8,6 +8,7 @@ use App\Models\TopupProof;
 use App\Models\TopupRequest;
 use App\Models\User;
 use App\Models\WalletTransaction;
+use App\Models\WebsiteSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
@@ -181,4 +182,56 @@ test('valid proof creates request and single proof record', function () {
     $topupRequest = TopupRequest::query()->first();
     expect($topupRequest)->not->toBeNull();
     expect($topupRequest->proofs()->count())->toBe(1);
+});
+
+test('try-preferred customer topup input is converted to usd wallet amount', function () {
+    WebsiteSetting::instance()->update([
+        'prices_visible' => true,
+        'usd_try_rate' => 40.0,
+        'usd_try_rate_updated_at' => now(),
+    ]);
+
+    $user = User::factory()->create([
+        'preferred_currency' => 'TRY',
+    ]);
+    expect($user->preferred_currency)->toBe('TRY');
+    expect(WebsiteSetting::getUsdTryRate())->toBe(40.0);
+
+    Livewire::actingAs($user)
+        ->test('pages::frontend.wallet')
+        ->set('topupAmount', '1000')
+        ->set('topupMethod', TopupMethod::ShamCash->value)
+        ->set('attachProof', false)
+        ->call('submitTopup')
+        ->assertSet('noticeMessage', __('messages.topup_request_created'));
+
+    $topupRequest = TopupRequest::query()->first();
+    expect($topupRequest)->not->toBeNull();
+    expect((float) $topupRequest->amount)->toBe(25.0);
+    expect($topupRequest->currency)->toBe('USD');
+});
+
+test('try-preferred topup conversion rounds up to avoid under-crediting', function () {
+    WebsiteSetting::instance()->update([
+        'prices_visible' => true,
+        'usd_try_rate' => 39.9995,
+        'usd_try_rate_updated_at' => now(),
+    ]);
+
+    $user = User::factory()->create([
+        'preferred_currency' => 'TRY',
+    ]);
+
+    Livewire::actingAs($user)
+        ->test('pages::frontend.wallet')
+        ->set('topupAmount', '10000')
+        ->set('topupMethod', TopupMethod::ShamCash->value)
+        ->set('attachProof', false)
+        ->call('submitTopup')
+        ->assertSet('noticeMessage', __('messages.topup_request_created'));
+
+    $topupRequest = TopupRequest::query()->first();
+    expect($topupRequest)->not->toBeNull();
+    expect((float) $topupRequest->amount)->toBe(250.01);
+    expect($topupRequest->currency)->toBe('USD');
 });
