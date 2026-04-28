@@ -7,6 +7,7 @@ use App\Models\Fulfillment;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Package;
+use App\Models\PackageRequirement;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -105,4 +106,52 @@ test('non-admin cannot access admin orders pages', function () {
     $this->actingAs($user)
         ->get(route('admin.orders.show', $order))
         ->assertNotFound();
+});
+
+test('admin order detail shows package requirement labels', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $user = User::factory()->create();
+    $package = Package::factory()->create();
+    PackageRequirement::factory()->create([
+        'package_id' => $package->id,
+        'key' => 'reference',
+        'label' => 'Order reference code',
+        'type' => 'string',
+        'is_required' => false,
+        'order' => 1,
+    ]);
+    $product = Product::factory()->create([
+        'package_id' => $package->id,
+        'entry_price' => 50,
+    ]);
+
+    $order = Order::create([
+        'user_id' => $user->id,
+        'order_number' => Order::temporaryOrderNumber(),
+        'currency' => 'USD',
+        'subtotal' => 50,
+        'fee' => 0,
+        'total' => 50,
+        'status' => OrderStatus::Paid,
+    ]);
+
+    OrderItem::create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'package_id' => $package->id,
+        'name' => $product->name,
+        'unit_price' => 50,
+        'quantity' => 1,
+        'line_total' => 50,
+        'status' => OrderItemStatus::Pending,
+        'requirements_payload' => ['reference' => 'REF-001'],
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.orders.show', $order))
+        ->assertOk()
+        ->assertSee('Order reference code', false)
+        ->assertSee('REF-001', false);
 });

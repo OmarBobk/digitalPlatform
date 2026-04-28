@@ -15,6 +15,14 @@ return [
     'sign_up' => 'Sign up',
     'log_out' => 'Log Out',
 
+    'auth_forgot_password_title' => 'Forgot your password?',
+    'auth_forgot_password_description' => 'Enter the email address on your account. We will send you a link to choose a new password.',
+    'auth_send_reset_link' => 'Send reset link',
+    'auth_back_to_log_in' => 'Back to log in',
+    'auth_reset_password_title' => 'Create a new password',
+    'auth_reset_password_description' => 'Choose a strong password you have not used elsewhere. You will be signed in on the next screen.',
+    'auth_save_new_password' => 'Save password',
+
     // Registration
     'create_an_account' => 'Create an account',
     'enter_your_details_below_to_create_your_account' => 'Enter your details below to create your account',
@@ -309,7 +317,7 @@ return [
     'orders_card_show_less' => 'Show less',
     'orders_card_show_unit_details' => 'Show unit details',
     'orders_card_hide_unit_details' => 'Hide unit details',
-    'requirement_label_id' => 'Reference',
+    'requirement_label_id' => 'ID',
     'requirement_label_email' => 'Email',
     'requirement_label_username' => 'Username',
     'requirement_label_password' => 'Password',

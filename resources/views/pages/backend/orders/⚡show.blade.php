@@ -4,9 +4,10 @@ use App\Enums\FulfillmentStatus;
 use App\Enums\OrderStatus;
 use App\Enums\WalletTransactionType;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\WalletTransaction;
+use App\Support\OrderRequirementLabels;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Lang;
 use Illuminate\View\View;
 use Livewire\Component;
 
@@ -20,6 +21,7 @@ new class extends Component
         $this->order = $order->load([
             'user',
             'items.fulfillments',
+            'items.package.requirements',
         ]);
     }
 
@@ -101,18 +103,11 @@ new class extends Component
         return (string) $value;
     }
 
-    protected function requirementLabel(string $key): string
-    {
-        $translationKey = 'messages.requirement_key_'.$key;
-
-        return Lang::has($translationKey) ? __($translationKey) : $key;
-    }
-
     /**
      * @param  array<string, mixed>|null  $payload
      * @return array<int, array{label: string, value: string}>
      */
-    protected function requirementsEntries(?array $payload): array
+    protected function requirementsEntries(?array $payload, ?OrderItem $item = null): array
     {
         if ($payload === null || $payload === []) {
             return [];
@@ -124,7 +119,7 @@ new class extends Component
             $keyLabel = is_string($key) ? $key : (string) $key;
 
             $entries[] = [
-                'label' => $this->requirementLabel($keyLabel),
+                'label' => OrderRequirementLabels::labelForKey($item, $keyLabel),
                 'value' => $this->stringifyPayloadValue($value),
             ];
         }
@@ -226,7 +221,7 @@ new class extends Component
                     <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
                         @foreach ($this->items as $item)
                             @php
-                                $requirementsEntries = $this->requirementsEntries($item->requirements_payload);
+                                $requirementsEntries = $this->requirementsEntries($item->requirements_payload, $item);
                                 $itemStatus = $item->aggregateFulfillmentStatus($item->fulfillments);
                             @endphp
                             <tr class="transition hover:bg-zinc-50 dark:hover:bg-zinc-800/60" wire:key="admin-order-item-{{ $item->id }}">

@@ -22,6 +22,12 @@ return [
     'category_slider' => 'Category slider',
     'slide_number' => 'Slide :number',
 
+    'breadcrumb_home' => 'Home',
+    'breadcrumb_categories' => 'Categories',
+    'view_mode_grid' => 'Grid',
+    'view_mode_list' => 'List',
+    'category_packages_count' => ':count packages',
+
     // Header
     'announcement_welcome' => 'Welcome to our store',
     'search_for_games_and_products_...' => 'Search for games and products...',

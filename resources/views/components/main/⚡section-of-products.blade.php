@@ -83,7 +83,7 @@ new class extends Component
 };
 ?>
 
-<div class="px-2 py-3 sm:px-0 sm:py-4">
+<div class="py-3 sm:py-4">
     <div class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 sm:p-6">
         <div class="flex flex-col gap-4 sm:gap-5">
             <flux:heading size="lg" class="text-start text-zinc-900 dark:text-zinc-100">

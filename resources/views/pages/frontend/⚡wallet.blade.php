@@ -15,6 +15,7 @@ use App\Models\OrderItem;
 use App\Models\Fulfillment;
 use App\Models\LoyaltySetting;
 use App\Models\LoyaltyTierConfig;
+use App\Models\WebsiteSetting;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Notifications\TopupRequestedNotification;
@@ -91,6 +92,7 @@ new #[Layout('layouts::frontend')] class extends Component
         $validated = $this->validate();
         $user = auth()->user();
         $wallet = Wallet::forUser($user);
+        $requestAmount = $this->normalizeTopupAmountForWalletCurrency((float) $validated['topupAmount'], $user, $wallet);
 
         $hasPending = TopupRequest::query()
             ->where('user_id', $user->id)
@@ -105,12 +107,12 @@ new #[Layout('layouts::frontend')] class extends Component
             return;
         }
 
-        DB::transaction(function () use ($user, $wallet, $validated): void {
+        DB::transaction(function () use ($user, $wallet, $validated, $requestAmount): void {
             $topupRequest = app(CreateTopupRequestAction::class)->handle([
                 'user_id' => $user->id,
                 'wallet_id' => $wallet->id,
                 'method' => TopupMethod::from($validated['topupMethod']),
-                'amount' => $validated['topupAmount'],
+                'amount' => $requestAmount,
                 'currency' => $wallet->currency,
                 'status' => TopupRequestStatus::Pending,
             ]);
@@ -174,6 +176,25 @@ new #[Layout('layouts::frontend')] class extends Component
         $this->noticeVariant = 'success';
         $this->noticeMessage = __('messages.topup_request_created');
         $this->success(__('messages.topup_request_created'));
+    }
+
+    private function normalizeTopupAmountForWalletCurrency(float $enteredAmount, \App\Models\User $user, Wallet $wallet): float
+    {
+        if (
+            strtoupper((string) $user->preferred_currency) === 'TRY'
+            && strtoupper((string) $wallet->currency) === 'USD'
+        ) {
+            $rate = WebsiteSetting::getUsdTryRate();
+            if ($rate !== null && $rate > 0) {
+                // Never round down TRY customer requests when converting to USD cents.
+                $tryCents = (int) round($enteredAmount * 100);
+                $usdCents = (int) ceil($tryCents / $rate);
+
+                return $usdCents / 100;
+            }
+        }
+
+        return $enteredAmount;
     }
 
     public function getWalletProperty(): Wallet
@@ -460,6 +481,12 @@ new #[Layout('layouts::frontend')] class extends Component
 
 @php
     $money = FrontendMoney::for(auth()->user());
+    $topupDisplayCurrency = 'USD';
+    $topupRate = \App\Models\WebsiteSetting::getUsdTryRate();
+    if (strtoupper((string) (auth()->user()?->preferred_currency ?? 'USD')) === 'TRY' && $topupRate !== null && $topupRate > 0) {
+        $topupDisplayCurrency = 'TRY';
+    }
+    $topupCurrencySign = $topupDisplayCurrency === 'TRY' ? '₺' : '$';
 @endphp
 
 <div class="mx-auto w-full max-w-7xl px-3 py-6 sm:px-0 sm:py-10">
@@ -519,7 +546,7 @@ new #[Layout('layouts::frontend')] class extends Component
                         <flux:input
                             class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
                             name="topupAmountMobile"
-                            label="{{ __('messages.amount') }}"
+                            label="{{ __('messages.amount').' ('.$topupCurrencySign.')' }}"
                             wire:model.defer="topupAmount"
                             placeholder="0.00"
                         />
@@ -783,7 +810,7 @@ new #[Layout('layouts::frontend')] class extends Component
                         <flux:input
                             class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
                             name="topupAmount"
-                            label="{{ __('messages.amount') }}"
+                            label="{{ __('messages.amount').' ('.$topupCurrencySign.')' }}"
                             wire:model.defer="topupAmount"
                             placeholder="0.00"
                         />
@@ -868,7 +895,7 @@ new #[Layout('layouts::frontend')] class extends Component
                                 <div>
                                     <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                                         @if(\App\Models\WebsiteSetting::getPricesVisible())
-                                            {{ $money->format((float) $topupRequest->amount, 'USD', 2) }}
+                                            {{ $money->format((float) $topupRequest->amount, (string) $topupRequest->currency, 2) }}
                                         @else
                                             —
                                         @endif

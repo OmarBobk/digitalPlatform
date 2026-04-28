@@ -35,6 +35,7 @@ Route::get('language/{locale}', function (string $locale) {
 //    ->name('home');
 
 Route::livewire('/', 'pages::frontend.main')->name('home');
+Route::livewire('/categories/{category:slug}', 'pages::frontend.category-show')->name('categories.show');
 Route::livewire('/contact', 'pages::frontend.contact')->name('contact');
 Route::livewire('/cart', 'pages::frontend.cart')->name('cart');
 

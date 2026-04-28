@@ -32,7 +32,7 @@ new class extends Component
 };
 ?>
 
-<div class="px-2 py-3 sm:px-0 sm:py-4" x-data>
+<div class="py-3 sm:py-4" x-data>
     <div class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-800 sm:p-6">
         <div class="flex flex-col gap-4 sm:gap-5">
             <flux:heading size="lg" class="text-start text-zinc-900 dark:text-zinc-100">
@@ -49,7 +49,7 @@ new class extends Component
                         <button
                             type="button"
                             x-on:click="$dispatch('open-package-overlay', { packageId: {{ $package['id'] }} })"
-                            class="group flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white text-start text-zinc-900 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-accent hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-accent"
+                            class="group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white text-start text-zinc-900 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-accent hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-accent"
                             aria-label="{{ $package['name'] }}"
                         >
                             <div class="aspect-[4/3] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-900">
