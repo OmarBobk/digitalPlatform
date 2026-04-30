@@ -52,10 +52,16 @@ class CheckoutFromPayload
                 return app(PayOrderWithWallet::class)->handle($existingOrder, $lockedWallet, false);
             }
 
+            $metaForCreate = array_merge($meta, ['cart_hash' => $cartHash]);
+            $referralFromCookie = $this->referralPayloadFromCookie($user);
+            if ($referralFromCookie !== null) {
+                $metaForCreate['referral'] = $referralFromCookie;
+            }
+
             $order = app(CreateOrderFromCartPayload::class)->handle(
                 $user,
                 $items,
-                array_merge($meta, ['cart_hash' => $cartHash]),
+                $metaForCreate,
                 false
             );
 
@@ -87,6 +93,42 @@ class CheckoutFromPayload
     /**
      * @param  array<int, array<string, mixed>>  $items
      */
+    /**
+     * Server-side referral from cookie only (never trust client meta).
+     *
+     * @return array{code: string, salesperson_id: int}|null
+     */
+    private function referralPayloadFromCookie(User $buyer): ?array
+    {
+        $cookieName = (string) config('referral.cookie_name', 'karman_ref');
+        $raw = request()->cookie($cookieName);
+
+        if (! is_string($raw) || trim($raw) === '') {
+            return null;
+        }
+
+        $code = strtoupper(trim($raw));
+
+        if ($code === '' || strlen($code) > 16) {
+            return null;
+        }
+
+        $referrer = User::findByReferralCode($code);
+
+        if ($referrer === null) {
+            return null;
+        }
+
+        if ($referrer->id === $buyer->id) {
+            return null;
+        }
+
+        return [
+            'code' => $code,
+            'salesperson_id' => $referrer->id,
+        ];
+    }
+
     private function cartHash(array $items): string
     {
         $normalized = collect($items)

@@ -137,6 +137,14 @@
                                     >
                                         {{ __('main.my_orders') }}
                                     </flux:navmenu.item>
+                                    <flux:navmenu.item
+                                        icon="link"
+                                        href="{{ route('referral-link') }}"
+                                        class="rounded-lg !text-zinc-700 hover:!bg-zinc-100 focus-visible:!bg-zinc-100 dark:!text-zinc-200 dark:hover:!bg-zinc-800 dark:focus-visible:!bg-zinc-800"
+                                        wire:navigate
+                                    >
+                                        {{ __('main.referral_link') }}
+                                    </flux:navmenu.item>
                                     @if (auth()->user()?->loyaltyRole() !== null)
                                         <flux:navmenu.item
                                             icon="sparkles"
@@ -153,6 +161,16 @@
                                             class="rounded-lg !text-zinc-700 hover:!bg-zinc-100 focus-visible:!bg-zinc-100 dark:!text-zinc-200 dark:hover:!bg-zinc-800 dark:focus-visible:!bg-zinc-800"
                                         >
                                             {{ __('main.dashboard') }}
+                                        </flux:navmenu.item>
+                                    @endcan
+                                    @can('view_sales')
+                                        <flux:navmenu.item
+                                            icon="chart-bar"
+                                            href="{{ route('salesperson.dashboard') }}"
+                                            class="rounded-lg !text-zinc-700 hover:!bg-zinc-100 focus-visible:!bg-zinc-100 dark:!text-zinc-200 dark:hover:!bg-zinc-800 dark:focus-visible:!bg-zinc-800"
+                                            wire:navigate
+                                        >
+                                            {{ __('messages.salesperson_dashboard') }}
                                         </flux:navmenu.item>
                                     @endcan
                                     <form method="POST" action="{{ route('logout') }}" class="w-full">
