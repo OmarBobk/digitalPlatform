@@ -307,7 +307,7 @@ new #[Layout('layouts.app')] class extends Component
                 <flux:text class="text-xs uppercase tracking-wide text-zinc-500">{{ __('messages.total_earnings_all_time') }}</flux:text>
                 <flux:icon icon="sparkles" class="size-4 text-zinc-400" />
             </div>
-            <flux:heading size="lg" class="mt-2 text-zinc-900 dark:text-zinc-100" dir="ltr">{{ number_format((float) $this->performanceCards['all_time_earnings'], 2) }}</flux:heading>
+            <flux:heading size="lg" class="mt-2 text-zinc-900 dark:text-zinc-100" dir="ltr">${{ number_format((float) $this->performanceCards['all_time_earnings'], 2) }}</flux:heading>
             <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
                 <div class="h-full rounded-full bg-gradient-to-r from-accent to-yellow-400 transition-all duration-700" style="width: {{ number_format($paidShare, 2, '.', '') }}%"></div>
             </div>
@@ -318,7 +318,7 @@ new #[Layout('layouts.app')] class extends Component
                 <flux:text class="text-xs uppercase tracking-wide text-zinc-500">{{ __('messages.total_paid_this_month') }}</flux:text>
                 <flux:icon icon="banknotes" class="size-4 text-zinc-400" />
             </div>
-            <flux:heading size="lg" class="mt-2 text-zinc-900 dark:text-zinc-100" dir="ltr">{{ number_format((float) $this->performanceCards['paid_this_month'], 2) }}</flux:heading>
+            <flux:heading size="lg" class="mt-2 text-zinc-900 dark:text-zinc-100" dir="ltr">${{ number_format((float) $this->performanceCards['paid_this_month'], 2) }}</flux:heading>
         </article>
         <article class="group rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-700 dark:bg-zinc-900" :class="mounted ? 'translate-y-0 opacity-100 delay-100' : 'translate-y-2 opacity-0'">
             <div class="mb-3 h-1 w-14 rounded-full bg-gradient-to-r from-violet-400 to-indigo-400 transition-all duration-300 group-hover:w-20"></div>
@@ -335,7 +335,7 @@ new #[Layout('layouts.app')] class extends Component
                 <flux:text class="text-xs uppercase tracking-wide text-zinc-500">{{ __('messages.pending_commission_balance') }}</flux:text>
                 <flux:icon icon="clock" class="size-4 text-zinc-400" />
             </div>
-            <flux:heading size="lg" class="mt-2 text-zinc-900 dark:text-zinc-100" dir="ltr">{{ number_format((float) $this->performanceCards['pending_balance'], 2) }}</flux:heading>
+            <flux:heading size="lg" class="mt-2 text-zinc-900 dark:text-zinc-100" dir="ltr">${{ number_format((float) $this->performanceCards['pending_balance'], 2) }}</flux:heading>
             <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
                 <div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-400 transition-all duration-700" style="width: {{ number_format($pendingShare, 2, '.', '') }}%"></div>
             </div>
@@ -382,6 +382,7 @@ new #[Layout('layouts.app')] class extends Component
                         <th class="px-4 py-3 text-center font-semibold">{{ __('messages.product') }}</th>
                         <th class="px-4 py-3 text-center font-semibold">{{ __('messages.sale_price') }}</th>
                         <th class="px-4 py-3 text-center font-semibold">{{ __('messages.commission_amount') }}</th>
+                        <th class="px-4 py-3 text-center font-semibold">{{ __('messages.commission_rate_percent') }}</th>
                         <th class="px-4 py-3 text-center font-semibold">{{ __('messages.commission_status') }}</th>
                         <th class="px-4 py-3 text-center font-semibold">{{ __('messages.fulfillment_summary') }}</th>
                         <th class="px-4 py-3 text-center font-semibold">{{ __('messages.customer') }}</th>
@@ -419,8 +420,13 @@ new #[Layout('layouts.app')] class extends Component
                                     </button>
                                 </div>
                             </td>
-                            <td class="px-4 py-3 font-medium text-zinc-800 dark:text-zinc-200" dir="ltr">{{ number_format((float) $commission->order_total, 2) }}</td>
-                            <td class="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">{{ number_format((float) $commission->commission_amount, 2) }}</td>
+                            <td class="px-4 py-3 font-medium text-zinc-800 dark:text-zinc-200" dir="ltr">${{ number_format((float) $commission->order_total, 2) }}</td>
+                            <td class="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100" dir="ltr">${{ number_format((float) $commission->commission_amount, 2) }}</td>
+                            <td class="px-4 py-3">
+                                <flux:badge size="sm" color="sky" variant="subtle" dir="ltr">
+                                    {{ number_format((float) $commission->commission_rate_percent, 2) }}%
+                                </flux:badge>
+                            </td>
                             <td class="px-4 py-3">
                                 @if ($commission->status === \App\Enums\CommissionStatus::Pending)
                                     <flux:badge size="sm" color="amber" variant="subtle">{{ __('messages.commission_status_pending') }}</flux:badge>
@@ -474,7 +480,7 @@ new #[Layout('layouts.app')] class extends Component
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-8 text-center text-zinc-500">{{ __('messages.no_orders_yet') }}</td>
+                            <td colspan="8" class="px-4 py-8 text-center text-zinc-500">{{ __('messages.no_orders_yet') }}</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -496,9 +502,9 @@ new #[Layout('layouts.app')] class extends Component
                 </flux:button>
             </div>
             <dl class="grid gap-3 text-sm">
-                <div class="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60"><dt>{{ __('messages.total_earned_this_month') }}</dt><dd class="font-semibold" dir="ltr">{{ number_format((float) $this->performanceCards['paid_this_month'], 2) }}</dd></div>
-                <div class="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60"><dt>{{ __('messages.total_paid_to_date') }}</dt><dd class="font-semibold" dir="ltr">{{ number_format((float) \App\Models\Commission::query()->where('salesperson_id', auth()->id())->where('status', \App\Enums\CommissionStatus::Paid)->sum('commission_amount'), 2) }}</dd></div>
-                <div class="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60"><dt>{{ __('messages.pending_balance') }}</dt><dd class="font-semibold" dir="ltr">{{ number_format((float) $this->performanceCards['pending_balance'], 2) }}</dd></div>
+                <div class="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60"><dt>{{ __('messages.total_earned_this_month') }}</dt><dd class="font-semibold" dir="ltr">${{ number_format((float) $this->performanceCards['paid_this_month'], 2) }}</dd></div>
+                <div class="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60"><dt>{{ __('messages.total_paid_to_date') }}</dt><dd class="font-semibold" dir="ltr">${{ number_format((float) \App\Models\Commission::query()->where('salesperson_id', auth()->id())->where('status', \App\Enums\CommissionStatus::Paid)->sum('commission_amount'), 2) }}</dd></div>
+                <div class="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60"><dt>{{ __('messages.pending_balance') }}</dt><dd class="font-semibold" dir="ltr">${{ number_format((float) $this->performanceCards['pending_balance'], 2) }}</dd></div>
             </dl>
             <div class="mt-4 space-y-2">
                 <div>
@@ -543,7 +549,7 @@ new #[Layout('layouts.app')] class extends Component
                         @forelse ($this->payoutHistory as $row)
                             <tr wire:key="payout-{{ $row->id }}" class="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
                                 <td class="px-3 py-2">{{ $row->paid_at?->format('Y-m-d H:i') ?? '—' }}</td>
-                                <td class="px-3 py-2 font-semibold" dir="ltr">{{ number_format((float) $row->commission_amount, 2) }}</td>
+                                <td class="px-3 py-2 font-semibold" dir="ltr">${{ number_format((float) $row->commission_amount, 2) }}</td>
                                 <td class="px-3 py-2">{{ $row->paid_method ?? 'manual' }}</td>
                             </tr>
                         @empty
@@ -576,7 +582,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <td class="px-3 py-2">{{ $user->name }}</td>
                                 <td class="px-3 py-2">{{ $user->email }}</td>
                                 <td class="px-3 py-2">{{ $user->referred_orders_count }}</td>
-                                <td class="px-3 py-2 font-semibold" dir="ltr">{{ number_format((float) ($user->referred_commission_sum ?? 0), 2) }}</td>
+                                <td class="px-3 py-2 font-semibold" dir="ltr">${{ number_format((float) ($user->referred_commission_sum ?? 0), 2) }}</td>
                             </tr>
                         @empty
                             <tr><td colspan="4" class="px-3 py-4 text-center text-zinc-500">{{ __('messages.no_users_yet') }}</td></tr>

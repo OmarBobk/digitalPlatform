@@ -60,6 +60,8 @@
     - ###TODO: Salesperson should be able to create new user , see users under him, update user's information (phone, username, password, email, name)
     - ###TODO: if admin hit the salesperson dashboard he should be able to select some salesperson to see his states
     - ###TODO: Admin should be able to set the commission percent for every salesperson
+    - ###TODO: Salesperson should see only the his dashboard there is no need to access the fulfillments
+    - 
   - 
 - Frontend:
   - ###DONE wallet transaction in /wallets should be more described

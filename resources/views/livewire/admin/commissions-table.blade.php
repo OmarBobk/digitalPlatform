@@ -24,6 +24,7 @@
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.commission_order_id') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.commission_salesperson') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.commission_amount') }}</th>
+                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.commission_rate_percent') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.commission_status') }}</th>
                                 <th class="px-5 py-3 text-end font-semibold">{{ __('messages.actions') }}</th>
                             </tr>
@@ -44,7 +45,12 @@
                                         {{ $commission->salesperson?->name ?? '—' }}
                                     </td>
                                     <td class="px-5 py-4 text-zinc-700 dark:text-zinc-200" dir="ltr">
-                                        {{ number_format((float) $commission->commission_amount, 2) }}
+                                        ${{ number_format((float) $commission->commission_amount, 2) }}
+                                    </td>
+                                    <td class="px-5 py-4">
+                                        <flux:badge size="sm" color="sky" variant="subtle" dir="ltr">
+                                            {{ number_format((float) $commission->commission_rate_percent, 2) }}%
+                                        </flux:badge>
                                     </td>
                                     <td class="px-5 py-4">
                                         @if ($commission->status === \App\Enums\CommissionStatus::Pending)
