@@ -67,6 +67,10 @@ return new class extends Migration
 
     private function indexExists(string $table, string $indexName): bool
     {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            return false;
+        }
+
         $database = (string) DB::connection()->getDatabaseName();
         $row = DB::selectOne(
             'SELECT 1 FROM information_schema.statistics WHERE table_schema = ? AND table_name = ? AND index_name = ? LIMIT 1',

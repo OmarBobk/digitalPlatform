@@ -86,6 +86,7 @@ test('create user creates user and logs activity', function () {
         ->set('newEmail', 'newuser@example.com')
         ->set('newPassword', 'Password123!@#')
         ->set('newPasswordConfirmation', 'Password123!@#')
+        ->set('newCommissionRatePercent', '17.50')
         ->call('saveCreate')
         ->assertHasNoErrors();
 
@@ -93,6 +94,7 @@ test('create user creates user and logs activity', function () {
         'name' => 'New User',
         'username' => 'newuser',
         'email' => 'newuser@example.com',
+        'commission_rate_percent' => 17.50,
     ]);
 
     $this->assertDatabaseHas('activity_log', [
@@ -112,6 +114,7 @@ test('update user updates profile and logs activity', function () {
         ->set('editName', 'Updated Name')
         ->set('editUsername', 'updateduser')
         ->set('editEmail', 'updated@example.com')
+        ->set('editCommissionRatePercent', '24.75')
         ->call('saveEdit')
         ->assertHasNoErrors();
 
@@ -119,6 +122,7 @@ test('update user updates profile and logs activity', function () {
     expect($target->name)->toBe('Updated Name');
     expect($target->username)->toBe('updateduser');
     expect($target->email)->toBe('updated@example.com');
+    expect((float) $target->commission_rate_percent)->toBe(24.75);
 
     $this->assertDatabaseHas('activity_log', [
         'event' => 'user.updated',

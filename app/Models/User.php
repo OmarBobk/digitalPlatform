@@ -43,6 +43,7 @@ class User extends Authenticatable implements HasLocalePreference
         'username',
         'email',
         'referred_by_user_id',
+        'commission_rate_percent',
         'locale',
         'locale_manually_set',
         'preferred_currency',
@@ -82,6 +83,7 @@ class User extends Authenticatable implements HasLocalePreference
         return [
             'email_verified_at' => 'datetime',
             'referred_by_user_id' => 'integer',
+            'commission_rate_percent' => 'decimal:2',
             'password' => 'hashed',
             'is_active' => 'boolean',
             'timezone' => Timezone::class,

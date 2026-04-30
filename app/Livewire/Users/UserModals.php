@@ -50,6 +50,8 @@ class UserModals extends Component
 
     public ?string $newCountryCode = null;
 
+    public ?string $newCommissionRatePercent = null;
+
     /** @var array<int, string> */
     public array $newRoles = [];
 
@@ -67,6 +69,8 @@ class UserModals extends Component
     public ?string $editPhone = null;
 
     public ?string $editCountryCode = null;
+
+    public ?string $editCommissionRatePercent = null;
 
     /** @var array<int, string> */
     public array $editRoles = [];
@@ -121,6 +125,7 @@ class UserModals extends Component
             'password_confirmation' => $this->newPasswordConfirmation,
             'phone' => $this->newPhone,
             'country_code' => $this->normalizeCountryCode($this->newCountryCode),
+            'commission_rate_percent' => $this->normalizeCommissionRatePercent($this->newCommissionRatePercent),
             'roles' => $this->newRoles,
             'permissions' => $this->newPermissions,
         ];
@@ -129,7 +134,7 @@ class UserModals extends Component
             app(CreateUser::class)->handle($input, (int) auth()->id());
         } catch (\Illuminate\Validation\ValidationException $e) {
             $v = $e->validator;
-            foreach (['name' => 'newName', 'username' => 'newUsername', 'email' => 'newEmail', 'password' => 'newPassword', 'phone' => 'newPhone', 'country_code' => 'newCountryCode'] as $actionKey => $prop) {
+            foreach (['name' => 'newName', 'username' => 'newUsername', 'email' => 'newEmail', 'password' => 'newPassword', 'phone' => 'newPhone', 'country_code' => 'newCountryCode', 'commission_rate_percent' => 'newCommissionRatePercent'] as $actionKey => $prop) {
                 if ($v->errors()->has($actionKey)) {
                     $this->addError($prop, $v->errors()->first($actionKey));
                 }
@@ -157,6 +162,9 @@ class UserModals extends Component
         $this->editCountryCode = $user->country_code && in_array($user->country_code, self::ALLOWED_COUNTRY_CODES, true)
             ? $user->country_code
             : null;
+        $this->editCommissionRatePercent = $user->commission_rate_percent !== null
+            ? number_format((float) $user->commission_rate_percent, 2, '.', '')
+            : null;
         $this->editRoles = $user->getRoleNames()->all();
         $this->editPermissions = $user->getDirectPermissions()->pluck('name')->all();
         $this->showEdit = true;
@@ -164,7 +172,7 @@ class UserModals extends Component
 
     public function closeEdit(): void
     {
-        $this->reset(['editingUserId', 'editName', 'editUsername', 'editEmail', 'editPhone', 'editCountryCode', 'editRoles', 'editPermissions', 'showEdit']);
+        $this->reset(['editingUserId', 'editName', 'editUsername', 'editEmail', 'editPhone', 'editCountryCode', 'editCommissionRatePercent', 'editRoles', 'editPermissions', 'showEdit']);
         $this->resetValidation();
     }
 
@@ -179,6 +187,7 @@ class UserModals extends Component
             'email' => $this->editEmail,
             'phone' => $this->editPhone ?: null,
             'country_code' => $this->normalizeCountryCode($this->editCountryCode),
+            'commission_rate_percent' => $this->normalizeCommissionRatePercent($this->editCommissionRatePercent),
             'roles' => $this->editRoles,
             'permissions' => $this->editPermissions,
         ];
@@ -187,7 +196,7 @@ class UserModals extends Component
             app(UpdateUser::class)->handle($user, $input, (int) auth()->id());
         } catch (\Illuminate\Validation\ValidationException $e) {
             $v = $e->validator;
-            foreach (['name' => 'editName', 'username' => 'editUsername', 'email' => 'editEmail', 'phone' => 'editPhone', 'country_code' => 'editCountryCode'] as $actionKey => $prop) {
+            foreach (['name' => 'editName', 'username' => 'editUsername', 'email' => 'editEmail', 'phone' => 'editPhone', 'country_code' => 'editCountryCode', 'commission_rate_percent' => 'editCommissionRatePercent'] as $actionKey => $prop) {
                 if ($v->errors()->has($actionKey)) {
                     $this->addError($prop, $v->errors()->first($actionKey));
                 }
@@ -209,6 +218,15 @@ class UserModals extends Component
         }
 
         return in_array($value, self::ALLOWED_COUNTRY_CODES, true) ? $value : null;
+    }
+
+    private function normalizeCommissionRatePercent(?string $value): ?string
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        return number_format((float) $value, 2, '.', '');
     }
 
     public function confirmDelete(int $userId): void
@@ -368,7 +386,7 @@ class UserModals extends Component
     {
         $this->reset([
             'newName', 'newUsername', 'newEmail', 'newPassword', 'newPasswordConfirmation',
-            'newPhone', 'newCountryCode', 'newRoles', 'newPermissions',
+            'newPhone', 'newCountryCode', 'newCommissionRatePercent', 'newRoles', 'newPermissions',
         ]);
         $this->resetValidation();
     }

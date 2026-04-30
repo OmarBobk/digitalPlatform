@@ -73,6 +73,43 @@ test('checkout attaches referral meta from cookie and pay creates commission', f
     expect($commission->customer_id)->toBe($buyer->id);
     expect($commission->status)->toBe(CommissionStatus::Pending);
     expect((float) $commission->commission_amount)->toBe(20.0);
+    expect((float) $commission->commission_rate_percent)->toBe(20.0);
+});
+
+test('commission uses salesperson custom rate percent when set', function () {
+    $referrer = User::factory()->create([
+        'commission_rate_percent' => 35.00,
+    ]);
+    $buyer = User::factory()->create();
+    $referrer->refresh();
+
+    Wallet::create([
+        'user_id' => $buyer->id,
+        'type' => WalletType::Customer,
+        'balance' => 500,
+        'currency' => 'USD',
+    ]);
+
+    $package = Package::factory()->create();
+    $product = Product::factory()->create([
+        'package_id' => $package->id,
+        'entry_price' => 100,
+    ]);
+
+    bindRequestWithCookies([
+        (string) config('referral.cookie_name') => (string) $referrer->referral_code,
+    ]);
+
+    $order = app(CheckoutFromPayload::class)->handle($buyer, [[
+        'product_id' => $product->id,
+        'package_id' => $package->id,
+        'quantity' => 1,
+    ]], []);
+
+    $commission = Commission::query()->where('order_id', $order->id)->first();
+    expect($commission)->not->toBeNull();
+    expect((float) $commission->commission_rate_percent)->toBe(35.0);
+    expect((float) $commission->commission_amount)->toBe(35.0);
 });
 
 test('checkout does not attach referral when cookie matches buyer self', function () {

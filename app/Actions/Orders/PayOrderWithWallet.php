@@ -186,6 +186,8 @@ class PayOrderWithWallet
         }
 
         $referralCode = (string) data_get($referral, 'code', '');
+        $commissionRatePercent = $this->resolveCommissionRatePercent($salespersonId);
+        $commissionMultiplier = bcdiv($commissionRatePercent, '100', 4);
 
         foreach ($order->items as $item) {
             $lineTotal = number_format((float) $item->line_total, 2, '.', '');
@@ -194,7 +196,7 @@ class PayOrderWithWallet
 
             foreach ($item->fulfillments as $fulfillment) {
                 $orderTotal = $unitTotal;
-                $commissionAmount = bcmul($orderTotal, '0.20', 2);
+                $commissionAmount = bcmul($orderTotal, $commissionMultiplier, 2);
 
                 $this->createCommissionForFulfillment(
                     $order->id,
@@ -203,7 +205,8 @@ class PayOrderWithWallet
                     (int) $order->user_id,
                     $referralCode,
                     $orderTotal,
-                    $commissionAmount
+                    $commissionAmount,
+                    $commissionRatePercent
                 );
             }
         }
@@ -216,7 +219,8 @@ class PayOrderWithWallet
         int $customerId,
         string $referralCode,
         string $orderTotal,
-        string $commissionAmount
+        string $commissionAmount,
+        string $commissionRatePercent
     ): void {
         try {
             Commission::query()->create([
@@ -227,6 +231,7 @@ class PayOrderWithWallet
                 'referral_code' => $referralCode,
                 'order_total' => $orderTotal,
                 'commission_amount' => $commissionAmount,
+                'commission_rate_percent' => $commissionRatePercent,
                 'status' => CommissionStatus::Pending,
                 'paid_at' => null,
             ]);
@@ -236,6 +241,25 @@ class PayOrderWithWallet
                 throw $exception;
             }
         }
+    }
+
+    private function resolveCommissionRatePercent(int $salespersonId): string
+    {
+        $defaultRate = number_format((float) config('referral.default_commission_rate_percent', '20.00'), 2, '.', '');
+        $salesperson = User::query()->select(['id', 'commission_rate_percent'])->find($salespersonId);
+        $customRate = $salesperson?->commission_rate_percent;
+
+        if ($customRate === null || $customRate === '') {
+            return $defaultRate;
+        }
+
+        $normalized = number_format((float) $customRate, 2, '.', '');
+
+        if ((float) $normalized <= 0 || (float) $normalized > 100) {
+            return $defaultRate;
+        }
+
+        return $normalized;
     }
 
     private function logOrderPaid(Order $order, Wallet $wallet, WalletTransaction $transaction): void

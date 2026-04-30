@@ -25,7 +25,10 @@ class UpdateUser
         Validator::make([
             ...$input,
             'preferred_currency' => $this->normalizePreferredCurrency($input['preferred_currency'] ?? $user->preferred_currency ?? null),
-        ], $this->profileRules($user->id))->validate();
+        ], [
+            ...$this->profileRules($user->id),
+            'commission_rate_percent' => ['nullable', 'numeric', 'min:0.01', 'max:100'],
+        ])->validate();
 
         $data = UpdateUserProfileData::from($input);
 
@@ -40,6 +43,7 @@ class UpdateUser
             'email' => $user->email,
             'phone' => $user->phone,
             'country_code' => $user->country_code,
+            'commission_rate_percent' => $user->commission_rate_percent,
         ];
 
         $user->forceFill([
@@ -48,6 +52,7 @@ class UpdateUser
             'email' => $data->email,
             'phone' => $data->phone,
             'country_code' => $data->country_code,
+            'commission_rate_percent' => $input['commission_rate_percent'] ?? null,
             'timezone' => $timezone,
             'profile_photo' => $data->profile_photo ?? $user->profile_photo,
         ])->save();
@@ -82,6 +87,7 @@ class UpdateUser
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'country_code' => $user->country_code,
+                'commission_rate_percent' => $user->commission_rate_percent,
             ]);
             if ($changes !== []) {
                 $this->logProfileUpdated($user, $changes, $causedById);
@@ -97,7 +103,7 @@ class UpdateUser
     private function profileChanges(array $previous, array $current): array
     {
         $changes = [];
-        $fields = ['name', 'username', 'email', 'phone', 'country_code'];
+        $fields = ['name', 'username', 'email', 'phone', 'country_code', 'commission_rate_percent'];
         foreach ($fields as $field) {
             $old = $previous[$field] ?? null;
             $new = $current[$field] ?? null;
@@ -124,6 +130,7 @@ class UpdateUser
             'email' => 'email',
             'phone' => 'phone',
             'country_code' => 'country code',
+            'commission_rate_percent' => 'commission rate',
         ];
         $changedParts = [];
         foreach (array_keys($changes) as $field) {

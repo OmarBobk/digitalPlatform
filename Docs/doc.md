@@ -42,19 +42,24 @@
     - ###DONE: Stop rotating screen on phone.
     - ###DONE: PWA application button should only appear if the user has permission for install_pwa_app
   - ###DONE: ###MAJOR### Record bug system.
-  - ###DONE: Pricing Rules on the custom amount products is always hight
+  - ###DONE: Pricing Rules on the custom amount products are always height
   - ###DONE: Products page: add filter by package.
-  - ###DONE: customer click on buy now button -> if he delete the default quantity value to enter his value he is getting 500 | Server Erorr
+  - ###DONE: customer clicks on buy now button -> if he delete the default quantity value to enter his value he is getting 500 | Server Erorr
   - ###DONE: Pretend a query or function or create a new page where the input is two fields Product serial -> new price ex: SOULCHILL-10K ->  3.00 and by that we can update the prices faster
-      - or maybe we just select the package name and then (supoose there are 10 products belong to this package) on the left hand you see the Product serial and on the right hand input fiels for the new price.
-  - ###DONE: when user trying to login and by accident click the login button twice he is redirected into "Page Expired | 419"
-  - ###DONE: Backend Notification manager add "Mark all as read" button.
+      - or maybe we just select the package name, and then (supoose there are 10 products belong to this package) on the left hand you see the Product serial and on the right hand input fiels for the new price.
+  - ###DONE: when user trying to log in and by accident click the login button twice he is redirected into "Page Expired | 419"
+  - ###DONE: Backend Notification manager adds "Mark all as read" button.
   - ###TODO: Contactus: the messages that come from this form where we should handle them.
   - ###TODO: ###MAJOR### Record website views and how many users are logged in and who are they
   - ###TODO: ###MAJOR### Users hierarchy.
   - ###TODO: Dashboard Page:
     - #TODO: who is online by role
   - ###TODO: redesign the login, register, reset password pages.
+  - ###TODO: pwa: if a user tries to install the app from chrome → three dots → open karman  instead of open indirimGo
+  - ###TODO: Referral Feature:
+    - ###TODO: Salesperson should be able to create new user , see users under him, update user's information (phone, username, password, email, name)
+    - ###TODO: if admin hit the salesperson dashboard he should be able to select some salesperson to see his states
+    - ###TODO: Admin should be able to set the commission percent for every salesperson
   - 
 - Frontend:
   - ###DONE wallet transaction in /wallets should be more described
