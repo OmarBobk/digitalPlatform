@@ -1,4 +1,4 @@
-# karman.store
+# indirimGo
 
 Laravel 12 e-commerce and wallet platform powering the İndirimGo storefront and operations backend.  
 The system covers catalog browsing, wallet-based checkout, fulfillment workflows, topups/refunds, loyalty, notifications, and permission-based admin tooling.
