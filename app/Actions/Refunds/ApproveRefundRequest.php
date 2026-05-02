@@ -335,11 +335,13 @@ class ApproveRefundRequest
                 }
 
                 if ($fulfillment !== null) {
+                    // Commission credits are NOT reversed on refund in Phase 1.
                     Commission::query()
                         ->where('fulfillment_id', $fulfillment->id)
                         ->where('status', CommissionStatus::Pending)
                         ->update(['status' => CommissionStatus::Failed]);
                 } else {
+                    // Commission credits are NOT reversed on refund in Phase 1.
                     Commission::query()
                         ->where('order_id', $order->id)
                         ->whereNull('fulfillment_id')

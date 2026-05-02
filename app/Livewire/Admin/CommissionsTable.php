@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Livewire\Admin;
 
+use App\Actions\Commissions\CreatePayoutBatch;
 use App\Enums\CommissionStatus;
 use App\Enums\FulfillmentStatus;
 use App\Models\Commission;
+use App\Models\WebsiteSetting;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -22,6 +26,13 @@ final class CommissionsTable extends Component
 
     public int $perPage = 20;
 
+    /**
+     * @var array<int, int|string>
+     */
+    public array $selectedCommissionIds = [];
+
+    public ?string $payoutNotes = null;
+
     public function mount(): void
     {
         abort_unless(auth()->user()?->can('manage_settlements'), 403);
@@ -30,38 +41,38 @@ final class CommissionsTable extends Component
     public function markPaid(int $commissionId): void
     {
         abort_unless(auth()->user()?->can('manage_settlements'), 403);
-
-        $commission = Commission::query()
-            ->with(['order.items.fulfillments', 'fulfillment:id,status'])
-            ->findOrFail($commissionId);
-
-        if ($commission->status !== CommissionStatus::Pending) {
-            return;
-        }
-
-        if (! $this->canMarkPaid($commission)) {
-            $this->error('Cannot mark as paid until fulfillments are completed.');
+        try {
+            app(CreatePayoutBatch::class)->handle([$commissionId], null, false);
+        } catch (ValidationException $exception) {
+            $this->error((string) collect($exception->errors())->flatten()->first());
 
             return;
         }
 
-        $commission->update([
-            'status' => CommissionStatus::Paid,
-            'paid_at' => now(),
-            'paid_method' => 'manual',
-        ]);
-
-        $this->success(__('messages.commission_marked_paid'));
+        $this->success(__('messages.commission_marked_credited'));
     }
 
     public function render(): View
     {
         /** @var LengthAwarePaginator<int, Commission> $commissions */
         $commissions = Commission::query()
+            ->select([
+                'id',
+                'order_id',
+                'fulfillment_id',
+                'salesperson_id',
+                'commission_amount',
+                'commission_rate_percent',
+                'status',
+                'payout_batch_id',
+                'wallet_transaction_id',
+                'paid_at',
+            ])
             ->with([
                 'salesperson:id,name,email',
-                'order:id,order_number',
+                'order:id,order_number,paid_at',
                 'fulfillment:id,status',
+                'payoutBatch:id',
                 'order.items:id,order_id',
                 'order.items.fulfillments:id,order_item_id,status',
             ])
@@ -103,5 +114,58 @@ final class CommissionsTable extends Component
         }
 
         return true;
+    }
+
+    public function isEligibleForPayout(Commission $commission): bool
+    {
+        return $this->payoutIneligibilityReason($commission) === null;
+    }
+
+    public function payoutIneligibilityReason(Commission $commission): ?string
+    {
+        if (! $this->canMarkPaid($commission)) {
+            return __('messages.payout_reason_fulfillment_not_completed');
+        }
+
+        if ($commission->payout_batch_id !== null) {
+            return __('messages.payout_reason_already_in_batch');
+        }
+
+        if ($commission->wallet_transaction_id !== null) {
+            return __('messages.payout_reason_already_credited');
+        }
+
+        if ($commission->order === null || $commission->order->paid_at === null) {
+            return __('messages.payout_reason_order_paid_date_missing');
+        }
+
+        $payoutWaitDays = WebsiteSetting::getCommissionPayoutWaitDays();
+
+        if ($commission->order->paid_at->greaterThan(CarbonImmutable::now()->subDays($payoutWaitDays))) {
+            return __('messages.payout_reason_too_recent', ['days' => $payoutWaitDays]);
+        }
+
+        return null;
+    }
+
+    public function createPayout(): void
+    {
+        abort_unless(auth()->user()?->can('manage_settlements'), 403);
+
+        try {
+            $batch = app(CreatePayoutBatch::class)->handle(
+                array_map(static fn ($id): int => (int) $id, $this->selectedCommissionIds),
+                $this->payoutNotes
+            );
+        } catch (ValidationException $exception) {
+            $this->error((string) collect($exception->errors())->flatten()->first());
+
+            return;
+        }
+
+        $this->selectedCommissionIds = [];
+        $this->payoutNotes = null;
+        $this->success(__('messages.payout_batch_created', ['id' => $batch->id]));
+        $this->resetPage();
     }
 }

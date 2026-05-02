@@ -25,6 +25,8 @@ class Commission extends Model
         'status',
         'paid_at',
         'paid_method',
+        'payout_batch_id',
+        'wallet_transaction_id',
     ];
 
     /**
@@ -44,6 +46,8 @@ class Commission extends Model
             'status' => CommissionStatus::class,
             'paid_at' => 'datetime',
             'paid_method' => 'string',
+            'payout_batch_id' => 'integer',
+            'wallet_transaction_id' => 'integer',
         ];
     }
 
@@ -65,5 +69,15 @@ class Commission extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'customer_id');
+    }
+
+    public function payoutBatch(): BelongsTo
+    {
+        return $this->belongsTo(PayoutBatch::class);
+    }
+
+    public function walletTransaction(): BelongsTo
+    {
+        return $this->belongsTo(WalletTransaction::class);
     }
 }

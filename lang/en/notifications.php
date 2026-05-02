@@ -56,4 +56,7 @@ return [
     'bug_recorded_message' => 'Bug #:id (:scenario, :severity) was submitted.',
     'order_price_floored_title' => 'Order price hit entry-price floor',
     'order_price_floored_message' => 'Order :order_number had :count item(s) clamped to entry price to prevent loss.',
+
+    'commission_credited_title' => 'Commission credited',
+    'commission_credited_message' => ':amount_display — Your commission has been credited to your wallet.',
 ];

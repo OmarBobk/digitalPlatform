@@ -4,6 +4,7 @@ use App\Enums\CommissionStatus;
 use App\Enums\FulfillmentStatus;
 use App\Models\Commission;
 use App\Models\User;
+use App\Models\WebsiteSetting;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -59,12 +60,12 @@ new #[Layout('layouts.app')] class extends Component
 
         $allTime = (float) Commission::query()
             ->where('salesperson_id', $salespersonId)
-            ->whereIn('status', [CommissionStatus::Pending, CommissionStatus::Paid])
+            ->whereIn('status', [CommissionStatus::Pending, CommissionStatus::Credited])
             ->sum('commission_amount');
 
         $paidThisMonth = (float) Commission::query()
             ->where('salesperson_id', $salespersonId)
-            ->where('status', CommissionStatus::Paid)
+            ->where('status', CommissionStatus::Credited)
             ->whereBetween('paid_at', [now()->startOfMonth(), now()->endOfMonth()])
             ->sum('commission_amount');
 
@@ -145,13 +146,60 @@ new #[Layout('layouts.app')] class extends Component
     {
         return Commission::query()
             ->where('salesperson_id', (int) auth()->id())
-            ->where('status', CommissionStatus::Paid)
+            ->where('status', CommissionStatus::Credited)
             ->whereNotNull('paid_at')
             ->when($this->payoutDateFrom, fn (Builder $query): Builder => $query->whereDate('paid_at', '>=', $this->payoutDateFrom))
             ->when($this->payoutDateTo, fn (Builder $query): Builder => $query->whereDate('paid_at', '<=', $this->payoutDateTo))
             ->with('order:id,order_number')
             ->latest('paid_at')
             ->paginate(10, pageName: 'payoutsPage');
+    }
+
+    public function getPayoutStatsProperty(): array
+    {
+        $salespersonId = (int) auth()->id();
+        $cutoff = now()->subDays(WebsiteSetting::getCommissionPayoutWaitDays());
+
+        $pendingTotal = (float) Commission::query()
+            ->where('salesperson_id', $salespersonId)
+            ->where('status', CommissionStatus::Pending)
+            ->sum('commission_amount');
+
+        $paidTotal = (float) Commission::query()
+            ->where('salesperson_id', $salespersonId)
+            ->where('status', CommissionStatus::Credited)
+            ->sum('commission_amount');
+
+        $lastPayoutDate = Commission::query()
+            ->where('salesperson_id', $salespersonId)
+            ->where('status', CommissionStatus::Credited)
+            ->whereNotNull('paid_at')
+            ->latest('paid_at')
+            ->value('paid_at');
+
+        $eligiblePendingAmount = (float) Commission::query()
+            ->where('salesperson_id', $salespersonId)
+            ->where('status', CommissionStatus::Pending)
+            ->whereHas('order', function (Builder $query) use ($cutoff): void {
+                $query->whereNotNull('paid_at')->where('paid_at', '<=', $cutoff);
+            })
+            ->sum('commission_amount');
+
+        $notYetEligibleAmount = (float) Commission::query()
+            ->where('salesperson_id', $salespersonId)
+            ->where('status', CommissionStatus::Pending)
+            ->whereHas('order', function (Builder $query) use ($cutoff): void {
+                $query->whereNull('paid_at')->orWhere('paid_at', '>', $cutoff);
+            })
+            ->sum('commission_amount');
+
+        return [
+            'pending_total' => $pendingTotal,
+            'paid_total' => $paidTotal,
+            'last_payout_at' => $lastPayoutDate,
+            'eligible_pending_amount' => $eligiblePendingAmount,
+            'not_yet_eligible_amount' => $notYetEligibleAmount,
+        ];
     }
 
     public function orderFulfillmentLabel(Commission $commission): string
@@ -433,7 +481,7 @@ new #[Layout('layouts.app')] class extends Component
                                 @elseif ($commission->status === \App\Enums\CommissionStatus::Failed)
                                     <flux:badge size="sm" color="red" variant="subtle">{{ __('messages.commission_status_failed') }}</flux:badge>
                                 @else
-                                    <flux:badge size="sm" color="green" variant="subtle">{{ __('messages.commission_status_paid') }}</flux:badge>
+                                    <flux:badge size="sm" color="green" variant="subtle">{{ __('messages.commission_status_credited') }}</flux:badge>
                                 @endif
                             </td>
                             <td class="px-4 py-3">
@@ -503,9 +551,15 @@ new #[Layout('layouts.app')] class extends Component
             </div>
             <dl class="grid gap-3 text-sm">
                 <div class="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60"><dt>{{ __('messages.total_earned_this_month') }}</dt><dd class="font-semibold" dir="ltr">${{ number_format((float) $this->performanceCards['paid_this_month'], 2) }}</dd></div>
-                <div class="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60"><dt>{{ __('messages.total_paid_to_date') }}</dt><dd class="font-semibold" dir="ltr">${{ number_format((float) \App\Models\Commission::query()->where('salesperson_id', auth()->id())->where('status', \App\Enums\CommissionStatus::Paid)->sum('commission_amount'), 2) }}</dd></div>
-                <div class="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60"><dt>{{ __('messages.pending_balance') }}</dt><dd class="font-semibold" dir="ltr">${{ number_format((float) $this->performanceCards['pending_balance'], 2) }}</dd></div>
+                <div class="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60"><dt>{{ __('messages.total_paid') }}</dt><dd class="font-semibold" dir="ltr">${{ number_format((float) $this->payoutStats['paid_total'], 2) }}</dd></div>
+                <div class="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60"><dt>{{ __('messages.total_pending') }}</dt><dd class="font-semibold" dir="ltr">${{ number_format((float) $this->payoutStats['pending_total'], 2) }}</dd></div>
+                <div class="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60"><dt>{{ __('messages.eligible_for_payout') }}</dt><dd class="font-semibold" dir="ltr">${{ number_format((float) $this->payoutStats['eligible_pending_amount'], 2) }}</dd></div>
+                <div class="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60"><dt>{{ __('messages.not_yet_eligible_for_payout') }}</dt><dd class="font-semibold" dir="ltr">${{ number_format((float) $this->payoutStats['not_yet_eligible_amount'], 2) }}</dd></div>
+                <div class="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60"><dt>{{ __('messages.last_payout_date') }}</dt><dd class="font-semibold">{{ $this->payoutStats['last_payout_at'] ? \Illuminate\Support\Carbon::parse($this->payoutStats['last_payout_at'])->format('Y-m-d H:i') : '—' }}</dd></div>
             </dl>
+            <flux:text class="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+                {{ __('messages.commission_credited_wallet_note') }}
+            </flux:text>
             <div class="mt-4 space-y-2">
                 <div>
                     <div class="mb-1 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
@@ -543,6 +597,7 @@ new #[Layout('layouts.app')] class extends Component
                             <th class="px-3 py-2 text-start font-semibold">{{ __('messages.date') }}</th>
                             <th class="px-3 py-2 text-start font-semibold">{{ __('messages.amount') }}</th>
                             <th class="px-3 py-2 text-start font-semibold">{{ __('messages.method') }}</th>
+                            <th class="px-3 py-2 text-start font-semibold">{{ __('messages.wallet_transaction') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -551,9 +606,18 @@ new #[Layout('layouts.app')] class extends Component
                                 <td class="px-3 py-2">{{ $row->paid_at?->format('Y-m-d H:i') ?? '—' }}</td>
                                 <td class="px-3 py-2 font-semibold" dir="ltr">${{ number_format((float) $row->commission_amount, 2) }}</td>
                                 <td class="px-3 py-2">{{ $row->paid_method ?? 'manual' }}</td>
+                                <td class="px-3 py-2">
+                                    @if ($row->wallet_transaction_id !== null)
+                                        <a href="{{ route('wallet') }}" class="font-semibold text-(--color-accent) hover:underline" wire:navigate>
+                                            #{{ $row->wallet_transaction_id }}
+                                        </a>
+                                    @else
+                                        —
+                                    @endif
+                                </td>
                             </tr>
                         @empty
-                            <tr><td colspan="3" class="px-3 py-4 text-center text-zinc-500">{{ __('messages.no_commissions_yet') }}</td></tr>
+                            <tr><td colspan="4" class="px-3 py-4 text-center text-zinc-500">{{ __('messages.no_commissions_yet') }}</td></tr>
                         @endforelse
                     </tbody>
                 </table>

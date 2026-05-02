@@ -69,6 +69,7 @@
   - ###DONE /orders Redesign
   - ###DONE Register form: mask the phone number field
   - ###DONE: Topups: when customer want to request a new topup he should see a toggle button if checked it then he need to upload the proof file if not then he can request the topup without uploading the proof
+  - ###TODO: main page search field is not working
 
     
 

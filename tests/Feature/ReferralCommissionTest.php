@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Commissions\CreatePayoutBatch;
 use App\Actions\Orders\CheckoutFromPayload;
 use App\Actions\Orders\PayOrderWithWallet;
 use App\Enums\CommissionStatus;
@@ -12,6 +13,7 @@ use App\Models\Fulfillment;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Package;
+use App\Models\PayoutBatch;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Wallet;
@@ -173,7 +175,7 @@ test('pay order does not create commission for self referral in meta', function 
     expect(Commission::query()->where('order_id', $order->id)->exists())->toBeFalse();
 });
 
-test('admin can mark commission as paid', function () {
+test('admin can mark commission as credited', function () {
     Permission::firstOrCreate(['name' => 'manage_settlements']);
     $admin = User::factory()->create();
     $admin->givePermissionTo('manage_settlements');
@@ -189,7 +191,7 @@ test('admin can mark commission as paid', function () {
         'fee' => 0,
         'total' => 100,
         'status' => OrderStatus::Paid,
-        'paid_at' => now(),
+        'paid_at' => now()->subDays(4),
         'meta' => ['referral' => ['code' => 'X', 'salesperson_id' => $referrer->id]],
     ]);
     $order->order_number = Order::generateOrderNumber($order->id, (int) $order->created_at?->format('Y'));
@@ -229,11 +231,12 @@ test('admin can mark commission as paid', function () {
         ->call('markPaid', $commission->id);
 
     $commission->refresh();
-    expect($commission->status)->toBe(CommissionStatus::Paid);
+    expect($commission->status)->toBe(CommissionStatus::Credited);
     expect($commission->paid_at)->not->toBeNull();
+    expect($commission->wallet_transaction_id)->not->toBeNull();
 });
 
-test('admin cannot mark commission as paid when fulfillments are not completed', function () {
+test('admin cannot mark commission as credited when fulfillments are not completed', function () {
     Permission::firstOrCreate(['name' => 'manage_settlements']);
     $admin = User::factory()->create();
     $admin->givePermissionTo('manage_settlements');
@@ -249,7 +252,7 @@ test('admin cannot mark commission as paid when fulfillments are not completed',
         'fee' => 0,
         'total' => 100,
         'status' => OrderStatus::Paid,
-        'paid_at' => now(),
+        'paid_at' => now()->subDays(4),
         'meta' => ['referral' => ['code' => 'X', 'salesperson_id' => $referrer->id]],
     ]);
     $order->order_number = Order::generateOrderNumber($order->id, (int) $order->created_at?->format('Y'));
@@ -291,6 +294,160 @@ test('admin cannot mark commission as paid when fulfillments are not completed',
     $commission->refresh();
     expect($commission->status)->toBe(CommissionStatus::Pending);
     expect($commission->paid_at)->toBeNull();
+});
+
+test('admin can create payout batch for eligible commissions', function () {
+    Permission::firstOrCreate(['name' => 'manage_settlements']);
+    $admin = User::factory()->create();
+    $admin->givePermissionTo('manage_settlements');
+
+    $salesperson = User::factory()->create();
+    $buyer = User::factory()->create();
+
+    $order = Order::create([
+        'user_id' => $buyer->id,
+        'order_number' => Order::temporaryOrderNumber(),
+        'currency' => 'USD',
+        'subtotal' => 1500,
+        'fee' => 0,
+        'total' => 1500,
+        'status' => OrderStatus::Paid,
+        'paid_at' => now()->subDays(4),
+        'meta' => ['referral' => ['code' => 'X', 'salesperson_id' => $salesperson->id]],
+    ]);
+    $order->order_number = Order::generateOrderNumber($order->id, (int) $order->created_at?->format('Y'));
+    $order->save();
+
+    $orderItemA = OrderItem::query()->create([
+        'order_id' => $order->id,
+        'name' => 'Item A',
+        'unit_price' => 1000,
+        'entry_price' => 700,
+        'quantity' => 1,
+        'line_total' => 1000,
+    ]);
+    $fulfillmentA = Fulfillment::query()->create([
+        'order_id' => $order->id,
+        'order_item_id' => $orderItemA->id,
+        'provider' => 'manual',
+        'status' => FulfillmentStatus::Completed,
+        'attempts' => 0,
+    ]);
+
+    $orderItemB = OrderItem::query()->create([
+        'order_id' => $order->id,
+        'name' => 'Item B',
+        'unit_price' => 500,
+        'entry_price' => 350,
+        'quantity' => 1,
+        'line_total' => 500,
+    ]);
+    $fulfillmentB = Fulfillment::query()->create([
+        'order_id' => $order->id,
+        'order_item_id' => $orderItemB->id,
+        'provider' => 'manual',
+        'status' => FulfillmentStatus::Completed,
+        'attempts' => 0,
+    ]);
+
+    $commissionA = Commission::query()->create([
+        'order_id' => $order->id,
+        'fulfillment_id' => $fulfillmentA->id,
+        'salesperson_id' => $salesperson->id,
+        'customer_id' => $buyer->id,
+        'referral_code' => 'REFA0001',
+        'order_total' => 1000,
+        'commission_amount' => 120,
+        'status' => CommissionStatus::Pending,
+    ]);
+
+    $commissionB = Commission::query()->create([
+        'order_id' => $order->id,
+        'fulfillment_id' => $fulfillmentB->id,
+        'salesperson_id' => $salesperson->id,
+        'customer_id' => $buyer->id,
+        'referral_code' => 'REFB0001',
+        'order_total' => 500,
+        'commission_amount' => 90,
+        'status' => CommissionStatus::Pending,
+    ]);
+
+    $this->actingAs($admin);
+    app(CreatePayoutBatch::class)->handle([$commissionA->id, $commissionB->id], 'manual payout');
+
+    $batch = PayoutBatch::query()->first();
+    expect($batch)->not->toBeNull();
+    expect((float) $batch->total_amount)->toBe(210.0);
+    expect($batch->commission_count)->toBe(2);
+
+    $commissionA->refresh();
+    $commissionB->refresh();
+    expect($commissionA->status)->toBe(CommissionStatus::Credited);
+    expect($commissionB->status)->toBe(CommissionStatus::Credited);
+    expect($commissionA->payout_batch_id)->toBe($batch->id);
+    expect($commissionB->payout_batch_id)->toBe($batch->id);
+    expect($commissionA->wallet_transaction_id)->not->toBeNull();
+    expect($commissionB->wallet_transaction_id)->not->toBeNull();
+});
+
+test('admin payout batch requires minimum eligible amount', function () {
+    Permission::firstOrCreate(['name' => 'manage_settlements']);
+    $admin = User::factory()->create();
+    $admin->givePermissionTo('manage_settlements');
+
+    $salesperson = User::factory()->create();
+    $buyer = User::factory()->create();
+
+    $order = Order::create([
+        'user_id' => $buyer->id,
+        'order_number' => Order::temporaryOrderNumber(),
+        'currency' => 'USD',
+        'subtotal' => 100,
+        'fee' => 0,
+        'total' => 100,
+        'status' => OrderStatus::Paid,
+        'paid_at' => now()->subDays(4),
+        'meta' => ['referral' => ['code' => 'X', 'salesperson_id' => $salesperson->id]],
+    ]);
+    $order->order_number = Order::generateOrderNumber($order->id, (int) $order->created_at?->format('Y'));
+    $order->save();
+
+    $orderItem = OrderItem::query()->create([
+        'order_id' => $order->id,
+        'name' => 'Item A',
+        'unit_price' => 100,
+        'entry_price' => 80,
+        'quantity' => 1,
+        'line_total' => 100,
+    ]);
+    $fulfillment = Fulfillment::query()->create([
+        'order_id' => $order->id,
+        'order_item_id' => $orderItem->id,
+        'provider' => 'manual',
+        'status' => FulfillmentStatus::Completed,
+        'attempts' => 0,
+    ]);
+
+    $commission = Commission::query()->create([
+        'order_id' => $order->id,
+        'fulfillment_id' => $fulfillment->id,
+        'salesperson_id' => $salesperson->id,
+        'customer_id' => $buyer->id,
+        'referral_code' => 'REFMIN01',
+        'order_total' => 100,
+        'commission_amount' => 50,
+        'status' => CommissionStatus::Pending,
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test(CommissionsTable::class)
+        ->set('selectedCommissionIds', [$commission->id])
+        ->call('createPayout');
+
+    expect(PayoutBatch::query()->exists())->toBeFalse();
+    $commission->refresh();
+    expect($commission->status)->toBe(CommissionStatus::Pending);
+    expect($commission->payout_batch_id)->toBeNull();
 });
 
 test('middleware sets cookie when ref query matches existing referral code', function () {
