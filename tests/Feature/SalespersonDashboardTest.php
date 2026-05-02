@@ -9,7 +9,7 @@ use Spatie\Permission\Models\Permission;
 uses(RefreshDatabase::class);
 
 test('salesperson dashboard requires sales permission', function () {
-    Permission::query()->firstOrCreate(['name' => 'view_sales']);
+    Permission::query()->firstOrCreate(['name' => 'view_referrals']);
 
     $user = User::factory()->create();
 
@@ -17,7 +17,7 @@ test('salesperson dashboard requires sales permission', function () {
         ->get(route('salesperson.dashboard'))
         ->assertNotFound();
 
-    $user->givePermissionTo('view_sales');
+    $user->givePermissionTo('view_referrals');
 
     $this->actingAs($user)
         ->get(route('salesperson.dashboard'))

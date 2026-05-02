@@ -20,6 +20,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class CreatePayoutBatch
@@ -204,6 +205,45 @@ class CreatePayoutBatch
                     'paid_at' => $creditedAt,
                     'paid_method' => 'wallet',
                 ]);
+
+                if (Schema::hasTable('activity_log')) {
+                    $admin = User::query()->find($resolvedCreatedBy);
+                    if ($admin !== null) {
+                        activity()
+                            ->inLog('payments')
+                            ->event('commission.credited')
+                            ->performedOn($commission)
+                            ->causedBy($admin)
+                            ->withProperties([
+                                'commission_id' => $commission->id,
+                                'order_id' => $commission->order_id,
+                                'salesperson_id' => $salesperson->id,
+                                'amount' => $commission->commission_amount,
+                                'currency' => $wallet->currency,
+                                'payout_batch_id' => $batch->id,
+                                'wallet_id' => $wallet->id,
+                                'transaction_id' => $walletTransaction->id,
+                            ])
+                            ->log('Commission credited to wallet');
+
+                        activity()
+                            ->inLog('payments')
+                            ->event('wallet.credited')
+                            ->performedOn($wallet)
+                            ->causedBy($admin)
+                            ->withProperties([
+                                'wallet_id' => $wallet->id,
+                                'user_id' => $wallet->user_id,
+                                'amount' => $walletTransaction->amount,
+                                'currency' => $wallet->currency,
+                                'transaction_id' => $walletTransaction->id,
+                                'source' => 'commission',
+                                'commission_id' => $commission->id,
+                                'payout_batch_id' => $batch->id,
+                            ])
+                            ->log('Wallet credited');
+                    }
+                }
 
                 $salespersonId = (int) $salesperson->id;
                 $commissionId = (int) $commission->id;

@@ -20,6 +20,7 @@ use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Livewire\Livewire;
+use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -234,6 +235,22 @@ test('admin can mark commission as credited', function () {
     expect($commission->status)->toBe(CommissionStatus::Credited);
     expect($commission->paid_at)->not->toBeNull();
     expect($commission->wallet_transaction_id)->not->toBeNull();
+
+    $salespersonWallet = Wallet::query()->where('user_id', $referrer->id)->firstOrFail();
+    expect(Activity::query()
+        ->where('event', 'commission.credited')
+        ->where('log_name', 'payments')
+        ->where('subject_type', Commission::class)
+        ->where('subject_id', $commission->id)
+        ->exists()
+    )->toBeTrue();
+    expect(Activity::query()
+        ->where('event', 'wallet.credited')
+        ->where('log_name', 'payments')
+        ->where('subject_type', Wallet::class)
+        ->where('subject_id', $salespersonWallet->id)
+        ->exists()
+    )->toBeTrue();
 });
 
 test('admin cannot mark commission as credited when fulfillments are not completed', function () {
@@ -388,6 +405,17 @@ test('admin can create payout batch for eligible commissions', function () {
     expect($commissionB->payout_batch_id)->toBe($batch->id);
     expect($commissionA->wallet_transaction_id)->not->toBeNull();
     expect($commissionB->wallet_transaction_id)->not->toBeNull();
+
+    expect(Activity::query()
+        ->where('event', 'commission.credited')
+        ->where('log_name', 'payments')
+        ->count()
+    )->toBe(2);
+    expect(Activity::query()
+        ->where('event', 'wallet.credited')
+        ->where('log_name', 'payments')
+        ->count()
+    )->toBe(2);
 });
 
 test('admin payout batch requires minimum eligible amount', function () {

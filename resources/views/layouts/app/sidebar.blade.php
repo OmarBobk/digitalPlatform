@@ -2,7 +2,7 @@
     $pendingRefundsCount = 0;
     $dashboardHref = auth()->user()?->can('view_dashboard')
         ? route('dashboard')
-        : (auth()->user()?->can('view_sales') ? route('salesperson.dashboard') : route('home'));
+        : (auth()->user()?->can('view_referrals') ? route('salesperson.dashboard') : route('home'));
     if (auth()->check() && auth()->user()?->can('view_refunds')) {
         $pendingRefundsCount = \App\Models\WalletTransaction::query()
             ->where('type', \App\Enums\WalletTransactionType::Refund)
@@ -26,14 +26,14 @@
             <x-admin.usd-try-rate-panel variant="sidebar" />
 
             <flux:sidebar.nav>
-                @if (auth()->user()?->can('view_dashboard') || auth()->user()?->can('view_sales'))
+                @if (auth()->user()?->can('view_dashboard') || auth()->user()?->can('view_referrals'))
                     <flux:sidebar.group :heading="__('messages.nav_overview')" class="grid">
                         @can('view_dashboard')
                             <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                                 {{ __('messages.dashboard') }}
                             </flux:sidebar.item>
                         @endcan
-                        @can('view_sales')
+                        @can('view_referrals')
                             <flux:sidebar.item icon="chart-bar" :href="route('salesperson.dashboard')" :current="request()->routeIs('salesperson.dashboard')" wire:navigate>
                                 {{ __('messages.salesperson_dashboard') }}
                             </flux:sidebar.item>

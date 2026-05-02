@@ -9,6 +9,7 @@ new #[Layout('layouts::frontend')] class extends Component
     public function mount(): void
     {
         abort_unless(auth()->check(), 403);
+        abort_unless(auth()->user()?->can('view_referrals'), 403);
     }
 
     public function render(): View

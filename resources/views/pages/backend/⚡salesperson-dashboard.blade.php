@@ -27,7 +27,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public function mount(): void
     {
-        abort_unless(auth()->user()?->can('view_sales'), 403);
+        abort_unless(auth()->user()?->can('view_referrals'), 403);
     }
 
     public function applyFilters(): void

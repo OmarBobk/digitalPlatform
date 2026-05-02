@@ -426,7 +426,7 @@ class UserModals extends Component
             'orders' => [
                 'label' => __('messages.permission_group_orders'),
                 'icon' => 'shopping-cart',
-                'permissions' => ['view_sales', 'view_orders', 'create_orders', 'edit_orders', 'delete_orders'],
+                'permissions' => ['view_referrals', 'view_orders', 'create_orders', 'edit_orders', 'delete_orders'],
             ],
             'fulfillments' => [
                 'label' => __('messages.permission_group_fulfillments'),

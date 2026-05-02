@@ -257,7 +257,7 @@ test('assign roles and permissions on create logs roles_updated when changed', f
     $admin = User::factory()->create();
     $admin->assignRole('admin');
     Role::firstOrCreate(['name' => 'salesperson']);
-    Permission::firstOrCreate(['name' => 'view_sales']);
+    Permission::firstOrCreate(['name' => 'view_referrals']);
 
     Livewire::actingAs($admin)
         ->test(UserModals::class)
@@ -268,13 +268,13 @@ test('assign roles and permissions on create logs roles_updated when changed', f
         ->set('newPassword', 'Password123!@#')
         ->set('newPasswordConfirmation', 'Password123!@#')
         ->set('newRoles', ['salesperson'])
-        ->set('newPermissions', ['view_sales'])
+        ->set('newPermissions', ['view_referrals'])
         ->call('saveCreate')
         ->assertHasNoErrors();
 
     $user = User::query()->where('email', 'roleuser@example.com')->firstOrFail();
     expect($user->getRoleNames()->all())->toContain('salesperson');
-    expect($user->getDirectPermissions()->pluck('name')->all())->toContain('view_sales');
+    expect($user->getDirectPermissions()->pluck('name')->all())->toContain('view_referrals');
 
     $this->assertDatabaseHas('activity_log', ['event' => 'user.created', 'log_name' => 'admin']);
 });
