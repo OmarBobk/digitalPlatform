@@ -54,14 +54,16 @@
   - ###TODO: ###MAJOR### Users hierarchy.
   - ###TODO: Dashboard Page:
     - #TODO: who is online by role
-  - ###TODO: redesign the login, register, reset password pages.
+  - ###DONE: redesign the login, register, reset password pages.
   - ###TODO: pwa: if a user tries to install the app from chrome → three dots → open karman  instead of open indirimGo
   - ###TODO: Referral Feature:
     - ###TODO: Salesperson should be able to create new user , see users under him, update user's information (phone, username, password, email, name)
     - ###TODO: if admin hit the salesperson dashboard he should be able to select some salesperson to see his states
     - ###TODO: Admin should be able to set the commission percent for every salesperson
-    - ###TODO: Salesperson should see only the his dashboard there is no need to access the fulfillments
-    - 
+    - ###TODO: Salesperson should see only the dashboard there is no need to access the fulfillments
+  - ###TODO: admin/users/{user}: customer price needs to be fixed
+  - ###TODO: Add new products
+  - ###TODO: Set the testing environment
   - 
 - Frontend:
   - ###DONE wallet transaction in /wallets should be more described
