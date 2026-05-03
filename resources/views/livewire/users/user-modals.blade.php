@@ -70,6 +70,23 @@
                     </flux:input.group>
                     <flux:error name="newPhone" />
                 </flux:field>
+                <flux:field>
+                    <flux:label>{{ __('messages.commission_rate_percent') }}</flux:label>
+                    <flux:input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        max="100"
+                        wire:model.defer="newCommissionRatePercent"
+                        :placeholder="__('messages.commission_rate_percent_placeholder')"
+                        class="w-full"
+                        class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                    />
+                    <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">
+                        {{ __('messages.commission_rate_percent_hint') }}
+                    </flux:text>
+                    <flux:error name="newCommissionRatePercent" />
+                </flux:field>
             </div>
 
             <div class="space-y-2">
@@ -222,6 +239,23 @@
                                     class="w-full" class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0" />
                     </flux:input.group>
                     <flux:error name="editPhone" />
+                </flux:field>
+                <flux:field>
+                    <flux:label>{{ __('messages.commission_rate_percent') }}</flux:label>
+                    <flux:input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        max="100"
+                        wire:model.defer="editCommissionRatePercent"
+                        :placeholder="__('messages.commission_rate_percent_placeholder')"
+                        class="w-full"
+                        class:input="focus:!border-(--color-accent) focus:!border-1 focus:!ring-0 focus:!outline-none focus:!ring-offset-0"
+                    />
+                    <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">
+                        {{ __('messages.commission_rate_percent_hint') }}
+                    </flux:text>
+                    <flux:error name="editCommissionRatePercent" />
                 </flux:field>
             </div>
 

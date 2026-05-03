@@ -28,6 +28,7 @@ class CreateUser
         ], [
             ...$this->profileRules(null),
             'password' => $this->passwordRules(),
+            'commission_rate_percent' => ['nullable', 'numeric', 'min:0.01', 'max:100'],
         ])->validate();
 
         $timezone = Timezone::detect(
@@ -44,6 +45,7 @@ class CreateUser
             'country_code' => $input['country_code'] ?? null,
             'timezone' => $timezone,
             'profile_photo' => $input['profile_photo'] ?? null,
+            'commission_rate_percent' => $input['commission_rate_percent'] ?? null,
             'is_active' => true,
         ]);
 

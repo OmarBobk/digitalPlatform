@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\PushTokenController;
 use App\Http\Controllers\BugAttachmentController;
 use App\Http\Controllers\BuyNowCustomAmountQuoteController;
 use App\Http\Controllers\TopupProofController;
+use App\Livewire\Admin\CommissionsTable;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 use Maatwebsite\Excel\Facades\Excel;
@@ -44,6 +45,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('/profile/edit', 'pages::frontend.profile-edit')->name('profile.edit-information');
     Route::livewire('/wallet', 'pages::frontend.wallet')->name('wallet');
     Route::livewire('/loyalty', 'pages::frontend.loyalty')->name('loyalty');
+    Route::livewire('/referral-link', 'pages::frontend.referral-link')
+        ->middleware('can:view_referrals')
+        ->name('referral-link');
     Route::livewire('/orders', 'pages::frontend.orders')->name('orders.index');
     Route::livewire('/orders/{order:order_number}', 'pages::frontend.order-details')->name('orders.show');
     Route::livewire('/notifications', 'pages::frontend.notifications')->name('notifications.index');
@@ -61,6 +65,9 @@ Route::middleware(['auth', 'verified', 'backend'])->group(function () {
     Route::livewire('/dashboard', 'pages::backend.dashboard')
         ->middleware('can:view_dashboard')
         ->name('dashboard');
+    Route::livewire('/salesperson-dashboard', 'pages::backend.salesperson-dashboard')
+        ->middleware('can:view_referrals')
+        ->name('salesperson.dashboard');
     Route::livewire('/categories', 'pages::backend.categories.index')->name('categories');
     Route::livewire('/packages', 'pages::backend.packages.index')->name('packages');
     Route::livewire('/products', 'pages::backend.products.index')->name('products');
@@ -86,6 +93,9 @@ Route::middleware(['auth', 'verified', 'backend'])->group(function () {
     Route::livewire('/topups', 'pages::backend.topups.index')->name('topups');
     Route::livewire('/customer-funds', 'pages::backend.customer-funds.index')->name('customer-funds');
     Route::livewire('/settlements', 'pages::backend.settlements.index')->name('settlements');
+    Route::livewire('/admin/commissions', CommissionsTable::class)
+        ->middleware('can:manage_settlements')
+        ->name('admin.commissions');
     Route::livewire('/admin/notifications', 'pages::backend.notifications.index')->name('admin.notifications.index');
 });
 
