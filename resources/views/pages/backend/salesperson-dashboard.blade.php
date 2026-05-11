@@ -44,6 +44,8 @@
         <x-dashboard.leaderboard :customers="$customers" />
     </section>
 
+    <x-dashboard.referred-users :users="$referredUsers" />
+
     <x-dashboard.orders-table :orders="$orders" />
 
     <x-dashboard.earnings-panel

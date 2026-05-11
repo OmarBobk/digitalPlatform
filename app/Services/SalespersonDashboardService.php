@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Enums\CommissionStatus;
 use App\Enums\FulfillmentStatus;
 use App\Models\Commission;
+use App\Models\User;
 use App\Models\WebsiteSetting;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -19,6 +20,7 @@ class SalespersonDashboardService
      * @return array{
      *     orders: array<int, array<string, mixed>>,
      *     customers: array<int, array<string, mixed>>,
+     *     referredUsers: array<int, array<string, mixed>>,
      *     kpis: array<int, array<string, mixed>>,
      *     earningsSummary: array<int, array<string, mixed>>,
      *     payoutHistory: array<int, array<string, mixed>>,
@@ -117,6 +119,8 @@ class SalespersonDashboardService
             ->values()
             ->all();
 
+        $referredUsers = $this->loadReferredUsersForDashboard($salespersonId);
+
         $paidTotal = (float) $commissions
             ->where('status', CommissionStatus::Credited)
             ->sum('commission_amount');
@@ -156,6 +160,7 @@ class SalespersonDashboardService
         return [
             'orders' => $orders,
             'customers' => $customers,
+            'referredUsers' => $referredUsers,
             'kpis' => $kpis,
             'earningsSummary' => $earningsSummary,
             'payoutHistory' => $payoutHistory,
@@ -171,6 +176,47 @@ class SalespersonDashboardService
             'chartSeries' => $chartSeries,
             'chartPresets' => $chartPresets,
         ];
+    }
+
+    /**
+     * Every account referred by this salesperson (not only those with commissions).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function loadReferredUsersForDashboard(int $salespersonId): array
+    {
+        return User::query()
+            ->where('referred_by_user_id', $salespersonId)
+            ->with('roles:id,name')
+            ->orderByDesc('created_at')
+            ->limit(2000)
+            ->get()
+            ->map(function (User $u): array {
+                $rolesLabel = $u->roles
+                    ->pluck('name')
+                    ->map(function ($roleName): string {
+                        $name = (string) $roleName;
+
+                        return \Illuminate\Support\Facades\Lang::has('messages.role_'.$name)
+                            ? (string) __('messages.role_'.$name)
+                            : str_replace('_', ' ', \Illuminate\Support\Str::headline($name));
+                    })
+                    ->implode(', ') ?: '—';
+
+                return [
+                    'id' => $u->id,
+                    'name' => (string) ($u->name ?? ''),
+                    'username' => (string) ($u->username ?? ''),
+                    'email' => (string) ($u->email ?? ''),
+                    'phone' => trim(implode(' ', array_filter([(string) ($u->country_code ?? ''), (string) ($u->phone ?? '')]))),
+                    'active' => $u->blocked_at === null,
+                    'last_login_at' => $u->last_login_at?->format('Y-m-d H:i'),
+                    'created_at' => $u->created_at?->format('Y-m-d') ?? '',
+                    'roles_label' => $rolesLabel,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /** Same eligible rules as the payout card (pending, past wait window, fulfillment completed). */
