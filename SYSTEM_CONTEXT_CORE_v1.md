@@ -19,7 +19,7 @@ Use this as the primary prompt context for AI tools that will plan or implement 
 - **Repo:** karman.store.
 - **Owner:** Omar.
 - **Frontend brand:** İndirimGo.
-- **Product type:** Laravel commerce + wallet operations platform (catalog, wallet, orders, fulfillments, topups, refunds, settlements, loyalty, bug ops, referral commissions).
+- **Product type:** Laravel commerce + wallet operations platform (catalog, wallet, orders, fulfillments, topups, refunds, settlements, loyalty, bug ops, referral commissions, commission wallet payouts).
 
 ---
 
@@ -37,10 +37,10 @@ Use this as the primary prompt context for AI tools that will plan or implement 
 ## 3. Architecture map (where to implement changes)
 
 - **Routes:** `routes/web.php`, `routes/channels.php`.
-- **Domain actions:** `app/Actions/*` (Orders, Fulfillments, Topups, Refunds, Pricing, Users, etc).
+- **Domain actions:** `app/Actions/*` (Orders, Fulfillments, Topups, Refunds, Pricing, Users, Commissions, etc).
 - **Pricing domain:** `app/Domain/Pricing/PricingEngine.php`, `CustomAmountValidator.php`, `PriceQuoteDTO.php`.
 - **Financial services:** `SystemEventService`, `OperationalIntelligenceService`.
-- **UI/state boundary:** Livewire for server state; Alpine for UI/cart state.
+- **UI/state boundary:** Livewire for server state; Alpine for UI/cart state. Dashboard UI uses Blade components under `resources/views/components/dashboard/*` plus service-built payloads.
 - **Observability:** Spatie activity log + `system_events` + push logs.
 
 ---
@@ -55,6 +55,7 @@ Use this as the primary prompt context for AI tools that will plan or implement 
 6. Custom-amount lines remain quantity-1 semantic lines with `requested_amount`.
 7. Pricing-rule coverage must include computed custom-amount entry totals.
 8. Backend visibility must remain permission-based (no role-only shortcuts).
+9. Commission payouts are wallet credits (`commission_credit`) and must be idempotent by `commission_credit:{commission_id}`.
 
 ---
 
@@ -70,9 +71,9 @@ Use this as the primary prompt context for AI tools that will plan or implement 
 
 ## 6. Role-based feature surface
 
-- **Customer:** browse catalog, cart, buy-now/custom amount, wallet + topups, orders/details, loyalty, referral link page, notifications, locale switch.
+- **Customer:** browse catalog, cart, buy-now/custom amount, wallet + topups, orders/details, loyalty, referral link page when allowed by `view_referrals`, notifications, locale switch.
 - **Supervisor/operations:** fulfillment queues and claim workflow, refunds, topups, customer funds, settlements, bugs inbox.
-- **Salesperson:** salesperson dashboard, referral-driven order/commission views.
+- **Salesperson:** `view_referrals` dashboard, referral link, referral-driven order/commission analytics, eligible payout visibility.
 - **Admin:** all ops pages + system events + user management + commissions management + website settings.
 
 ---
@@ -89,6 +90,7 @@ Use this as the primary prompt context for AI tools that will plan or implement 
 ## 8. Financial core (wallet, topup, refund, settlement)
 
 - **Wallet ledger:** posted tx sum mirrors stored balance; reconcile command validates and fixes drift.
+- **Transaction types:** topup, purchase, refund, adjustment, settlement, **commission_credit**.
 - **Topup creation:** `CreateTopupRequestAction` atomically creates topup request + pending wallet tx.
 - **Topup conversion behavior:** TRY-entered topups are converted to USD ledger values using configured rate.
 - **Topup proof UI behavior:** wallet page gates file requirement with `attachProof`; proof optional when disabled.
@@ -111,10 +113,12 @@ Use this as the primary prompt context for AI tools that will plan or implement 
 - **Referral attribution:** query param `?ref=` captured by `CaptureReferralFromQuery` middleware to signed cookie.
 - **Config:** `config/referral.php` (`cookie_name`, `cookie_ttl_minutes`).
 - **User fields:** referral code + referred-by linkage (`referral_code`, `referred_by_user_id`).
-- **Commission model:** `commissions` table, `CommissionStatus` enum (`pending`, `paid`, `failed`).
+- **Commission model:** `commissions` table, `CommissionStatus` enum (`pending`, `credited`, `failed`), commission rate snapshots, optional `payout_batch_id`, and unique `wallet_transaction_id`.
 - **Creation trigger:** commissions are generated in `PayOrderWithWallet` after order payment/fulfillment creation.
 - **Failure interaction:** refund approval marks related pending commissions as failed.
-- **Ops pages:** `/admin/commissions` and `/salesperson-dashboard`; frontend `/referral-link`.
+- **Payout flow:** admins use `CreatePayoutBatch` through `/admin/commissions` (`can:manage_settlements`) to credit eligible completed/aged commissions to salesperson wallets. It creates `payout_batches`, posts `commission_credit` wallet transactions, records `wallet.commission.credited`, marks commissions `credited`, and notifies recipients after commit.
+- **Eligibility:** commission must be pending, not already batched/credited, order paid older than `WebsiteSetting::getCommissionPayoutWaitDays()`, and related fulfillment(s) completed; payout total must meet `WebsiteSetting::getCommissionPayoutMinAmount()` unless explicitly bypassed for a single admin credit.
+- **Salesperson dashboard:** `/salesperson-dashboard` (`can:view_referrals`) uses `SalespersonDashboardService` + `resources/views/components/dashboard/*` for KPI hero charts, payout card, leaderboard, orders table, and earnings history. Frontend `/referral-link` also requires `can:view_referrals`.
 
 ---
 
@@ -155,7 +159,8 @@ Use this as the primary prompt context for AI tools that will plan or implement 
 - **2026-04-09 to 2026-04-11:** tighter dashboard and price-entry permissions (`3cdb862`, `9b8d8d1`, `5760e1b`).
 - **2026-04-10:** locale preference flow and USD/TRY support (`73d9847`, `fc3cdc3`, `be3ee4c`).
 - **2026-04-24:** topup TRY->USD conversion behavior (`b4b5041`).
-- **2026-04-30:** referral + commissions system launch (`70a5844`).
+- **2026-04-30:** referral + commissions system launch, commission rate management, and salesperson dashboard display upgrades (`70a5844`, `3ff1205`, `f8df282`).
+- **2026-05-02:** commission payout batching/wallet crediting and `view_sales` -> `view_referrals` permission migration (`f7d0d97`, `10cbfbb`).
 
 ---
 
@@ -163,7 +168,7 @@ Use this as the primary prompt context for AI tools that will plan or implement 
 
 - **Public:** `/`, `/categories/{category:slug}`, `/cart`, `/contact`, `/404`, `language/{locale}`.
 - **Auth+verified (storefront):** `/profile`, `/wallet`, `/loyalty`, `/referral-link`, `/orders`, `/orders/{order_number}`, `/notifications`, `/topup-proofs/{proof}`, `/bug-attachments/{attachment}`, `POST /api/pricing/buy-now-custom-amount-quote`.
-- **Backend:** `/dashboard` (`can:view_dashboard`), `/salesperson-dashboard` (`can:view_referrals`), `/categories`, `/packages`, `/products`, `/product-entry-prices` (`can:update_product_prices`), `/pricing-rules`, `/loyalty-tiers`, `/admin/orders/*`, `/admin/users/*`, `/admin/users/{user}/audit`, `/fulfillments`, `/refunds`, `/topups`, `/customer-funds`, `/settlements`, `/admin/commissions`, `/admin/notifications`, `/admin/bugs/*`, `/admin/website-settings` (admin only).
+- **Backend:** `/dashboard` (`can:view_dashboard`), `/salesperson-dashboard` (`can:view_referrals`), `/categories`, `/packages`, `/products`, `/product-entry-prices` (`can:update_product_prices`), `/pricing-rules`, `/loyalty-tiers`, `/admin/orders/*`, `/admin/users/*`, `/admin/users/{user}/audit`, `/fulfillments`, `/refunds`, `/topups`, `/customer-funds`, `/settlements`, `/admin/commissions` (`can:manage_settlements`), `/admin/notifications`, `/admin/bugs/*`, `/admin/website-settings` (admin only).
 
 ---
 
@@ -172,8 +177,10 @@ Use this as the primary prompt context for AI tools that will plan or implement 
 - `routes/web.php`, `routes/channels.php`
 - `config/permission.php`, `config/fortify.php`, `config/referral.php`
 - `app/Actions/Orders/CheckoutFromPayload.php`, `CreateOrderFromCartPayload.php`, `PayOrderWithWallet.php`
+- `app/Actions/Commissions/CreatePayoutBatch.php`
 - `app/Actions/Refunds/ApproveRefundRequest.php`
 - `app/Actions/Fulfillments/ClaimFulfillment.php`, `CreateFulfillmentsForOrder.php`
 - `app/Services/SystemEventService.php`, `OperationalIntelligenceService.php`
+- `app/Services/SalespersonDashboardService.php`, `resources/views/components/dashboard/*`
 - `app/Domain/Pricing/*`
 - `resources/js/app.js`

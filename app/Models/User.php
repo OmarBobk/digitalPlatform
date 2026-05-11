@@ -175,6 +175,16 @@ class User extends Authenticatable implements HasLocalePreference
     }
 
     /**
+     * Manual payout requests from the salesperson dashboard (one pending row max per user).
+     *
+     * @return HasMany<PayoutRequest, $this>
+     */
+    public function payoutRequests(): HasMany
+    {
+        return $this->hasMany(PayoutRequest::class);
+    }
+
+    /**
      * Admin-defined custom prices for this user (per product).
      *
      * @return HasMany<UserProductPrice, $this>

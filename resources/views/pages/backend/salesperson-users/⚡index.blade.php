@@ -1,15 +1,25 @@
 <?php
 
-use App\Actions\Users\GetUsers;
+use App\Actions\Users\AdminResetUserPassword;
+use App\Actions\Users\CreateUser;
+use App\Actions\Users\GetReferredUsers;
+use App\Actions\Users\UpdateUser;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Masmerise\Toaster\Toastable;
 
 new class extends Component
 {
+    use Toastable;
     use WithPagination;
+
+    private const ALLOWED_REFERRER_COUNTRY_CODES = ['+963', '+90'];
+
+    protected $listeners = ['users-updated' => '$refresh'];
 
     public string $search = '';
 
@@ -23,11 +33,9 @@ new class extends Component
 
     public bool $showFilters = false;
 
-    protected $listeners = ['users-updated' => '$refresh'];
-
     public function mount(): void
     {
-        $this->authorize('viewAny', User::class);
+        abort_unless(auth()->user()?->can('manage_referred_users'), 403);
     }
 
     public function applyFilters(): void
@@ -43,7 +51,10 @@ new class extends Component
 
     public function getUsersProperty(): LengthAwarePaginator
     {
-        return app(GetUsers::class)->handle(
+        $referrerId = (int) auth()->id();
+
+        return app(GetReferredUsers::class)->handle(
+            $referrerId,
             $this->search,
             $this->statusFilter,
             $this->sortBy,
@@ -53,17 +64,136 @@ new class extends Component
         );
     }
 
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{ok: bool, errors?: array<string, array<int, string>>}
+     */
+    public function referredSaveEdit(array $payload): array
+    {
+        $id = (int) ($payload['id'] ?? 0);
+        $user = User::query()->findOrFail($id);
+        $this->authorize('update', $user);
+
+        $input = [
+            'name' => (string) ($payload['name'] ?? ''),
+            'username' => (string) ($payload['username'] ?? ''),
+            'email' => (string) ($payload['email'] ?? ''),
+            'phone' => ($payload['phone'] ?? '') !== '' ? (string) $payload['phone'] : null,
+            'country_code' => $this->normalizeReferredCountryCode($payload['country_code'] ?? null),
+        ];
+
+        try {
+            app(UpdateUser::class)->handle($user, $input, (int) auth()->id(), true);
+        } catch (ValidationException $e) {
+            $this->error(__('messages.validation_failed'));
+
+            return ['ok' => false, 'errors' => $e->errors()];
+        }
+
+        $password = trim((string) ($payload['password'] ?? ''));
+        if ($password !== '') {
+            $user->refresh();
+            $this->authorize('resetPassword', $user);
+            try {
+                app(AdminResetUserPassword::class)->handle($user, [
+                    'password' => (string) ($payload['password'] ?? ''),
+                    'password_confirmation' => (string) ($payload['password_confirmation'] ?? ''),
+                ], (int) auth()->id());
+            } catch (ValidationException $e) {
+                $this->error(__('messages.validation_failed'));
+
+                return ['ok' => false, 'errors' => $e->errors()];
+            }
+        }
+
+        $this->success(__('messages.user_updated'));
+        $this->dispatch('users-updated');
+
+        return ['ok' => true];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{ok: bool, errors?: array<string, array<int, string>>}
+     */
+    public function referredResetPassword(array $payload): array
+    {
+        $id = (int) ($payload['id'] ?? 0);
+        $user = User::query()->findOrFail($id);
+        $this->authorize('resetPassword', $user);
+
+        try {
+            app(AdminResetUserPassword::class)->handle($user, [
+                'password' => (string) ($payload['password'] ?? ''),
+                'password_confirmation' => (string) ($payload['password_confirmation'] ?? ''),
+            ], (int) auth()->id());
+        } catch (ValidationException $e) {
+            $this->error(__('messages.validation_failed'));
+
+            return ['ok' => false, 'errors' => $e->errors()];
+        }
+
+        $this->success(__('messages.password_reset'));
+        $this->dispatch('users-updated');
+
+        return ['ok' => true];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{ok: bool, errors?: array<string, array<int, string>>}
+     */
+    public function referredCreateUser(array $payload): array
+    {
+        $this->authorize('create', User::class);
+
+        $input = [
+            'name' => (string) ($payload['name'] ?? ''),
+            'username' => (string) ($payload['username'] ?? ''),
+            'email' => (string) ($payload['email'] ?? ''),
+            'password' => (string) ($payload['password'] ?? ''),
+            'password_confirmation' => (string) ($payload['password_confirmation'] ?? ''),
+            'phone' => ($payload['phone'] ?? '') !== '' ? (string) $payload['phone'] : null,
+            'country_code' => $this->normalizeReferredCountryCode($payload['country_code'] ?? null),
+        ];
+
+        try {
+            app(CreateUser::class)->handle($input, (int) auth()->id(), (int) auth()->id());
+        } catch (ValidationException $e) {
+            $this->error(__('messages.validation_failed'));
+
+            return ['ok' => false, 'errors' => $e->errors()];
+        }
+
+        $this->success(__('messages.user_created'));
+        $this->dispatch('users-updated');
+
+        return ['ok' => true];
+    }
+
+    private function normalizeReferredCountryCode(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $s = (string) $value;
+
+        return in_array($s, self::ALLOWED_REFERRER_COUNTRY_CODES, true) ? $s : null;
+    }
+
     public function render(): View
     {
-        return $this->view()->title(__('messages.users'));
+        return $this->view()->title(__('messages.users_under_salesperson'));
     }
 };
 ?>
 
 <div
     class="flex h-full w-full flex-1 flex-col gap-6"
-    x-data="{ showFilters: false }"
-    data-test="admin-users-page"
+    x-data="salespersonReferredUsersPage()"
+    @keydown.escape.window="if (editOpen) { closeEdit(); } else if (resetOpen) { closeReset(); } else if (createOpen) { closeCreate(); }"
+    data-test="salesperson-users-page"
 >
     <section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -74,10 +204,10 @@ new class extends Component
                 <div class="flex flex-col gap-2">
                     <div class="flex flex-col gap-1">
                         <flux:heading size="lg" class="text-zinc-900 dark:text-zinc-100">
-                            {{ __('messages.users') }}
+                            {{ __('messages.users_under_salesperson') }}
                         </flux:heading>
                         <flux:text class="text-zinc-600 dark:text-zinc-400">
-                            {{ __('messages.users_intro') }}
+                            {{ __('messages.users_under_salesperson_intro') }}
                         </flux:text>
                     </div>
                     <div class="flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400" role="status" aria-live="polite">
@@ -85,7 +215,6 @@ new class extends Component
                         <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $this->users->count() }}</span>
                         <span>{{ __('messages.of') }}</span>
                         <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $this->users->total() }}</span>
-                        <span>{{ __('messages.users') }}</span>
                         @if ($statusFilter !== 'all')
                             <flux:badge class="capitalize">
                                 {{ $statusFilter === 'active' ? __('messages.active') : __('messages.blocked') }}
@@ -100,7 +229,7 @@ new class extends Component
                     variant="primary"
                     icon="plus"
                     class="!bg-accent !text-accent-foreground hover:!bg-accent-hover"
-                    wire:click="$dispatch('open-create-modal')"
+                    @click="openCreateModal()"
                 >
                     {{ __('messages.create_user') }}
                 </flux:button>
@@ -121,16 +250,6 @@ new class extends Component
                 >
                     {{ __('messages.refresh') }}
                 </flux:button>
-                <flux:button
-                    type="button"
-                    variant="ghost"
-                    icon="arrow-down-tray"
-                    href="{{ route('admin.users.export') }}"
-                    target="_blank"
-                    rel="noopener"
-                >
-                    {{ __('messages.export') }}
-                </flux:button>
             </div>
         </div>
 
@@ -139,7 +258,7 @@ new class extends Component
             wire:submit.prevent="applyFilters"
             x-show="showFilters"
             x-cloak
-            data-test="users-filters"
+            data-test="salesperson-users-filters"
         >
             <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <div class="grid gap-2">
@@ -222,8 +341,6 @@ new class extends Component
                         <flux:skeleton class="h-10 w-full" />
                         <flux:skeleton class="h-10 w-full" />
                         <flux:skeleton class="h-10 w-full" />
-                        <flux:skeleton class="h-10 w-full" />
-                        <flux:skeleton class="h-10 w-full" />
                     </div>
                 </div>
             </div>
@@ -235,10 +352,10 @@ new class extends Component
                         </div>
                         <div class="flex flex-col gap-1">
                             <flux:heading size="sm" class="text-zinc-900 dark:text-zinc-100">
-                                {{ __('messages.no_users_yet') }}
+                                {{ __('messages.no_referred_users_yet') }}
                             </flux:heading>
                             <flux:text class="text-zinc-600 dark:text-zinc-400">
-                                {{ __('messages.create_first_user') }}
+                                {{ __('messages.no_referred_users_hint') }}
                             </flux:text>
                         </div>
                         <flux:button
@@ -246,42 +363,44 @@ new class extends Component
                             variant="primary"
                             icon="plus"
                             class="!bg-accent !text-accent-foreground hover:!bg-accent-hover"
-                            wire:click="$dispatch('open-create-modal')"
+                            @click="openCreateModal()"
                         >
                             {{ __('messages.create_user') }}
                         </flux:button>
                     </div>
                 @else
-                    <table class="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800" data-test="users-table">
+                    <table class="min-w-full divide-y divide-zinc-100 text-sm dark:divide-zinc-800" data-test="salesperson-users-table">
                         <thead class="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400">
                             <tr>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.id') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.name') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.email') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.phone') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.username') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.user_registration') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.roles') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.status') }}</th>
-                                <th class="px-5 py-3 text-start font-semibold">{{ __('messages.email_verified') }}</th>
                                 <th class="px-5 py-3 text-start font-semibold">{{ __('messages.last_login') }}</th>
                                 <th class="px-5 py-3 text-end font-semibold">{{ __('messages.actions') }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
                             @foreach ($this->users as $u)
+                                @php
+                                    $referredRowPayload = [
+                                        'id' => $u->id,
+                                        'name' => $u->name,
+                                        'username' => $u->username,
+                                        'email' => $u->email,
+                                        'phone' => $u->phone,
+                                        'country_code' => $u->country_code,
+                                    ];
+                                    $referredRowPayloadB64 = base64_encode(json_encode($referredRowPayload, JSON_THROW_ON_ERROR));
+                                @endphp
                                 <tr
                                     class="transition hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
-                                    wire:key="user-{{ $u->id }}"
+                                    wire:key="referred-user-{{ $u->id }}"
                                 >
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300 tabular-nums">{{ $u->id }}</td>
                                     <td class="px-5 py-4 font-medium text-zinc-900 dark:text-zinc-100">{{ $u->name }}</td>
                                     <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">{{ $u->email }}</td>
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300" dir="ltr">{{ ($u->country_code || $u->phone) ? trim(($u->country_code ?? '') . ' ' . ($u->phone ?? '')) : '—' }}</td>
                                     <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">{{ $u->username }}</td>
-                                    <td class="max-w-xs px-5 py-4 text-xs leading-snug text-zinc-600 dark:text-zinc-300">
-                                        {{ $u->registration_summary ?: '—' }}
-                                    </td>
                                     <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
                                         {{
                                             $u->roles
@@ -300,45 +419,28 @@ new class extends Component
                                         @endif
                                     </td>
                                     <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
-                                        {{ $u->email_verified_at ? $u->email_verified_at->format('M d, Y') : '—' }}
-                                    </td>
-                                    <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
                                         {{ $u->last_login_at ? $u->last_login_at->format('M d, Y H:i') : '—' }}
                                     </td>
                                     <td class="px-5 py-4 text-end">
                                         <flux:dropdown position="bottom" align="end">
                                             <flux:button variant="ghost" icon="ellipsis-vertical" />
                                             <flux:menu>
-                                                <flux:menu.item icon="eye" :href="route('admin.users.show', $u)" wire:navigate>
+                                                <flux:menu.item icon="eye" :href="route('salesperson.users.show', $u)" wire:navigate>
                                                     {{ __('messages.view_customer') }}
                                                 </flux:menu.item>
-                                                <flux:menu.item icon="pencil" wire:click="$dispatch('open-edit-modal', { userId: {{ $u->id }} })">
+                                                <flux:menu.item
+                                                    icon="pencil"
+                                                    data-referred-user="{{ $referredRowPayloadB64 }}"
+                                                    @click="openEditFromDataset($event.currentTarget)"
+                                                >
                                                     {{ __('messages.edit') }}
                                                 </flux:menu.item>
-                                                @if ($u->blocked_at)
-                                                    <flux:menu.item icon="lock-open" wire:click="$dispatch('open-unblock-modal', { userId: {{ $u->id }} })">
-                                                        {{ __('messages.unblock') }}
-                                                    </flux:menu.item>
-                                                @else
-                                                    <flux:menu.item icon="lock-closed" wire:click="$dispatch('open-block-modal', { userId: {{ $u->id }} })">
-                                                        {{ __('messages.block') }}
-                                                    </flux:menu.item>
-                                                @endif
-                                                <flux:menu.item icon="key" wire:click="$dispatch('open-reset-password-modal', { userId: {{ $u->id }} })">
-                                                    {{ __('messages.reset_password') }}
-                                                </flux:menu.item>
-                                                @if (! $u->email_verified_at)
-                                                    <flux:menu.item icon="envelope" wire:click="$dispatch('open-verify-email-modal', { userId: {{ $u->id }} })">
-                                                        {{ __('messages.verify_email') }}
-                                                    </flux:menu.item>
-                                                @endif
-                                                <flux:menu.separator />
                                                 <flux:menu.item
-                                                    variant="danger"
-                                                    icon="trash"
-                                                    wire:click="$dispatch('open-delete-modal', { userId: {{ $u->id }} })"
+                                                    icon="key"
+                                                    data-referred-user="{{ $referredRowPayloadB64 }}"
+                                                    @click="openResetFromDataset($event.currentTarget)"
                                                 >
-                                                    {{ __('messages.delete') }}
+                                                    {{ __('messages.reset_password') }}
                                                 </flux:menu.item>
                                             </flux:menu>
                                         </flux:dropdown>
@@ -356,5 +458,5 @@ new class extends Component
         </div>
     </section>
 
-    <livewire:users.user-modals />
+    @include('pages.backend.salesperson-users._referred-user-modals')
 </div>

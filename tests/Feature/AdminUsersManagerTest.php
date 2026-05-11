@@ -103,6 +103,49 @@ test('create user creates user and logs activity', function () {
     ]);
 });
 
+test('admin users index shows registration source for admin-created user', function () {
+    $admin = User::factory()->create(['username' => 'creator_admin']);
+    $admin->assignRole('admin');
+
+    Livewire::actingAs($admin)
+        ->test(UserModals::class)
+        ->call('openCreate')
+        ->set('newName', 'Listed User')
+        ->set('newUsername', 'listeduser')
+        ->set('newEmail', 'listed@example.com')
+        ->set('newPassword', 'Password123!@#')
+        ->set('newPasswordConfirmation', 'Password123!@#')
+        ->set('newCommissionRatePercent', '5')
+        ->call('saveCreate')
+        ->assertHasNoErrors();
+
+    Livewire::actingAs($admin)
+        ->test('pages::backend.users.index')
+        ->set('search', 'listed@example.com')
+        ->call('applyFilters')
+        ->assertSee(__('messages.user_registration_by_admin', ['name' => 'creator_admin']), false);
+});
+
+test('admin users index shows self-registered when registration activity exists', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $self = User::factory()->create(['username' => 'self_signup', 'email' => 'self@example.com']);
+
+    activity()
+        ->inLog('admin')
+        ->event('user.registered')
+        ->performedOn($self)
+        ->causedBy($self)
+        ->log('User registered');
+
+    Livewire::actingAs($admin)
+        ->test('pages::backend.users.index')
+        ->set('search', 'self@example.com')
+        ->call('applyFilters')
+        ->assertSee(__('messages.user_registration_self'), false);
+});
+
 test('update user updates profile and logs activity', function () {
     $admin = User::factory()->create();
     $admin->assignRole('admin');
