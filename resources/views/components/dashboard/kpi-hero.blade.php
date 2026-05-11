@@ -48,14 +48,16 @@
                     style="background: linear-gradient(90deg, transparent, hsl(var({{ $accentVar }}) / 0.85), transparent);"
                 ></span>
                 <div class="relative flex items-start justify-between gap-2">
-                    <div class="flex min-w-0 flex-1 items-center gap-2">
+                    <div class="flex min-w-0 flex-1 items-start gap-2 sm:items-center">
                         <span
                             class="grid size-8 shrink-0 place-items-center rounded-lg ring-1 ring-white/10"
                             style="background: hsl(var({{ $accentVar }}) / 0.14); color: hsl(var({{ $accentVar }}));"
                         >
                             <flux:icon :icon="$fluxIcon" variant="outline" class="size-4" />
                         </span>
-                        <p class="dashboard-earnings-eyebrow truncate leading-tight">{{ $metric['label'] }}</p>
+                        <p class="dashboard-earnings-eyebrow min-w-0 flex-1 text-pretty break-words leading-snug sm:leading-tight">
+                            {{ $metric['label'] }}
+                        </p>
                     </div>
                     <span
                         @class([
@@ -68,8 +70,8 @@
                         @if ($deltaPositive)+@endif{{ number_format((float) $metric['delta'], 1) }}%
                     </span>
                 </div>
-                <div class="relative mt-3 flex items-end justify-between gap-3">
-                    <div class="min-w-0 flex-1">
+                <div class="relative mt-3 flex flex-col gap-2.5 min-[420px]:flex-row min-[420px]:items-end min-[420px]:justify-between min-[420px]:gap-3">
+                    <div class="min-w-0 w-full min-[420px]:flex-1">
                         <p
                             class="num text-2xl font-semibold leading-none tracking-tight sm:text-[1.65rem]"
                             style="color: hsl(var({{ $accentVar }}));"
@@ -81,7 +83,7 @@
                                 ${{ number_format((float) $metric['value'], 2) }}
                             @endif
                         </p>
-                        <p class="dashboard-kpi-hint mt-1.5">
+                        <p class="dashboard-kpi-hint mt-1.5 max-w-prose text-pretty">
                             {{ $metric['hint'] ?? '' }}
                         </p>
                     </div>
@@ -90,7 +92,7 @@
                         width="88"
                         height="30"
                         viewBox="0 0 88 30"
-                        class="shrink-0 overflow-visible"
+                        class="h-[30px] w-[5.5rem] shrink-0 self-end overflow-visible"
                         style="color: hsl(var({{ $accentVar }}));"
                         aria-hidden="true"
                         dir="ltr"

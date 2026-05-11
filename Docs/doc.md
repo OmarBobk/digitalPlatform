@@ -60,12 +60,12 @@
     - ###DONE: Salesperson should be able to create new user under him, see users under him and update there information (phone, username, password, email, name)
     - ###DONE: Admin should be able to set the commission percent for every salesperson
     - ###DONE: Salesperson should see only the dashboard there is no need to access the fulfillments
-    - ###TODO: if admin hit the salesperson dashboard he should be able to select some salesperson to see his states
+    - ###DONE: if admin hit the salesperson dashboard he should be able to select some salesperson to see his states
   - ###TODO: admin/users/{user}: customer price needs to be fixed
   - ###TODO: Add new products
   - ###TODO: Set the testing environment
   - ###TDOD: when new user is created automatically the customer role should be assigned to him.
-  - 
+  - ###TODO: if admin approve an topup request by accident what he should do ?
 - Frontend:
   - ###DONE wallet transaction in /wallets should be more described
   - ###DONE Wallet /wallet Request topups form borders remove the ring

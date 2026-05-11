@@ -384,3 +384,23 @@ test('salesperson without manage_users cannot use view-as parameter', function (
         ->assertSuccessful()
         ->assertDontSee($order->order_number, false);
 });
+
+test('salesperson dashboard lists all referred users including those without commissions', function () {
+    Permission::query()->firstOrCreate(['name' => 'view_referrals', 'guard_name' => 'web']);
+    Permission::query()->firstOrCreate(['name' => 'manage_referred_users', 'guard_name' => 'web']);
+    Role::query()->firstOrCreate(['name' => 'customer', 'guard_name' => 'web']);
+
+    $salesperson = User::factory()->create();
+    $salesperson->givePermissionTo(['view_referrals', 'manage_referred_users']);
+
+    $referred = User::factory()->create([
+        'name' => 'ReferredNoOrdersYet',
+        'referred_by_user_id' => $salesperson->id,
+    ]);
+    $referred->assignRole('customer');
+
+    $this->actingAs($salesperson)
+        ->get(route('salesperson.dashboard'))
+        ->assertSuccessful()
+        ->assertSee('ReferredNoOrdersYet', false);
+});

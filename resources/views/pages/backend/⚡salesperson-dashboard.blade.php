@@ -29,6 +29,10 @@ new #[Layout('layouts.app')] class extends Component
     /** @var array<string, array<string, mixed>> */
     public array $chartPresets = [];
     public array $customers = [];
+
+    /** @var array<int, array<string, mixed>> */
+    public array $referredUsers = [];
+
     public array $orders = [];
     public array $earningsSummary = [];
     public array $payoutHistory = [];
@@ -185,6 +189,7 @@ new #[Layout('layouts.app')] class extends Component
 
         $this->orders = $data['orders'];
         $this->customers = $data['customers'];
+        $this->referredUsers = $this->attachReferredUserShowUrls($data['referredUsers']);
         $this->kpis = $data['kpis'];
         $this->earningsSummary = $data['earningsSummary'];
         $this->payoutHistory = $data['payoutHistory'];
@@ -192,6 +197,34 @@ new #[Layout('layouts.app')] class extends Component
         $this->chartPresets = $data['chartPresets'];
         $this->chartSeries = $data['chartSeries'];
         $this->applyKpiSparksFromChart($this->kpiSparkSource());
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function attachReferredUserShowUrls(array $rows): array
+    {
+        $viewer = auth()->user();
+        if ($viewer === null || $rows === []) {
+            return array_map(static fn (array $r): array => array_merge($r, ['show_url' => '']), $rows);
+        }
+
+        $ids = array_values(array_unique(array_filter(array_map(
+            static fn (array $r): int => (int) ($r['id'] ?? 0),
+            $rows
+        ))));
+        $models = User::query()->whereIn('id', $ids)->get()->keyBy('id');
+
+        foreach ($rows as $i => $row) {
+            $id = (int) ($row['id'] ?? 0);
+            $model = $models->get($id);
+            $rows[$i]['show_url'] = $model !== null && $viewer->can('view', $model)
+                ? route('salesperson.users.show', $model)
+                : '';
+        }
+
+        return $rows;
     }
 
     private function hydrateChartData(): void
