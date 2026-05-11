@@ -24,6 +24,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage_loyalty_tiers',
             'manage_topups',
             'view_referrals',
+            'manage_referred_users',
             'create_orders',
             'customer_profile',
             'edit_orders',
@@ -55,6 +56,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $salesperson = Role::firstOrCreate(['name' => 'salesperson']);
         $salesperson->syncPermissions([
             'view_referrals',
+            'manage_referred_users',
             'view_orders',
             'create_orders',
             'edit_orders',

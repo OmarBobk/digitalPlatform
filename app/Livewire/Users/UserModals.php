@@ -11,6 +11,7 @@ use App\Actions\Users\UpdateUser;
 use App\Actions\Users\VerifyUserEmail;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Masmerise\Toaster\Toastable;
 use Spatie\Permission\Models\Permission;
@@ -21,6 +22,9 @@ class UserModals extends Component
     use Toastable;
 
     private const ALLOWED_COUNTRY_CODES = ['+963', '+90'];
+
+    /** When true, create/edit only manage users referred by the current salesperson (no roles, permissions, or commission). */
+    public bool $referredOnly = false;
 
     public bool $showCreate = false;
 
@@ -78,6 +82,10 @@ class UserModals extends Component
     /** @var array<int, string> */
     public array $editPermissions = [];
 
+    public string $editPassword = '';
+
+    public string $editPasswordConfirmation = '';
+
     public ?int $deleteUserId = null;
 
     public string $deleteUserName = '';
@@ -131,7 +139,14 @@ class UserModals extends Component
         ];
 
         try {
-            app(CreateUser::class)->handle($input, (int) auth()->id());
+            if ($this->referredOnly) {
+                $input['roles'] = ['customer'];
+                $input['permissions'] = [];
+                $input['commission_rate_percent'] = null;
+                app(CreateUser::class)->handle($input, (int) auth()->id(), (int) auth()->id());
+            } else {
+                app(CreateUser::class)->handle($input, (int) auth()->id());
+            }
         } catch (\Illuminate\Validation\ValidationException $e) {
             $v = $e->validator;
             foreach (['name' => 'newName', 'username' => 'newUsername', 'email' => 'newEmail', 'password' => 'newPassword', 'phone' => 'newPhone', 'country_code' => 'newCountryCode', 'commission_rate_percent' => 'newCommissionRatePercent'] as $actionKey => $prop) {
@@ -167,12 +182,14 @@ class UserModals extends Component
             : null;
         $this->editRoles = $user->getRoleNames()->all();
         $this->editPermissions = $user->getDirectPermissions()->pluck('name')->all();
+        $this->editPassword = '';
+        $this->editPasswordConfirmation = '';
         $this->showEdit = true;
     }
 
     public function closeEdit(): void
     {
-        $this->reset(['editingUserId', 'editName', 'editUsername', 'editEmail', 'editPhone', 'editCountryCode', 'editCommissionRatePercent', 'editRoles', 'editPermissions', 'showEdit']);
+        $this->reset(['editingUserId', 'editName', 'editUsername', 'editEmail', 'editPhone', 'editCountryCode', 'editCommissionRatePercent', 'editRoles', 'editPermissions', 'editPassword', 'editPasswordConfirmation', 'showEdit']);
         $this->resetValidation();
     }
 
@@ -187,14 +204,16 @@ class UserModals extends Component
             'email' => $this->editEmail,
             'phone' => $this->editPhone ?: null,
             'country_code' => $this->normalizeCountryCode($this->editCountryCode),
-            'commission_rate_percent' => $this->normalizeCommissionRatePercent($this->editCommissionRatePercent),
-            'roles' => $this->editRoles,
-            'permissions' => $this->editPermissions,
         ];
+        if (! $this->referredOnly) {
+            $input['commission_rate_percent'] = $this->normalizeCommissionRatePercent($this->editCommissionRatePercent);
+            $input['roles'] = $this->editRoles;
+            $input['permissions'] = $this->editPermissions;
+        }
 
         try {
-            app(UpdateUser::class)->handle($user, $input, (int) auth()->id());
-        } catch (\Illuminate\Validation\ValidationException $e) {
+            app(UpdateUser::class)->handle($user, $input, (int) auth()->id(), $this->referredOnly);
+        } catch (ValidationException $e) {
             $v = $e->validator;
             foreach (['name' => 'editName', 'username' => 'editUsername', 'email' => 'editEmail', 'phone' => 'editPhone', 'country_code' => 'editCountryCode', 'commission_rate_percent' => 'editCommissionRatePercent'] as $actionKey => $prop) {
                 if ($v->errors()->has($actionKey)) {
@@ -204,6 +223,24 @@ class UserModals extends Component
             $this->error(__('messages.validation_failed'));
 
             return;
+        }
+
+        if ($this->referredOnly && trim($this->editPassword) !== '') {
+            $user->refresh();
+            $this->authorize('resetPassword', $user);
+            try {
+                app(AdminResetUserPassword::class)->handle($user, [
+                    'password' => $this->editPassword,
+                    'password_confirmation' => $this->editPasswordConfirmation,
+                ], (int) auth()->id());
+            } catch (ValidationException $e) {
+                if ($e->validator->errors()->has('password')) {
+                    $this->addError('editPassword', $e->validator->errors()->first('password'));
+                }
+                $this->error(__('messages.validation_failed'));
+
+                return;
+            }
         }
 
         $this->success(__('messages.user_updated'));

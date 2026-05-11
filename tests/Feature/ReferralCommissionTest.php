@@ -36,6 +36,49 @@ function bindRequestWithCookies(array $cookies): void
     app()->instance('request', Request::createFromBase($symfonyRequest));
 }
 
+test('checkout attaches referral meta from buyer referred_by when no cookie and pay creates commission', function () {
+    Permission::query()->firstOrCreate(['name' => 'view_referrals']);
+    $salesperson = User::factory()->create();
+    $salesperson->givePermissionTo('view_referrals');
+    $salesperson->refresh();
+
+    $buyer = User::factory()->create([
+        'referred_by_user_id' => $salesperson->id,
+    ]);
+
+    Wallet::create([
+        'user_id' => $buyer->id,
+        'type' => WalletType::Customer,
+        'balance' => 500,
+        'currency' => 'USD',
+    ]);
+
+    $package = Package::factory()->create();
+    $product = Product::factory()->create([
+        'package_id' => $package->id,
+        'entry_price' => 100,
+    ]);
+
+    bindRequestWithCookies([]);
+
+    $order = app(CheckoutFromPayload::class)->handle($buyer, [[
+        'product_id' => $product->id,
+        'package_id' => $package->id,
+        'quantity' => 1,
+    ]], []);
+
+    $order->refresh();
+
+    expect($order->status)->toBe(OrderStatus::Paid);
+    expect(strtoupper((string) data_get($order->meta, 'referral.code')))->toBe(strtoupper((string) $salesperson->referral_code));
+    expect((int) data_get($order->meta, 'referral.salesperson_id'))->toBe($salesperson->id);
+
+    $commission = Commission::query()->where('order_id', $order->id)->first();
+    expect($commission)->not->toBeNull();
+    expect($commission->salesperson_id)->toBe($salesperson->id);
+    expect($commission->customer_id)->toBe($buyer->id);
+});
+
 test('checkout attaches referral meta from cookie and pay creates commission', function () {
     $referrer = User::factory()->create();
     $buyer = User::factory()->create();

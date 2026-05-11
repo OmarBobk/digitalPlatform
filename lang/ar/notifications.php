@@ -59,4 +59,7 @@ return [
 
     'commission_credited_title' => 'تم إيداع العمولة',
     'commission_credited_message' => ':amount_display — تم إيداع عمولتك في محفظتك.',
+
+    'salesperson_payout_requested_title' => 'طلب صرف عمولة',
+    'salesperson_payout_requested_message' => ':name طلب صرفًا (#:id، المؤهل: :eligible_display). راجع طلبات الصرف.',
 ];

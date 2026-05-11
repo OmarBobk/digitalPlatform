@@ -59,4 +59,7 @@ return [
 
     'commission_credited_title' => 'Commission credited',
     'commission_credited_message' => ':amount_display — Your commission has been credited to your wallet.',
+
+    'salesperson_payout_requested_title' => 'Payout requested',
+    'salesperson_payout_requested_message' => ':name requested a payout (#:id, eligible: :eligible_display). Review payout requests.',
 ];

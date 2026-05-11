@@ -49,21 +49,22 @@
       - or maybe we just select the package name, and then (supoose there are 10 products belong to this package) on the left hand you see the Product serial and on the right hand input fiels for the new price.
   - ###DONE: when user trying to log in and by accident click the login button twice he is redirected into "Page Expired | 419"
   - ###DONE: Backend Notification manager adds "Mark all as read" button.
+  - ###DONE: redesign the login, register, reset password pages.
   - ###TODO: Contactus: the messages that come from this form where we should handle them.
   - ###TODO: ###MAJOR### Record website views and how many users are logged in and who are they
   - ###TODO: ###MAJOR### Users hierarchy.
   - ###TODO: Dashboard Page:
     - #TODO: who is online by role
-  - ###DONE: redesign the login, register, reset password pages.
   - ###TODO: pwa: if a user tries to install the app from chrome → three dots → open karman  instead of open indirimGo
   - ###TODO: Referral Feature:
-    - ###TODO: Salesperson should be able to create new user , see users under him, update user's information (phone, username, password, email, name)
+    - ###DONE: Salesperson should be able to create new user under him, see users under him and update there information (phone, username, password, email, name)
+    - ###DONE: Admin should be able to set the commission percent for every salesperson
+    - ###DONE: Salesperson should see only the dashboard there is no need to access the fulfillments
     - ###TODO: if admin hit the salesperson dashboard he should be able to select some salesperson to see his states
-    - ###TODO: Admin should be able to set the commission percent for every salesperson
-    - ###TODO: Salesperson should see only the dashboard there is no need to access the fulfillments
   - ###TODO: admin/users/{user}: customer price needs to be fixed
   - ###TODO: Add new products
   - ###TODO: Set the testing environment
+  - ###TDOD: when new user is created automatically the customer role should be assigned to him.
   - 
 - Frontend:
   - ###DONE wallet transaction in /wallets should be more described
@@ -221,3 +222,4 @@ You are an expert UI designer and full-stack Laravel developer. You build visual
 3. Compose into section components (Livewire)
 4. Assemble on the page layout
 5. Add interactivity last (Alpine.js)
+

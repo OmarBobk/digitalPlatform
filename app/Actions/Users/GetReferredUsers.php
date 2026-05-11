@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Actions\Users;
 
 use App\Models\User;
-use App\Support\UserRegistrationSourceResolver;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 
-class GetUsers
+class GetReferredUsers
 {
     public function handle(
+        int $referrerUserId,
         string $search,
         string $statusFilter,
         string $sortBy,
@@ -22,6 +22,7 @@ class GetUsers
         $search = trim($search);
 
         $query = User::query()
+            ->where('referred_by_user_id', $referrerUserId)
             ->select([
                 'id',
                 'name',
@@ -29,7 +30,6 @@ class GetUsers
                 'email',
                 'phone',
                 'country_code',
-                'referred_by_user_id',
                 'email_verified_at',
                 'blocked_at',
                 'last_login_at',
@@ -67,27 +67,8 @@ class GetUsers
             $query->orderBy($sortColumn, $direction);
         }
 
-        $paginator = $query
-            ->with([
-                'roles:id,name',
-                'referredBy:id,username,name',
-            ])
+        return $query
+            ->with('roles:id,name')
             ->paginate($perPage, ['*'], 'page', $page);
-
-        $sources = UserRegistrationSourceResolver::resolveForUserIds(
-            $paginator->getCollection()->pluck('id')->all()
-        );
-
-        $paginator->getCollection()->transform(function (User $user) use ($sources): User {
-            $source = $sources[$user->id] ?? null;
-            $user->setAttribute(
-                'registration_summary',
-                $source !== null ? $source->describe($user) : ''
-            );
-
-            return $user;
-        });
-
-        return $paginator;
     }
 }

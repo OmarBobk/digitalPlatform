@@ -17,18 +17,23 @@ class UpdateUser
 
     /**
      * @param  array<string, mixed>  $input  Must include name, username, email; optional: phone, country_code, roles, permissions
+     * @param  bool  $profileOnly  When true, only profile fields are updated (no roles, permissions, or commission changes).
      *
      * @throws ValidationException
      */
-    public function handle(User $user, array $input, int $causedById): void
+    public function handle(User $user, array $input, int $causedById, bool $profileOnly = false): void
     {
+        $rules = [
+            ...$this->profileRules($user->id),
+        ];
+        if (! $profileOnly) {
+            $rules['commission_rate_percent'] = ['nullable', 'numeric', 'min:0.01', 'max:100'];
+        }
+
         Validator::make([
             ...$input,
             'preferred_currency' => $this->normalizePreferredCurrency($input['preferred_currency'] ?? $user->preferred_currency ?? null),
-        ], [
-            ...$this->profileRules($user->id),
-            'commission_rate_percent' => ['nullable', 'numeric', 'min:0.01', 'max:100'],
-        ])->validate();
+        ], $rules)->validate();
 
         $data = UpdateUserProfileData::from($input);
 
@@ -46,37 +51,43 @@ class UpdateUser
             'commission_rate_percent' => $user->commission_rate_percent,
         ];
 
-        $user->forceFill([
+        $fill = [
             'name' => $data->name,
             'username' => $data->username,
             'email' => $data->email,
             'phone' => $data->phone,
             'country_code' => $data->country_code,
-            'commission_rate_percent' => $input['commission_rate_percent'] ?? null,
             'timezone' => $timezone,
             'profile_photo' => $data->profile_photo ?? $user->profile_photo,
-        ])->save();
+        ];
+        if (! $profileOnly) {
+            $fill['commission_rate_percent'] = $input['commission_rate_percent'] ?? null;
+        }
+
+        $user->forceFill($fill)->save();
 
         $loggedRoles = false;
         $loggedPermissions = false;
 
-        $roleNames = $data->roles;
-        if (is_array($roleNames)) {
-            $previousRoles = $user->getRoleNames()->all();
-            $user->syncRoles($roleNames);
-            if ($previousRoles !== $roleNames) {
-                $this->logRolesUpdated($user, $roleNames, $previousRoles, $causedById);
-                $loggedRoles = true;
+        if (! $profileOnly) {
+            $roleNames = $data->roles;
+            if (is_array($roleNames)) {
+                $previousRoles = $user->getRoleNames()->all();
+                $user->syncRoles($roleNames);
+                if ($previousRoles !== $roleNames) {
+                    $this->logRolesUpdated($user, $roleNames, $previousRoles, $causedById);
+                    $loggedRoles = true;
+                }
             }
-        }
 
-        $permissionNames = $data->permissions;
-        if (is_array($permissionNames)) {
-            $previousPermissions = $user->getDirectPermissions()->pluck('name')->all();
-            $user->syncPermissions($permissionNames);
-            if ($previousPermissions !== $permissionNames) {
-                $this->logPermissionsUpdated($user, $permissionNames, $previousPermissions, $causedById);
-                $loggedPermissions = true;
+            $permissionNames = $data->permissions;
+            if (is_array($permissionNames)) {
+                $previousPermissions = $user->getDirectPermissions()->pluck('name')->all();
+                $user->syncPermissions($permissionNames);
+                if ($previousPermissions !== $permissionNames) {
+                    $this->logPermissionsUpdated($user, $permissionNames, $previousPermissions, $causedById);
+                    $loggedPermissions = true;
+                }
             }
         }
 

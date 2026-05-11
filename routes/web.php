@@ -6,6 +6,7 @@ use App\Http\Controllers\BugAttachmentController;
 use App\Http\Controllers\BuyNowCustomAmountQuoteController;
 use App\Http\Controllers\TopupProofController;
 use App\Livewire\Admin\CommissionsTable;
+use App\Livewire\Admin\PayoutRequestsTable;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 use Maatwebsite\Excel\Facades\Excel;
@@ -68,6 +69,12 @@ Route::middleware(['auth', 'verified', 'backend'])->group(function () {
     Route::livewire('/salesperson-dashboard', 'pages::backend.salesperson-dashboard')
         ->middleware('can:view_referrals')
         ->name('salesperson.dashboard');
+    Route::livewire('/salesperson/users', 'pages::backend.salesperson-users.index')
+        ->middleware('can:manage_referred_users')
+        ->name('salesperson.users.index');
+    Route::livewire('/salesperson/users/{user}', 'pages::backend.users.show')
+        ->middleware('can:manage_referred_users')
+        ->name('salesperson.users.show');
     Route::livewire('/categories', 'pages::backend.categories.index')->name('categories');
     Route::livewire('/packages', 'pages::backend.packages.index')->name('packages');
     Route::livewire('/products', 'pages::backend.products.index')->name('products');
@@ -80,14 +87,16 @@ Route::middleware(['auth', 'verified', 'backend'])->group(function () {
     Route::livewire('/admin/orders/{order}', 'pages::backend.orders.show')->name('admin.orders.show');
     Route::livewire('/admin/activities', 'pages::backend.activities.index')->name('admin.activities.index');
     Route::livewire('/admin/system-events', 'pages::backend.system-events.index')->name('admin.system-events.index');
-    Route::livewire('/admin/users', 'pages::backend.users.index')->name('admin.users.index');
-    Route::get('/admin/users/export', function () {
-        abort_unless(auth()->user()?->can('viewAny', User::class), 403);
+    Route::middleware('can:manage_users')->group(function () {
+        Route::livewire('/admin/users', 'pages::backend.users.index')->name('admin.users.index');
+        Route::get('/admin/users/export', function () {
+            abort_unless(auth()->user()?->can('viewAny', User::class), 403);
 
-        return Excel::download(new UsersExport, 'users.xlsx');
-    })->name('admin.users.export');
-    Route::livewire('/admin/users/{user}', 'pages::backend.users.show')->name('admin.users.show');
-    Route::livewire('/admin/users/{user}/audit', 'pages::backend.users.audit')->name('admin.users.audit');
+            return Excel::download(new UsersExport, 'users.xlsx');
+        })->name('admin.users.export');
+        Route::livewire('/admin/users/{user}', 'pages::backend.users.show')->name('admin.users.show');
+        Route::livewire('/admin/users/{user}/audit', 'pages::backend.users.audit')->name('admin.users.audit');
+    });
     Route::livewire('/fulfillments', 'pages::backend.fulfillments.index')->name('fulfillments');
     Route::livewire('/refunds', 'pages::backend.refunds.index')->name('refunds');
     Route::livewire('/topups', 'pages::backend.topups.index')->name('topups');
@@ -96,6 +105,9 @@ Route::middleware(['auth', 'verified', 'backend'])->group(function () {
     Route::livewire('/admin/commissions', CommissionsTable::class)
         ->middleware('can:manage_settlements')
         ->name('admin.commissions');
+    Route::livewire('/admin/payout-requests', PayoutRequestsTable::class)
+        ->middleware('can:manage_settlements')
+        ->name('admin.payout-requests');
     Route::livewire('/admin/notifications', 'pages::backend.notifications.index')->name('admin.notifications.index');
 });
 

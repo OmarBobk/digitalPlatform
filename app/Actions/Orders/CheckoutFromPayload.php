@@ -53,9 +53,10 @@ class CheckoutFromPayload
             }
 
             $metaForCreate = array_merge($meta, ['cart_hash' => $cartHash]);
-            $referralFromCookie = $this->referralPayloadFromCookie($user);
-            if ($referralFromCookie !== null) {
-                $metaForCreate['referral'] = $referralFromCookie;
+            $referralPayload = $this->referralPayloadFromCookie($user)
+                ?? $this->referralPayloadFromReferredByUser($user);
+            if ($referralPayload !== null) {
+                $metaForCreate['referral'] = $referralPayload;
             }
 
             $order = app(CreateOrderFromCartPayload::class)->handle(
@@ -94,7 +95,7 @@ class CheckoutFromPayload
      * @param  array<int, array<string, mixed>>  $items
      */
     /**
-     * Server-side referral from cookie only (never trust client meta).
+     * Server-side referral from cookie (never trust client meta). Cookie wins when present.
      *
      * @return array{code: string, salesperson_id: int}|null
      */
@@ -126,6 +127,39 @@ class CheckoutFromPayload
         return [
             'code' => $code,
             'salesperson_id' => $referrer->id,
+        ];
+    }
+
+    /**
+     * When the buyer has no referral cookie, attribute to their permanent referrer (e.g. salesperson-created account).
+     * Only users who may earn referral commissions (`view_referrals`) are used.
+     *
+     * @return array{code: string, salesperson_id: int}|null
+     */
+    private function referralPayloadFromReferredByUser(User $buyer): ?array
+    {
+        $referrerId = $buyer->referred_by_user_id;
+        if ($referrerId === null || (int) $referrerId <= 0) {
+            return null;
+        }
+
+        $referrer = User::query()->select(['id', 'referral_code'])->find((int) $referrerId);
+        if ($referrer === null || (int) $referrer->id === (int) $buyer->id) {
+            return null;
+        }
+
+        if (! $referrer->can('view_referrals')) {
+            return null;
+        }
+
+        $code = strtoupper(trim((string) $referrer->referral_code));
+        if ($code === '' || strlen($code) > 16) {
+            return null;
+        }
+
+        return [
+            'code' => $code,
+            'salesperson_id' => (int) $referrer->id,
         ];
     }
 

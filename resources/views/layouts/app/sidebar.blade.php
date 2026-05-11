@@ -38,6 +38,11 @@
                                 {{ __('messages.salesperson_dashboard') }}
                             </flux:sidebar.item>
                         @endcan
+                        @can('manage_referred_users')
+                            <flux:sidebar.item icon="users" :href="route('salesperson.users.index')" :current="request()->routeIs('salesperson.users.*')" wire:navigate>
+                                {{ __('messages.nav_my_customers') }}
+                            </flux:sidebar.item>
+                        @endcan
                     </flux:sidebar.group>
                 @endif
 
@@ -110,7 +115,7 @@
 
                 @if (auth()->user()?->can('manage_topups') || auth()->user()?->can('manage_settlements'))
                     <livewire:sidebar.financials-group
-                        :expanded="request()->routeIs('topups') || request()->routeIs('settlements') || request()->routeIs('customer-funds') || request()->routeIs('admin.commissions')"
+                        :expanded="request()->routeIs('topups') || request()->routeIs('settlements') || request()->routeIs('customer-funds') || request()->routeIs('admin.commissions') || request()->routeIs('admin.payout-requests')"
                         :heading="__('messages.nav_financials')"
                         :key="'sidebar-financials-group'"
                     >
@@ -133,6 +138,9 @@
                         </flux:sidebar.item>
                         <flux:sidebar.item icon="document-text" :href="route('admin.commissions')" :current="request()->routeIs('admin.commissions')" wire:navigate>
                             {{ __('messages.commissions') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="inbox-arrow-down" :href="route('admin.payout-requests')" :current="request()->routeIs('admin.payout-requests')" wire:navigate>
+                            {{ __('messages.payout_requests') }}
                         </flux:sidebar.item>
                         @endcan
                     </livewire:sidebar.financials-group>
