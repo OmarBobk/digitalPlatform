@@ -685,6 +685,8 @@ return [
     // Authentication Errors
     'inactive' => 'Your account is inactive. Please contact support.',
     'blocked' => 'Your account has been blocked. Please contact support.',
+    'session_ended_blocked' => 'Your session has ended because this account was blocked.',
+    'session_ended_inactive' => 'Your session has ended because this account is inactive.',
 
     // Errors
     'not_found' => 'Not Found',

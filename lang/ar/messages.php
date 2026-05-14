@@ -686,6 +686,8 @@ return [
     // Authentication Errors
     'inactive' => 'حسابك غير نشط. يرجى الاتصال بالدعم.',
     'blocked' => 'تم حظر حسابك. يرجى الاتصال بالدعم.',
+    'session_ended_blocked' => 'انتهت جلستك لأن هذا الحساب أصبح محظورًا.',
+    'session_ended_inactive' => 'انتهت جلستك لأن هذا الحساب أصبح غير نشط.',
 
     // Errors
     'not_found' => 'غير موجود',
