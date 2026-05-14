@@ -17,6 +17,7 @@ use App\Models\PayoutBatch;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Models\WebsiteSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Livewire\Livewire;
@@ -120,6 +121,42 @@ test('checkout attaches referral meta from cookie and pay creates commission', f
     expect($commission->status)->toBe(CommissionStatus::Pending);
     expect((float) $commission->commission_amount)->toBe(20.0);
     expect((float) $commission->commission_rate_percent)->toBe(20.0);
+});
+
+test('commission uses website default rate when salesperson has no custom rate', function () {
+    WebsiteSetting::instance()->update(['default_commission_rate_percent' => 22.5]);
+
+    $referrer = User::factory()->create();
+    $buyer = User::factory()->create();
+    $referrer->refresh();
+
+    Wallet::create([
+        'user_id' => $buyer->id,
+        'type' => WalletType::Customer,
+        'balance' => 500,
+        'currency' => 'USD',
+    ]);
+
+    $package = Package::factory()->create();
+    $product = Product::factory()->create([
+        'package_id' => $package->id,
+        'entry_price' => 100,
+    ]);
+
+    bindRequestWithCookies([
+        (string) config('referral.cookie_name') => (string) $referrer->referral_code,
+    ]);
+
+    $order = app(CheckoutFromPayload::class)->handle($buyer, [[
+        'product_id' => $product->id,
+        'package_id' => $package->id,
+        'quantity' => 1,
+    ]], []);
+
+    $commission = Commission::query()->where('order_id', $order->id)->first();
+    expect($commission)->not->toBeNull();
+    expect((float) $commission->commission_rate_percent)->toBe(22.5);
+    expect((float) $commission->commission_amount)->toBe(22.5);
 });
 
 test('commission uses salesperson custom rate percent when set', function () {

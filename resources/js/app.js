@@ -251,7 +251,7 @@ document.addEventListener('alpine:init', () => {
                     },
                 },
                 tooltip: {
-                    theme: 'dark',
+                    theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
                     marker: { show: false },
                     custom: ({ dataPointIndex }) => {
                         const label = this.chartSeries?.labels?.[dataPointIndex] ?? '—';
@@ -261,10 +261,10 @@ document.addEventListener('alpine:init', () => {
                             : `$${Number(raw).toFixed(2)}`;
                         const seriesLabel = this.seriesLabel();
 
-                        return `<div class="rounded-xl border border-white/10 bg-[hsl(var(--surface-2)/0.95)] px-3 py-2 backdrop-blur-sm">
-                            <p class="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400">${label}</p>
-                            <p class="mt-1 text-xs text-zinc-300">${seriesLabel}</p>
-                            <p class="tabular-nums text-sm font-semibold text-white">${value}</p>
+                        return `<div class="rounded-xl border border-[hsl(var(--foreground)/0.12)] bg-[hsl(var(--surface-2))] px-3 py-2 shadow-lg backdrop-blur-sm">
+                            <p class="text-[10px] font-medium uppercase tracking-[0.12em] text-[hsl(var(--foreground)/0.55)]">${label}</p>
+                            <p class="mt-1 text-xs text-[hsl(var(--foreground)/0.72)]">${seriesLabel}</p>
+                            <p class="tabular-nums text-sm font-semibold text-[hsl(var(--foreground))]">${value}</p>
                         </div>`;
                     },
                 },

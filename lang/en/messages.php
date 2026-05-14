@@ -559,6 +559,8 @@ return [
     'commission_payout_wait_days_hint' => 'Commissions can be included in payout only after this many days since creation.',
     'commission_payout_min_amount' => 'Commission minimum payout amount',
     'commission_payout_min_amount_hint' => 'Minimum total amount required for creating one payout batch.',
+    'website_default_commission_rate_percent' => 'Default commission rate (%)',
+    'website_default_commission_rate_percent_hint' => 'Used for referral commissions when a salesperson has no custom rate on their profile.',
     'admin_usd_try_rate_heading' => 'USD/TRY (storefront)',
     'admin_usd_try_rate_short' => 'USD/TRY',
     'admin_usd_try_rate_updated_at' => 'Updated :datetime',
@@ -685,6 +687,8 @@ return [
     // Authentication Errors
     'inactive' => 'Your account is inactive. Please contact support.',
     'blocked' => 'Your account has been blocked. Please contact support.',
+    'session_ended_blocked' => 'Your session has ended because this account was blocked.',
+    'session_ended_inactive' => 'Your session has ended because this account is inactive.',
 
     // Errors
     'not_found' => 'Not Found',

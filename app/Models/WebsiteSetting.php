@@ -17,6 +17,7 @@ class WebsiteSetting extends Model
         'usd_try_rate_updated_at',
         'commission_payout_wait_days',
         'commission_payout_min_amount',
+        'default_commission_rate_percent',
     ];
 
     /**
@@ -30,6 +31,7 @@ class WebsiteSetting extends Model
             'usd_try_rate_updated_at' => 'datetime',
             'commission_payout_wait_days' => 'integer',
             'commission_payout_min_amount' => 'decimal:2',
+            'default_commission_rate_percent' => 'decimal:2',
         ];
     }
 
@@ -52,6 +54,7 @@ class WebsiteSetting extends Model
             'usd_try_rate_updated_at' => null,
             'commission_payout_wait_days' => 3,
             'commission_payout_min_amount' => 200,
+            'default_commission_rate_percent' => 20,
         ]);
     }
 
@@ -128,5 +131,17 @@ class WebsiteSetting extends Model
         $value = (float) self::instance()->commission_payout_min_amount;
 
         return max(0, $value);
+    }
+
+    /** Default referral commission % when a salesperson has no custom rate (two decimal places). */
+    public static function getDefaultCommissionRatePercent(): string
+    {
+        $raw = self::instance()->default_commission_rate_percent;
+        $float = $raw !== null
+            ? (float) $raw
+            : (float) config('referral.default_commission_rate_percent', '20.00');
+        $clamped = max(0.01, min(100.0, $float));
+
+        return number_format($clamped, 2, '.', '');
     }
 }
