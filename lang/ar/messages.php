@@ -561,6 +561,8 @@ return [
     'commission_payout_wait_days_hint' => 'لا يمكن تضمين العمولة في دفعة السداد إلا بعد مرور هذا العدد من الأيام من تاريخ إنشائها.',
     'commission_payout_min_amount' => 'الحد الأدنى لصرف العمولات',
     'commission_payout_min_amount_hint' => 'إجمالي الحد الأدنى المطلوب لإنشاء دفعة سداد واحدة.',
+    'website_default_commission_rate_percent' => 'نسبة العمولة الافتراضية (%)',
+    'website_default_commission_rate_percent_hint' => 'تُستخدم لعمولات الإحالة عندما لا يكون لمندوب المبيعات نسبة مخصصة في ملفه.',
     'admin_usd_try_rate_heading' => 'USD/TRY (واجهة المتجر)',
     'admin_usd_try_rate_short' => 'USD/TRY',
     'admin_usd_try_rate_updated_at' => 'آخر تحديث :datetime',

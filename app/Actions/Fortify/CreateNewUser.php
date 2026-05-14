@@ -2,6 +2,7 @@
 
 namespace App\Actions\Fortify;
 
+use App\Concerns\AssignsDefaultCustomerRole;
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Enums\Timezone;
@@ -12,7 +13,7 @@ use Laravel\Fortify\Contracts\CreatesNewUsers;
 
 class CreateNewUser implements CreatesNewUsers
 {
-    use PasswordValidationRules, ProfileValidationRules;
+    use AssignsDefaultCustomerRole, PasswordValidationRules, ProfileValidationRules;
 
     /**
      * Validate and create a newly registered user.
@@ -48,6 +49,8 @@ class CreateNewUser implements CreatesNewUsers
             'profile_photo' => $input['profile_photo'] ?? null,
             'is_active' => true,
         ]);
+
+        $this->syncInitialUserRoles($user, []);
 
         activity()
             ->inLog('admin')

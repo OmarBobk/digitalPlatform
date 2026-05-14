@@ -39,7 +39,7 @@
                 <flux:icon icon="users" variant="outline" class="size-4 text-[hsl(var(--accent-customers))]" />
             </span>
             <div class="min-w-0">
-                <h2 class="text-base font-semibold tracking-tight text-white">
+                <h2 class="dashboard-text text-base font-semibold tracking-tight">
                     {{ __('messages.dashboard_referred_users_title') }}
                 </h2>
                 <p class="mt-0.5 text-xs leading-snug text-[hsl(var(--foreground)/0.48)]">
@@ -54,19 +54,19 @@
             </div>
         </div>
 
-        <label class="relative flex w-full min-w-0 items-center gap-2 rounded-xl border border-white/[0.08] bg-[hsl(var(--surface-2)/0.55)] px-3 py-2 ring-1 ring-white/[0.04] md:max-w-sm">
+        <label class="relative flex w-full min-w-0 items-center gap-2 rounded-xl border border-[hsl(var(--foreground)/0.08)] bg-[hsl(var(--surface-2)/0.55)] px-3 py-2 ring-1 ring-[hsl(var(--foreground)/0.06)] md:max-w-sm">
             <flux:icon icon="magnifying-glass" variant="outline" class="size-3.5 shrink-0 text-[hsl(var(--foreground)/0.45)]" />
             <input
                 type="search"
                 x-model.debounce.250ms="search"
                 placeholder="{{ __('messages.dashboard_referred_users_search_placeholder') }}"
-                class="min-w-0 flex-1 border-0 bg-transparent text-xs text-zinc-100 outline-none placeholder:text-[hsl(var(--foreground)/0.38)]"
+                class="min-w-0 flex-1 border-0 bg-transparent text-xs text-[hsl(var(--foreground))] outline-none placeholder:text-[hsl(var(--foreground)/0.38)]"
                 autocomplete="off"
             />
         </label>
     </div>
 
-    <div class="mt-5 overflow-x-auto rounded-xl border border-white/[0.06] ring-1 ring-white/[0.04]">
+    <div class="mt-5 overflow-x-auto rounded-xl border border-[hsl(var(--foreground)/0.06)] ring-1 ring-[hsl(var(--foreground)/0.06)]">
         <table class="min-w-full divide-y divide-white/[0.06] text-start text-sm">
             <thead class="bg-[hsl(var(--surface-2)/0.45)] text-[11px] font-semibold uppercase tracking-wide text-[hsl(var(--foreground)/0.45)]">
                 <tr>
@@ -92,7 +92,7 @@
                 </tr>
                 <template x-for="row in filtered()" :key="row.id">
                     <tr class="bg-[hsl(var(--surface-1)/0.25)] transition hover:bg-[hsl(var(--surface-2)/0.4)]">
-                        <td class="max-w-[10rem] px-4 py-3 font-medium text-white sm:max-w-none">
+                        <td class="dashboard-text max-w-[10rem] px-4 py-3 font-medium sm:max-w-none">
                             <template x-if="row.show_url">
                                 <a
                                     :href="row.show_url"

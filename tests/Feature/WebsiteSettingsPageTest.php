@@ -55,6 +55,7 @@ test('admin can save website settings', function () {
         ->set('usdTryRate', '39.125000')
         ->set('commissionPayoutWaitDays', 5)
         ->set('commissionPayoutMinAmount', '250.50')
+        ->set('defaultCommissionRatePercent', '18.50')
         ->call('save')
         ->assertDispatched('website-settings-saved');
 
@@ -67,6 +68,7 @@ test('admin can save website settings', function () {
     expect($settings->usd_try_rate_updated_at)->not()->toBeNull();
     expect($settings->commission_payout_wait_days)->toBe(5);
     expect((float) $settings->commission_payout_min_amount)->toBe(250.5);
+    expect((float) $settings->default_commission_rate_percent)->toBe(18.5);
 });
 
 test('admin can fetch usd try rate into form', function () {

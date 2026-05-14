@@ -14,6 +14,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Models\WebsiteSetting;
 use App\Services\OperationalIntelligenceService;
 use App\Services\SystemEventService;
 use Illuminate\Database\QueryException;
@@ -245,7 +246,7 @@ class PayOrderWithWallet
 
     private function resolveCommissionRatePercent(int $salespersonId): string
     {
-        $defaultRate = number_format((float) config('referral.default_commission_rate_percent', '20.00'), 2, '.', '');
+        $defaultRate = WebsiteSetting::getDefaultCommissionRatePercent();
         $salesperson = User::query()->select(['id', 'commission_rate_percent'])->find($salespersonId);
         $customRate = $salesperson?->commission_rate_percent;
 

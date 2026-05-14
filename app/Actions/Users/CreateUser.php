@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Users;
 
+use App\Concerns\AssignsDefaultCustomerRole;
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Enums\Timezone;
@@ -14,7 +15,7 @@ use Illuminate\Validation\ValidationException;
 
 class CreateUser
 {
-    use PasswordValidationRules, ProfileValidationRules;
+    use AssignsDefaultCustomerRole, PasswordValidationRules, ProfileValidationRules;
 
     /**
      * @param  array<string, mixed>  $input  name, username, email, password; optional: phone, country_code, roles, permissions
@@ -66,14 +67,13 @@ class CreateUser
             'is_active' => true,
         ]);
 
-        if ($referrerUserId !== null) {
-            $user->syncRoles(['customer']);
-        } else {
-            $roleNames = $input['roles'] ?? [];
-            if (is_array($roleNames) && $roleNames !== []) {
-                $user->syncRoles($roleNames);
-            }
+        $roleNames = $referrerUserId !== null
+            ? ['customer']
+            : (is_array($input['roles'] ?? null) ? $input['roles'] : []);
 
+        $this->syncInitialUserRoles($user, $roleNames);
+
+        if ($referrerUserId === null) {
             $permissionNames = $input['permissions'] ?? [];
             if (is_array($permissionNames) && $permissionNames !== []) {
                 $user->syncPermissions($permissionNames);
